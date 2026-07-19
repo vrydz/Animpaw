@@ -1,0 +1,517 @@
+import React, { useState } from "react";
+import { User, ShieldAlert, CheckCircle, Sparkles, Mail, Lock, Gamepad2, ArrowRight, KeyRound, RefreshCw } from "lucide-react";
+import { motion } from "motion/react";
+
+interface AuthFormProps {
+  onSuccess: (token: string, userData: any) => void;
+}
+
+export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
+  const [mode, setMode] = useState<"login" | "register_email" | "register_verifying" | "register_username" | "forgot_password" | "reset_password">("login");
+  const [email, setEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [newPassword, setNewPassword] = useState<string>("");
+  const [token, setToken] = useState<string>("");
+  
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const updateLocalBackup = (userObj: any, passwordStr: string) => {
+    if (!userObj || !userObj.username) return;
+    try {
+      const key = "nekomon_backup_users";
+      const existingStr = localStorage.getItem(key);
+      const backups = existingStr ? JSON.parse(existingStr) : {};
+      
+      const usernameKey = userObj.username.toLowerCase();
+      const prevBackup = backups[usernameKey] || {};
+      
+      backups[usernameKey] = {
+        user: { ...prevBackup.user, ...userObj },
+        password: passwordStr || prevBackup.password || "",
+        captures: prevBackup.captures || [],
+        cards: prevBackup.cards || []
+      };
+      
+      localStorage.setItem(key, JSON.stringify(backups));
+    } catch (e) {
+      console.error("Gagal melakukan backup lokal:", e);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    try {
+      if (mode === "login") {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        let data = await response.json();
+
+        // Ephemeral Server Reset Fallback Check:
+        if (!response.ok) {
+          try {
+            const key = "nekomon_backup_users";
+            const existingStr = localStorage.getItem(key);
+            const backups = existingStr ? JSON.parse(existingStr) : {};
+            const usernameKey = username.trim().toLowerCase();
+            const backup = backups[usernameKey];
+
+            if (backup && backup.password === password.trim()) {
+              setSuccess("Sinkronisasi akun dari database lokal...");
+              const syncResponse = await fetch("/api/auth/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  user: backup.user,
+                  password: backup.password,
+                  captures: backup.captures,
+                  cards: backup.cards
+                }),
+              });
+
+              if (syncResponse.ok) {
+                // Retry login now that the user is restored!
+                const retryResponse = await fetch("/api/auth/login", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ username, password }),
+                });
+                data = await retryResponse.json();
+                if (retryResponse.ok) {
+                  setSuccess("Login berhasil! Memuat data game...");
+                  updateLocalBackup(data.user, password.trim());
+                  setTimeout(() => {
+                    onSuccess(data.token, data.user);
+                  }, 1200);
+                  return;
+                }
+              }
+            }
+          } catch (syncErr) {
+            console.error("Error during auto-sync restore:", syncErr);
+          }
+          throw new Error(data.error || "Username, Email, atau password salah.");
+        }
+
+        setSuccess("Login berhasil! Memuat data game...");
+        updateLocalBackup(data.user, password.trim());
+        setTimeout(() => {
+          onSuccess(data.token, data.user);
+        }, 1200);
+
+      } else if (mode === "register_email") {
+        const response = await fetch("/api/auth/send-verification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Gagal memproses pendaftaran email.");
+        }
+
+        setSuccess(`Link verifikasi berhasil dikirim ke ${email}!`);
+        setToken(data.token);
+        setTimeout(() => {
+          setMode("register_verifying");
+          setSuccess(null);
+        }, 1500);
+
+      } else if (mode === "register_username") {
+        const response = await fetch("/api/auth/complete-register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, username }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Gagal mendaftarkan nama alias.");
+        }
+
+        setSuccess("Pendaftaran berhasil! Anda mendapatkan modal 100 Poin 🐾");
+        const registeredUser = {
+          id: data.user.id,
+          username: username.trim(),
+          email: email.trim(),
+          points: 100,
+          cores: 0,
+          createdAt: new Date().toISOString()
+        };
+        updateLocalBackup(registeredUser, password.trim());
+        setTimeout(() => {
+          setMode("login");
+          setSuccess(null);
+          setPassword("");
+          setUsername("");
+          setEmail("");
+        }, 2200);
+
+      } else if (mode === "forgot_password") {
+        const response = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Email tidak terdaftar.");
+        }
+
+        setSuccess(`Tautan reset password dikirim ke ${email}!`);
+        setToken(data.token);
+        setTimeout(() => {
+          setMode("reset_password");
+          setSuccess(null);
+        }, 1500);
+
+      } else if (mode === "reset_password") {
+        const response = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, password: newPassword }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Gagal mengubah kata sandi.");
+        }
+
+        setSuccess("Sandi berhasil diupdate! Silakan masuk kembali.");
+        setTimeout(() => {
+          setMode("login");
+          setSuccess(null);
+          setNewPassword("");
+        }, 2000);
+      }
+    } catch (err: any) {
+      setError(err.message || "Gagal menghubungi server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getHeaderInfo = () => {
+    switch (mode) {
+      case "login":
+        return {
+          title: "MASUK NEKOMON",
+          desc: "Masuk untuk melanjutkan petualangan mengoleksi kartu Nekomon legendaris."
+        };
+      case "register_email":
+        return {
+          title: "DAFTAR AKUN BARU",
+          desc: "Masukkan alamat email asli Anda. Sistem akan mengirimkan link verifikasi email terlebih dahulu."
+        };
+      case "register_verifying":
+        return {
+          title: "VERIFIKASI EMAIL ANDA",
+          desc: "Kami telah mengirimkan tautan verifikasi ke email asli Anda."
+        };
+      case "register_username":
+        return {
+          title: "BUAT USERNAME ANDA",
+          desc: "Email berhasil diverifikasi! Sekarang, tentukan nama alias unik untuk memulai game."
+        };
+      case "forgot_password":
+        return {
+          title: "LUPA KATA SANDI",
+          desc: "Ketik alamat email Anda yang pernah terdaftar untuk mendapatkan tautan reset sandi."
+        };
+      case "reset_password":
+        return {
+          title: "ATUR SANDI BARU",
+          desc: "Masukkan sandi baru pilihan Anda untuk memulihkan akses ke akun trainer."
+        };
+    }
+  };
+
+  const headerInfo = getHeaderInfo();
+
+  return (
+    <div className="w-full max-w-md mx-auto bg-slate-900 border-2 border-yellow-500/40 rounded-2xl shadow-2xl p-6 relative overflow-hidden">
+      
+      {/* Decorative Gaming Background Particles */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full filter blur-xl pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/5 rounded-full filter blur-xl pointer-events-none"></div>
+
+      {/* Header section */}
+      <div className="text-center flex flex-col items-center gap-2 mb-6">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-yellow-500 to-amber-600 flex items-center justify-center border-2 border-yellow-300 shadow-lg shadow-yellow-500/10">
+          <Gamepad2 className="w-9 h-9 text-slate-950 animate-bounce" />
+        </div>
+        <h2 className="text-2xl font-black text-slate-100 font-sans tracking-wide">
+          {headerInfo.title}
+        </h2>
+        <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+          {headerInfo.desc}
+        </p>
+      </div>
+
+      {/* Error and Success alerts */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-950/80 border border-red-500/30 text-red-200 text-xs p-3 rounded-xl mb-4 flex items-center gap-2"
+        >
+          <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+          <span>{error}</span>
+        </motion.div>
+      )}
+
+      {success && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-emerald-950/80 border border-emerald-500/30 text-emerald-200 text-xs p-3 rounded-xl mb-4 flex items-center gap-2"
+        >
+          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{success}</span>
+        </motion.div>
+      )}
+
+      {/* Form Submission */}
+      {mode !== "register_verifying" ? (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          
+          {/* Email Field (SignUp or ForgotPassword) */}
+          {(mode === "register_email" || mode === "forgot_password") && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-400 font-mono flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-slate-500" />
+                ALAMAT EMAIL ASLI
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email_anda@domain.com"
+                required
+                className="w-full bg-slate-950 border border-slate-800 focus:border-yellow-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition-all font-mono"
+              />
+            </div>
+          )}
+
+          {/* Username Field (Login or complete register) */}
+          {(mode === "login" || mode === "register_username") && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-400 font-mono flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-slate-500" />
+                {mode === "login" ? "USERNAME / EMAIL" : "USERNAME BARU"}
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={mode === "login" ? "pilih_nama_unik atau email" : "nama_unik_trainer"}
+                required
+                className="w-full bg-slate-950 border border-slate-800 focus:border-yellow-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition-all font-mono"
+              />
+            </div>
+          )}
+
+          {/* Password Field (Login or SignUp) */}
+          {(mode === "login" || mode === "register_email") && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-400 font-mono flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                KATA SANDI (PASSWORD)
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="w-full bg-slate-950 border border-slate-800 focus:border-yellow-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition-all font-mono"
+              />
+            </div>
+          )}
+
+          {/* New Password Field (ResetPassword mode) */}
+          {mode === "reset_password" && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-400 font-mono flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                KATA SANDI BARU (NEW PASSWORD)
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="w-full bg-slate-950 border border-slate-800 focus:border-yellow-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition-all font-mono"
+              />
+            </div>
+          )}
+
+          {/* Form Action Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full mt-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-black py-3 rounded-xl transition-all shadow-md shadow-yellow-500/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {loading ? (
+              <span>Memproses server...</span>
+            ) : (
+              <>
+                <span>
+                  {mode === "login" && "MASUK SEKARANG"}
+                  {mode === "register_email" && "KIRIM VERIFIKASI EMAIL"}
+                  {mode === "register_username" && "SELESAIKAN PENDAFTARAN"}
+                  {mode === "forgot_password" && "KIRIM LINK RESET PASSWORD"}
+                  {mode === "reset_password" && "SIMPAN SANDI BARU"}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </form>
+      ) : (
+        /* Register Verifying Mode - interactive and beautiful simulation portal */
+        <div className="flex flex-col gap-5 p-5 bg-slate-950/60 rounded-2xl border border-yellow-500/20 text-center">
+          <div className="relative mx-auto">
+            <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500">
+              <Mail className="w-8 h-8 animate-pulse" />
+            </div>
+          </div>
+          <div>
+            <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wide">Menunggu Verifikasi</h3>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              Tautan verifikasi telah terkirim secara virtual ke <strong className="text-yellow-400">{email}</strong>. 
+              Gunakan simulator di bawah untuk menyimulasikan konfirmasi klik link email.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={async () => {
+                setError(null);
+                setSuccess(null);
+                try {
+                  const res = await fetch(`/api/auth/verify?token=${token}`);
+                  if (res.ok) {
+                    setSuccess("Email Anda berhasil diverifikasi! 🎉");
+                    setTimeout(() => {
+                      setMode("register_username");
+                      setSuccess(null);
+                    }, 1500);
+                  } else {
+                    throw new Error("Gagal melakukan verifikasi.");
+                  }
+                } catch (err: any) {
+                  setError(err.message || "Gagal memverifikasi email.");
+                }
+              }}
+              className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-md shadow-yellow-500/10 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <CheckCircle className="w-4 h-4" />
+              SIMULASIKAN KLIK LINK VERIFIKASI ✉️
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                setError(null);
+                setSuccess(null);
+                try {
+                  const res = await fetch(`/api/auth/check-verification?token=${token}`);
+                  const data = await res.json();
+                  if (data.verified) {
+                    setSuccess("Verifikasi sukses dideteksi!");
+                    setTimeout(() => {
+                      setMode("register_username");
+                      setSuccess(null);
+                    }, 1200);
+                  } else {
+                    setError("Email belum diverifikasi. Silakan klik tombol simulasi di atas.");
+                  }
+                } catch (err) {
+                  setError("Gagal memeriksa status verifikasi.");
+                }
+              }}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              CEK STATUS VERIFIKASI
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Switch auth mode footer */}
+      <div className="mt-5 text-center text-xs flex flex-col gap-2.5">
+        {mode === "login" && (
+          <>
+            <div className="text-slate-500">
+              Belum memiliki akun?{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("register_email");
+                  setError(null);
+                  setSuccess(null);
+                }}
+                className="text-yellow-500 hover:text-yellow-400 font-bold underline cursor-pointer"
+              >
+                Daftar Akun Baru
+              </button>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("forgot_password");
+                  setError(null);
+                  setSuccess(null);
+                }}
+                className="text-slate-400 hover:text-slate-300 font-bold underline cursor-pointer"
+              >
+                Lupa Kata Sandi?
+              </button>
+            </div>
+          </>
+        )}
+
+        {(mode === "register_email" || mode === "forgot_password" || mode === "register_verifying" || mode === "register_username" || mode === "reset_password") && (
+          <div className="text-slate-500">
+            Sudah memiliki akun?{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setMode("login");
+                setError(null);
+                setSuccess(null);
+              }}
+              className="text-yellow-500 hover:text-yellow-400 font-bold underline cursor-pointer"
+            >
+              Halaman Login
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Bonus modal badge */}
+      {mode === "register_email" && (
+        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-center gap-1.5 text-[10px] text-amber-400/80 font-mono">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+          <span>Bonus 100 Poin modal awal langsung setelah mendaftar!</span>
+        </div>
+      )}
+    </div>
+  );
+};
