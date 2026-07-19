@@ -1,0 +1,36 @@
+# Render Blueprint Specification for Nekomon Card Game
+# https://render.com/docs/blueprints
+
+services:
+  - type: web
+    name: nekomon-card-game
+    env: node
+    plan: free # Default to Render's Free tier. Change to 'starter' or higher if using a persistent disk.
+    
+    # Node.js version to use (Render defaults or respects package.json engines, but we can enforce it here)
+    envVars:
+      - key: NODE_ENV
+        value: production
+      
+      - key: GEMINI_API_KEY
+        sync: false
+        placeholder: "Masukkan API Key Gemini dari Google AI Studio"
+      
+      - key: APP_URL
+        sync: false
+        placeholder: "URL hosting Render Anda setelah di-deploy (contoh: https://nekomon.onrender.com)"
+
+    # Build and Start Commands compatible with the full-stack bundle structure
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+
+    # PERSISTENCE CONFIGURATION (OPTIONAL & RECOMMENDED)
+    # Note: Render's Free Plan does NOT support Persistent Disks.
+    # If you want to keep player accounts, cards, and trade histories permanently across server restarts and new deploys:
+    # 1. Change 'plan: free' to 'plan: starter' (or higher) above.
+    # 2. Uncomment the 'disk' block below by removing the '#' characters.
+    #
+    # disk:
+    #   name: nekomon-db-storage
+    #   mountPath: /server
+    #   sizeGB: 1
