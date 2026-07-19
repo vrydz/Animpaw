@@ -3,7 +3,7 @@
 
 services:
   - type: web
-    name: animpaw
+    name: Nekomaster
     env: node
     plan: free # Default to Render's Free tier. Change to 'starter' or higher if using a persistent disk.
     
