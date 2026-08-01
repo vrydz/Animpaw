@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "Player accounts and stats",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "points": { "type": "number" },
+        "cores": { "type": "number" },
+        "captureStreak": { "type": "number" },
+        "lastCaptureDate": { "type": "string" }
+      }
+    },
+    "captures": {
+      "title": "Captures",
+      "description": "Cat photos captured by players",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "cards": {
+      "title": "Cards",
+      "description": "Nekomon cards owned by players",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "element": { "type": "string" },
+        "level": { "type": "number" }
+      }
+    },
+    "trades": {
+      "title": "Trades",
+      "description": "Marketplace trade offers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { NekomonCard } from "./NekomonCard";
 import { audio } from "../lib/audio";
 import { useLanguage } from "../context/LanguageContext";
+import { haptics } from "../lib/vibration";
 
 interface ForgingStationProps {
   captures: Capture[];
@@ -130,6 +131,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
   const handleStartReveal = () => {
     if (isUnboxing || !forgedCard) return;
     setIsUnboxing(true);
+    haptics.unboxing();
 
     try {
       audio.playUnboxingExplosion(forgedCard.element);
@@ -138,6 +140,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
     setTimeout(() => {
       setIsRevealed(true);
       setIsUnboxing(false);
+      haptics.victory();
       try {
         audio.playRevealSound(selectedStyle);
       } catch (_) {}
@@ -154,6 +157,9 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
       setError(language === "id" ? "Poin Anda tidak mencukupi untuk melakukan forge (membutuhkan 50 poin)." : "Your points are insufficient for forging (requires 50 points).");
       return;
     }
+
+    // Trigger tactile haptic feedback rumble on forging button press
+    haptics.forgingStart();
 
     setIsForging(true);
     setError(null);

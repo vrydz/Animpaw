@@ -1,28 +1,41 @@
 import React, { useState, useEffect } from "react";
-import { Card } from "../types";
-import { Sparkles, Gamepad2, Play, CircleDot, ChevronRight, Swords, Compass, Shield, Heart, Trophy, Award, Loader2 } from "lucide-react";
+import { Card, Mission } from "../types";
+import { Sparkles, Gamepad2, Play, CircleDot, ChevronRight, Swords, Compass, Shield, Heart, Trophy, Award, Loader2, Flame, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "../lib/audio";
 import { useLanguage } from "../context/LanguageContext";
+import { getTimeUntilNextEnergyRefill, formatEnergyCountdown } from "../lib/energyUtils";
 
 interface CardMissionsProps {
   cards: Card[];
   token: string;
   onActivitySuccess: (updatedCard: Card, updatedPoints: number) => void;
+  mission?: Mission | null;
+  onMissionClaimSuccess?: (updatedPoints: number, updatedCores: number, updatedMission: Mission) => void;
 }
 
-export const CardMissions: React.FC<CardMissionsProps> = ({ cards, token, onActivitySuccess }) => {
+export const CardMissions: React.FC<CardMissionsProps> = ({ 
+  cards, 
+  token, 
+  onActivitySuccess,
+  mission,
+  onMissionClaimSuccess
+}) => {
   const { language } = useLanguage();
   const [selectedCardId, setSelectedCardId] = useState<string>("");
   const [activityId, setActivityId] = useState<string>("patrol");
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isClaimingBonus, setIsClaimingBonus] = useState<boolean>(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [displayedLogs, setDisplayedLogs] = useState<string[]>([]);
   const [logIndex, setLogIndex] = useState<number>(0);
   const [resultData, setResultData] = useState<any | null>(null);
   const [showResult, setShowResult] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Highest level card in deck
+  const highestLevelInDeck = cards.reduce((max, c) => Math.max(max, c.level || 1), 1);
 
   // Default selection to first card if available
   useEffect(() => {
@@ -32,6 +45,37 @@ export const CardMissions: React.FC<CardMissionsProps> = ({ cards, token, onActi
   }, [cards, selectedCardId]);
 
   const selectedCard = cards.find(c => c.id === selectedCardId);
+
+  // Claim Level > 8 Mission Handler
+  const handleClaimLevel8Bonus = async () => {
+    if (!token) return;
+    setIsClaimingBonus(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/user/claim-level8-mission", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (onMissionClaimSuccess) {
+          onMissionClaimSuccess(data.points, data.cores, data.mission);
+        }
+        try {
+          audio.playForgingSound();
+        } catch (_) {}
+      } else {
+        setError(data.error || (language === "id" ? "Gagal mengklaim misi." : "Failed to claim mission."));
+      }
+    } catch (err) {
+      setError(language === "id" ? "Kesalahan jaringan saat klaim misi." : "Network error claiming mission.");
+    } finally {
+      setIsClaimingBonus(false);
+    }
+  };
 
   // Trigger typed log effects sequentially
   useEffect(() => {
@@ -132,11 +176,98 @@ export const CardMissions: React.FC<CardMissionsProps> = ({ cards, token, onActi
     { id: "patrol", name: language === "id" ? "Patroli Lingkungan" : "Neighborhood Patrol", recLv: "Lv. 1+", xp: "+30", pts: "+5", icon: "🐾", theme: "from-emerald-500/15 via-slate-950 to-slate-950 border-emerald-900/30 text-emerald-400" },
     { id: "training", name: language === "id" ? "Latihan Gym Kucing" : "Cat Gym Training", recLv: "Lv. 3+", xp: "+60", pts: "+10", icon: "⚡", theme: "from-blue-500/15 via-slate-950 to-slate-950 border-blue-900/30 text-blue-400" },
     { id: "rescue", name: language === "id" ? "Penyelamatan Kitten" : "Kitten Rescue Operation", recLv: "Lv. 5+", xp: "+100", pts: "+20", icon: "🌳", theme: "from-purple-500/15 via-slate-950 to-slate-950 border-purple-900/30 text-purple-400" },
-    { id: "boss", name: language === "id" ? "Pertarungan Bos Oyen" : "Ginger Cat Boss Fight", recLv: "Lv. 8+", xp: "+180", pts: "+35", icon: "👑", theme: "from-amber-500/15 via-slate-950 to-slate-950 border-amber-900/30 text-amber-400" }
+    { id: "boss", name: language === "id" ? "Pertarungan Bos Oyen" : "Ginger Cat Boss Fight", recLv: "Lv. 8+", xp: "+180", pts: "+35", icon: "👑", theme: "from-amber-500/15 via-slate-950 to-slate-950 border-amber-900/30 text-amber-400" },
+    { id: "master_trial", name: language === "id" ? "Ujian Master Nekomon (Lv. >8)" : "Master Nekomon Trial (Lv. >8)", recLv: "Lv. 8+", xp: "+300", pts: "+60", icon: "🔥", theme: "from-rose-500/15 via-slate-950 to-slate-950 border-rose-900/30 text-rose-400" }
   ];
 
   return (
     <div className="flex flex-col gap-4 font-mono text-xs">
+      {/* Daily Mission Level > 8 Banner Card */}
+      <div className="bg-gradient-to-r from-rose-950/80 via-slate-900 to-slate-950 border border-rose-500/40 p-4 rounded-2xl flex flex-col gap-3 shadow-xl relative overflow-hidden">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">
+              <Award className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-100 text-xs uppercase flex items-center gap-1.5 tracking-wide">
+                <span>{language === "id" ? "MISI HARIAN: KARTU LEVEL > 8" : "DAILY MISSION: CARD LEVEL > 8"}</span>
+                <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.2 rounded font-mono">
+                  SPECIAL
+                </span>
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                {language === "id" 
+                  ? "Miliki atau latih minimal 1 kartu Nekomon hingga Level 9 ke atas!"
+                  : "Own or train at least 1 Nekomon card up to Level 9 or above!"}
+              </p>
+            </div>
+          </div>
+          
+          <div className="text-right shrink-0 font-bold text-[10px] bg-slate-950/80 px-2.5 py-1 rounded-xl border border-rose-500/20">
+            <span className="text-rose-400 font-mono block">+50 PTS</span>
+            <span className="text-teal-400 font-mono block">+20 CORES</span>
+          </div>
+        </div>
+
+        {/* Progress Bar & Status */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between items-center text-[10px]">
+            <span className="text-slate-400">
+              {language === "id" ? "Level Kartu Tertinggi Anda:" : "Your Highest Card Level:"}{" "}
+              <strong className="text-rose-300 font-black">LV. {highestLevelInDeck}</strong>
+            </span>
+            <span className="font-bold text-slate-300 font-mono">
+              {highestLevelInDeck > 8 
+                ? (language === "id" ? "LV. 9+ (TERCAPAI 🎉)" : "LV. 9+ (REACHED 🎉)") 
+                : `${highestLevelInDeck} / 8`}
+            </span>
+          </div>
+          <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+            <div
+              className="h-full bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-400 transition-all duration-500"
+              style={{ width: `${Math.min(100, (highestLevelInDeck / 8) * 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Claim Button or Requirements status */}
+        {highestLevelInDeck > 8 ? (
+          <button
+            onClick={handleClaimLevel8Bonus}
+            disabled={isClaimingBonus || (mission?.level8Completed ?? false)}
+            className={`w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              mission?.level8Completed
+                ? "bg-slate-800/80 text-slate-400 border border-slate-700 cursor-not-allowed"
+                : "bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-slate-950 shadow-[0_0_20px_rgba(244,63,94,0.5)] animate-bounce"
+            }`}
+          >
+            {isClaimingBonus ? (
+              <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+            ) : mission?.level8Completed ? (
+              <>
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span>{language === "id" ? "✓ HADIAH LEVEL > 8 HARIAN SUDAH DIKLAIM" : "✓ LEVEL > 8 DAILY BONUS CLAIMED"}</span>
+              </>
+            ) : (
+              <>
+                <Flame className="w-4 h-4 text-slate-950 fill-slate-950" />
+                <span>{language === "id" ? "KLAIM BONUS MISI LEVEL > 8 (+50 PTS & +20 CORES)" : "CLAIM LEVEL > 8 MISSION BONUS (+50 PTS & +20 CORES)"}</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 text-[10px] text-amber-400/90 flex items-center gap-2">
+            <Compass className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              {language === "id"
+                ? "Gunakan 'Ujian Master Nekomon (Lv. >8)' atau aktivitas lain di bawah untuk menaikkan level kartu ke Level 9+!"
+                : "Use 'Master Nekomon Trial (Lv. >8)' or other activities below to level up your card to Level 9+!"}
+            </span>
+          </div>
+        )}
+      </div>
+
       <AnimatePresence mode="wait">
         {/* VIEW 1: Selection Dashboard */}
         {!isRunning && !showResult && (
@@ -159,7 +290,7 @@ export const CardMissions: React.FC<CardMissionsProps> = ({ cards, token, onActi
               >
                 {cards.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} (LV. {c.level || 1} • {c.rarity})
+                    {c.name} (LV. {c.level || 1} • {c.rarity} • ⚡{c.energy ?? 5}/{c.maxEnergy || 5})
                   </option>
                 ))}
               </select>
@@ -167,42 +298,76 @@ export const CardMissions: React.FC<CardMissionsProps> = ({ cards, token, onActi
 
             {/* Compact Nekomon Card Preview */}
             {selectedCard && (
-              <div className="flex items-center gap-3 bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl">
-                <img
-                  src={selectedCard.imageUrl}
-                  alt={selectedCard.name}
-                  referrerPolicy="no-referrer"
-                  className="w-14 h-14 rounded-lg object-cover border border-slate-800"
-                />
-                <div className="flex-1 flex flex-col gap-0.5 min-w-0">
-                  <div className="flex items-center gap-1.5 justify-between">
-                    <span className="font-extrabold text-white text-[11px] truncate uppercase">{selectedCard.name}</span>
-                    <span className="text-[9px] bg-teal-500/15 text-teal-400 border border-teal-500/30 px-1.5 py-0.5 rounded-full font-black">
-                      LV. {selectedCard.level || 1}
-                    </span>
-                  </div>
-
-                  {/* Attributes indicators */}
-                  <div className="flex gap-2 text-[9px] text-slate-400 mt-1">
-                    <span className="flex items-center gap-0.5 text-amber-500 font-bold">⚔ {selectedCard.atk}</span>
-                    <span className="flex items-center gap-0.5 text-blue-400 font-bold">🛡 {selectedCard.def}</span>
-                    <span className="flex items-center gap-0.5 text-emerald-400 font-bold">❤ {selectedCard.hp}</span>
-                  </div>
-
-                  {/* XP Bar preview */}
-                  <div className="mt-1.5">
-                    <div className="flex justify-between text-[8px] text-slate-500 mb-0.5">
-                      <span>EXP</span>
-                      <span>{selectedCard.xp || 0} / {selectedCard.level ? selectedCard.level * 100 : 100} XP</span>
+              <div className="flex flex-col gap-2 bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={selectedCard.imageUrl}
+                    alt={selectedCard.name}
+                    referrerPolicy="no-referrer"
+                    className="w-14 h-14 rounded-lg object-cover border border-slate-800"
+                  />
+                  <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 justify-between">
+                      <span className="font-extrabold text-white text-[11px] truncate uppercase">{selectedCard.name}</span>
+                      <span className="text-[9px] bg-teal-500/15 text-teal-400 border border-teal-500/30 px-1.5 py-0.5 rounded-full font-black">
+                        LV. {selectedCard.level || 1}
+                      </span>
                     </div>
-                    <div className="w-full h-1 bg-slate-950 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-teal-400"
-                        style={{ width: `${Math.min(100, ((selectedCard.xp || 0) / (selectedCard.level ? selectedCard.level * 100 : 100)) * 100)}%` }}
-                      />
+
+                    {/* Attributes indicators */}
+                    <div className="flex gap-2 text-[9px] text-slate-400 mt-0.5">
+                      <span className="flex items-center gap-0.5 text-amber-500 font-bold">⚔ {selectedCard.atk}</span>
+                      <span className="flex items-center gap-0.5 text-blue-400 font-bold">🛡 {selectedCard.def}</span>
+                      <span className="flex items-center gap-0.5 text-emerald-400 font-bold">❤ {selectedCard.hp}</span>
+                    </div>
+
+                    {/* XP Bar preview */}
+                    <div className="mt-1">
+                      <div className="flex justify-between text-[8px] text-slate-500 mb-0.5">
+                        <span>EXP</span>
+                        <span>{selectedCard.xp || 0} / {selectedCard.level ? selectedCard.level * 100 : 100} XP</span>
+                      </div>
+                      <div className="w-full h-1 bg-slate-950 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-teal-400"
+                          style={{ width: `${Math.min(100, ((selectedCard.xp || 0) / (selectedCard.level ? selectedCard.level * 100 : 100)) * 100)}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Energy Indicator Row */}
+                <div className="flex items-center justify-between bg-slate-950/80 border border-amber-500/20 px-2.5 py-1.5 rounded-xl text-[9px]">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                    <Zap className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span>ENERGI: {selectedCard.energy ?? 5}/{selectedCard.maxEnergy || 5}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {[...Array(selectedCard.maxEnergy || 5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-2.5 h-2 rounded-xs border transition-all ${
+                          i < (selectedCard.energy ?? 5)
+                            ? "bg-amber-400 border-yellow-300 shadow-[0_0_4px_rgba(251,191,36,0.8)]"
+                            : "bg-slate-900 border-slate-800 opacity-30"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Energy depleted warning */}
+            {selectedCard && (selectedCard.energy ?? 5) < 1 && (
+              <div className="bg-amber-950/30 border border-amber-500/40 p-2.5 rounded-xl text-[10px] text-amber-300 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
+                <span>
+                  {language === "id"
+                    ? "Energi Nekomon ini telah habis (0/5)! Butuh 1 bar energi untuk menjalankan misi. Refill 1 bar otomatis setiap 2 jam sekali."
+                    : "This Nekomon energy is empty (0/5)! Needs 1 energy bar to launch mission. Refills 1 bar automatically every 2 hours."}
+                </span>
               </div>
             )}
 
@@ -255,18 +420,23 @@ export const CardMissions: React.FC<CardMissionsProps> = ({ cards, token, onActi
             {/* Launch Button */}
             <button
               onClick={handleStartMission}
-              disabled={isSubmitting || !selectedCardId}
-              className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 disabled:from-slate-800 disabled:to-slate-800 text-slate-950 font-black py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/10 cursor-pointer disabled:cursor-not-allowed uppercase"
+              disabled={isSubmitting || !selectedCardId || (selectedCard && (selectedCard.energy ?? 5) < 1)}
+              className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 disabled:from-slate-800 disabled:to-slate-800 text-slate-950 disabled:text-slate-500 font-black py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/10 cursor-pointer disabled:cursor-not-allowed uppercase"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
                   {language === "id" ? "MEMPERSIAPKAN MISI..." : "PREPARING MISSION..."}
                 </>
+              ) : selectedCard && (selectedCard.energy ?? 5) < 1 ? (
+                <>
+                  <Zap className="w-3.5 h-3.5 text-slate-500 fill-slate-500" />
+                  {language === "id" ? "ENERGI NEKOMON HABIS (0/5)" : "NEKOMON ENERGY DEPLETED (0/5)"}
+                </>
               ) : (
                 <>
                   <Play className="w-3.5 h-3.5 text-slate-950" fill="currentColor" />
-                  {language === "id" ? "JALANKAN AKTIVITAS" : "LAUNCH ACTIVITY"}
+                  {language === "id" ? "JALANKAN AKTIVITAS (-1 ENERGI)" : "LAUNCH ACTIVITY (-1 ENERGY)"}
                 </>
               )}
             </button>

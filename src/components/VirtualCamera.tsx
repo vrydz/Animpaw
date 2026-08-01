@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { Camera, Sparkles, RefreshCw, AlertTriangle, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
+import { haptics } from "../lib/vibration";
 
 interface VirtualCameraProps {
   onCapture: (base64Photo: string) => Promise<void>;
@@ -30,6 +31,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({ onCapture, userPoi
 
   // Start Camera Stream
   const startCamera = async () => {
+    haptics.tap();
     setCameraError(null);
     try {
       if (stream) {
@@ -76,6 +78,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({ onCapture, userPoi
   // Capture Photo
   const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
+    haptics.capture();
     setIsCapturing(true);
 
     try {

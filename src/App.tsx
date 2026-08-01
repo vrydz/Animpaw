@@ -10,6 +10,12 @@ import { LeaderboardView } from "./components/LeaderboardView";
 import { CardTrading } from "./components/CardTrading";
 import { GameGuide } from "./components/GameGuide";
 import { AnimatedCounter } from "./components/AnimatedCounter";
+import { ShopView } from "./components/ShopView";
+import { DailyLoginModal } from "./components/DailyLoginModal";
+import { NekomonDex } from "./components/NekomonDex";
+import { InterstitialAdModal } from "./components/InterstitialAdModal";
+import { RewardedAdModal } from "./components/RewardedAdModal";
+import { AchievementShareModal } from "./components/AchievementShareModal";
 import { useLanguage } from "./context/LanguageContext";
 import { 
   Sparkles, 
@@ -33,10 +39,18 @@ import {
   Swords,
   Trash2,
   Trophy,
-  ArrowLeftRight
+  ArrowLeftRight,
+  ShoppingBag,
+  Gift,
+  Tv,
+  BookOpen,
+  Coins,
+  Flame,
+  Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
+import { PLAYER_BADGES, getTrainerLevel, getHighestBadge, PlayerBadge } from "./lib/badges";
 
 export default function App() {
   const { language, setLanguage, t } = useLanguage();
@@ -54,11 +68,141 @@ export default function App() {
   }, [user]);
   
   // App navigation & layout toggles
-  const [mobileTab, setMobileTab] = useState<"camera" | "gallery" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide">("camera");
+  const [mobileTab, setMobileTab] = useState<"camera" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop">("camera");
   const [desktopView, setDesktopView] = useState<"album" | "trading">("album");
   const [showForgeModal, setShowForgeModal] = useState<boolean>(false);
+  const [showDailyBonusModal, setShowDailyBonusModal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [bgmOn, setBgmOn] = useState<boolean>(false);
+
+  // Ads Simulation State (AdMob & Unity Ads)
+  const [showInterstitialAd, setShowInterstitialAd] = useState<boolean>(false);
+  const [pendingTab, setPendingTab] = useState<"camera" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop" | null>(null);
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
+  const [interstitialFreq, setInterstitialFreq] = useState<"random" | "always" | "off">("random");
+
+  const [showRewardedAdModal, setShowRewardedAdModal] = useState<boolean>(false);
+  const [rewardedAdType, setRewardedAdType] = useState<"points_50" | "cores_5" | "standard">("standard");
+
+  // Achievement Share & Level Up Modal State
+  const [achievementModalData, setAchievementModalData] = useState<{
+    isOpen: boolean;
+    type: "level_up" | "badge_unlocked" | "inspect";
+    trainerLevel: number;
+    badge: PlayerBadge | null;
+  }>({
+    isOpen: false,
+    type: "badge_unlocked",
+    trainerLevel: 1,
+    badge: null
+  });
+
+  const totalCardLevels = cards.reduce((sum, c) => sum + (c.level || 1), 0);
+  const currentTrainerLv = user ? getTrainerLevel(cards.length, totalCardLevels, user.points) : 1;
+
+  const prevTrainerLvRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      prevTrainerLvRef.current = null;
+      return;
+    }
+
+    if (prevTrainerLvRef.current === null) {
+      prevTrainerLvRef.current = currentTrainerLv;
+    } else if (currentTrainerLv > prevTrainerLvRef.current) {
+      const oldLv = prevTrainerLvRef.current;
+      prevTrainerLvRef.current = currentTrainerLv;
+
+      const newBadge = PLAYER_BADGES.find(b => currentTrainerLv >= b.levelRequirement && oldLv < b.levelRequirement);
+
+      try { audio.playVictory(); } catch (e) {}
+
+      const highestB = newBadge || getHighestBadge(currentTrainerLv);
+      setAchievementModalData({
+        isOpen: true,
+        type: newBadge ? "badge_unlocked" : "level_up",
+        trainerLevel: currentTrainerLv,
+        badge: highestB
+      });
+
+      setNotification({
+        message: newBadge 
+          ? (language === "id"
+              ? `🎉 SELAMAT! Trainer Level Up ke Lv.${currentTrainerLv} & Lencana "${newBadge.badgeNameId}" Terbuka! 🏆`
+              : `🎉 CONGRATS! Trainer Leveled Up to Lv.${currentTrainerLv} & "${newBadge.badgeNameEn}" Badge Unlocked! 🏆`)
+          : (language === "id"
+              ? `⚡ SELAMAT! Trainer Level Up ke Level ${currentTrainerLv}! 🌟`
+              : `⚡ CONGRATS! Trainer Leveled Up to Level ${currentTrainerLv}! 🌟`),
+        type: "success"
+      });
+    }
+  }, [user, currentTrainerLv, language]);
+
+  const handleTabChange = (targetTab: "camera" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop") => {
+    if (targetTab === mobileTab) return;
+    setShowForgeModal(false);
+
+    const newCount = tabSwitchCount + 1;
+    setTabSwitchCount(newCount);
+
+    let triggerAd = false;
+    if (interstitialFreq === "always") {
+      triggerAd = true;
+    } else if (interstitialFreq === "random") {
+      // Triggers randomly after at least 1 switch (approx 35% probability)
+      if (newCount >= 2 && Math.random() < 0.35) {
+        triggerAd = true;
+      }
+    }
+
+    if (triggerAd) {
+      setPendingTab(targetTab);
+      setShowInterstitialAd(true);
+    } else {
+      setMobileTab(targetTab);
+    }
+  };
+
+  const handleCloseInterstitial = () => {
+    setShowInterstitialAd(false);
+    if (pendingTab) {
+      setMobileTab(pendingTab);
+      setPendingTab(null);
+    }
+  };
+
+  const handleOpenRewardedAd = (type: "points_50" | "cores_5" | "standard" = "standard") => {
+    setRewardedAdType(type);
+    setShowRewardedAdModal(true);
+  };
+
+  const handleRewardClaimed = (updatedUser: any, rewardMsg: string) => {
+    if (updatedUser) {
+      setUser(prev => prev ? { ...prev, points: updatedUser.points, cores: updatedUser.cores } : updatedUser);
+    }
+    setNotification({
+      message: rewardMsg,
+      type: "success"
+    });
+  };
+
+  const hasCheckedDailyBonus = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (user && !hasCheckedDailyBonus.current) {
+      hasCheckedDailyBonus.current = true;
+      const lastClaimTs = localStorage.getItem("nekomon_daily_login_last_claim_v2");
+      const lastTime = lastClaimTs ? parseInt(lastClaimTs, 10) : 0;
+      const now = Date.now();
+      const twentyHoursMs = 20 * 60 * 60 * 1000;
+      if (!lastTime || (now - lastTime) >= twentyHoursMs) {
+        setTimeout(() => {
+          setShowDailyBonusModal(true);
+        }, 1200);
+      }
+    }
+  }, [user]);
 
   const toggleBGM = () => {
     try {
@@ -294,10 +438,18 @@ export default function App() {
 
       if (response.ok) {
         const data = await response.json();
-        // Update user points and captures list
+        // Update user points, streak, and captures list
         let updatedUser = user;
-        if (user) {
-          updatedUser = { ...user, points: data.points };
+        if (data.user) {
+          updatedUser = data.user;
+          setUser(updatedUser);
+        } else if (user) {
+          updatedUser = { 
+            ...user, 
+            points: data.points,
+            captureStreak: data.captureStreak !== undefined ? data.captureStreak : user.captureStreak,
+            lastCaptureDate: data.lastCaptureDate !== undefined ? data.lastCaptureDate : user.lastCaptureDate
+          };
           setUser(updatedUser);
         }
         setCaptures((prev) => {
@@ -323,11 +475,21 @@ export default function App() {
               : "Congratulations! Daily Mission Completed and you received +25 Points! 🎉"),
             type: "success"
           });
+        } else if (data.streakBonusAwarded) {
+          try {
+            audio.playForgingSound();
+          } catch (e) {}
+          setNotification({
+            message: data.streakMessage || (language === "id"
+              ? `Foto kucing ditangkap (+10 Poin)! 🔥 Streak Tangkap ${data.captureStreak} Hari (+${data.streakBonusPoints} Bonus Poin)!`
+              : `Cat photo captured (+10 Points)! 🔥 Capture Streak: ${data.captureStreak} Days (+${data.streakBonusPoints} Bonus Points)!`),
+            type: "success"
+          });
         } else {
           setNotification({
-            message: language === "id"
+            message: data.streakMessage ? `📸 Foto kucing berhasil tertangkap! ${data.streakMessage}` : (language === "id"
               ? "Foto kucing berhasil tertangkap! +10 Poin ditambahkan. 📸"
-              : "Cat photo successfully captured! +10 Points added. 📸",
+              : "Cat photo successfully captured! +10 Points added. 📸"),
             type: "success"
           });
         }
@@ -635,28 +797,43 @@ export default function App() {
 
           {/* User login stats or general status */}
           {user ? (
-            <div className="flex items-center gap-2.5 sm:gap-4 bg-slate-900/80 border border-slate-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-md max-w-[200px] sm:max-w-none">
-              <div className="flex flex-col text-right font-mono text-[10px] sm:text-xs min-w-0">
-                <span className="text-slate-400 font-bold truncate">@{user.username}</span>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 gap-0.5 mt-0.5 leading-none sm:leading-normal">
-                  <span className="text-yellow-500 font-extrabold flex items-center justify-end gap-1 shrink-0">
-                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse text-yellow-400" />
-                    <AnimatedCounter value={user.points} suffix="PTS" />
-                  </span>
-                  <span className="hidden sm:inline text-slate-600">•</span>
-                  <span className="text-teal-400 font-extrabold flex items-center justify-end gap-1 shrink-0">
-                    <CircleDot className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-400" />
-                    <AnimatedCounter value={user.cores || 0} suffix="CORE" />
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleLogout}
-                className="p-1.5 sm:p-2 bg-slate-800 hover:bg-red-900 hover:text-white rounded-xl border border-slate-700 transition-all cursor-pointer shrink-0"
-                title="Keluar Game"
+                onClick={() => {
+                  try { audio.playForgingSound(); } catch (_) {}
+                  setShowDailyBonusModal(true);
+                }}
+                className="bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-amber-500/20 border border-amber-500/40 hover:border-amber-400 p-2 sm:px-3 sm:py-2 rounded-2xl text-amber-400 hover:text-amber-300 font-mono text-[10px] sm:text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md relative group shrink-0"
+                title="Bonus Login Harian 24 Jam"
               >
-                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Gift className="w-4 h-4 animate-bounce text-amber-400" />
+                <span className="hidden sm:inline">{language === "id" ? "BONUS HARIAN" : "DAILY BONUS"}</span>
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
               </button>
+
+              <div className="flex items-center gap-2.5 sm:gap-4 bg-slate-900/80 border border-slate-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-md max-w-[200px] sm:max-w-none">
+                <div className="flex flex-col text-right font-mono text-[10px] sm:text-xs min-w-0">
+                  <span className="text-slate-400 font-bold truncate">@{user.username}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 gap-0.5 mt-0.5 leading-none sm:leading-normal">
+                    <span className="text-yellow-500 font-extrabold flex items-center justify-end gap-1 shrink-0">
+                      <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse text-yellow-400" />
+                      <AnimatedCounter value={user.points} suffix="PTS" />
+                    </span>
+                    <span className="hidden sm:inline text-slate-600">•</span>
+                    <span className="text-teal-400 font-extrabold flex items-center justify-end gap-1 shrink-0">
+                      <CircleDot className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-400" />
+                      <AnimatedCounter value={user.cores || 0} suffix="CORE" />
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-1.5 sm:p-2 bg-slate-800 hover:bg-red-900 hover:text-white rounded-xl border border-slate-700 transition-all cursor-pointer shrink-0"
+                  title="Keluar Game"
+                >
+                  <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
@@ -729,7 +906,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-200">@{user.username}</h3>
-                  <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 mt-0.5">
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-400 mt-0.5">
                     <span className="text-yellow-500 font-bold">
                       <AnimatedCounter value={user.points} suffix={t("common.points").toUpperCase()} />
                     </span>
@@ -743,6 +920,30 @@ export default function App() {
                     </span>
                   </div>
                 </div>
+
+                {/* Quick Ad Buttons in Header */}
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => handleOpenRewardedAd("standard")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white font-black text-[10px] tracking-wider transition-all shadow-md active:scale-95 cursor-pointer uppercase border border-pink-400/30"
+                    title="Tonton video iklan berhadiah 5s untuk klaim Poin & Cores gratis"
+                  >
+                    <Gift className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+                    <span>Tonton Iklan (+Poin & Core)</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setPendingTab(mobileTab);
+                      setShowInterstitialAd(true);
+                    }}
+                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-[10px] transition-all border border-slate-800 cursor-pointer"
+                    title="Simulasi Iklan Interstitial (AdMob/Unity Ads)"
+                  >
+                    <Tv className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Tes Interstitial</span>
+                  </button>
+                </div>
               </div>
 
               {/* Game Tab List */}
@@ -751,10 +952,12 @@ export default function App() {
                   [
                     { id: "camera", label: t("nav.camera"), icon: Camera },
                     { id: "gallery", label: t("nav.gallery"), icon: FolderHeart },
+                    { id: "dex", label: t("nav.dex"), icon: BookOpen },
                     { id: "arena", label: t("nav.arena"), icon: Swords },
                     { id: "missions", label: t("nav.missions"), icon: Gamepad2 },
                     { id: "trading", label: t("nav.trading"), icon: ArrowLeftRight },
                     { id: "leaderboard", label: t("nav.leaderboard"), icon: Trophy },
+                    { id: "shop", label: t("nav.shop"), icon: ShoppingBag },
                     { id: "guide", label: t("nav.guide"), icon: HelpCircle },
                     { id: "profile", label: t("nav.profile"), icon: UserIcon }
                   ] as const
@@ -763,10 +966,7 @@ export default function App() {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => {
-                        setMobileTab(tab.id);
-                        setShowForgeModal(false);
-                      }}
+                      onClick={() => handleTabChange(tab.id)}
                       className={`flex items-center gap-1.5 py-2 px-3.5 rounded-lg font-black text-[10px] tracking-wider transition-all cursor-pointer ${
                         mobileTab === tab.id
                           ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-md shadow-yellow-500/10"
@@ -928,6 +1128,24 @@ export default function App() {
                   </motion.div>
                 )}
 
+                {mobileTab === "dex" && (
+                  <motion.div
+                    key="dex-view"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    className="w-full"
+                  >
+                    <NekomonDex
+                      cards={cards}
+                      onOpenForge={() => {
+                        setMobileTab("gallery");
+                        setShowForgeModal(true);
+                      }}
+                    />
+                  </motion.div>
+                )}
+
                 {mobileTab === "arena" && (
                   <motion.div
                     key="arena-view"
@@ -981,6 +1199,17 @@ export default function App() {
                       cards={cards}
                       token={token || ""}
                       onActivitySuccess={handleActivitySuccess}
+                      mission={mission}
+                      onMissionClaimSuccess={(updatedPts, updatedCores, updatedMission) => {
+                        setUser(prev => prev ? { ...prev, points: updatedPts, cores: updatedCores } : null);
+                        setMission(updatedMission);
+                        setNotification({
+                          message: language === "id"
+                            ? "Hadiah Misi Harian Level > 8 Berhasil Diklaim!"
+                            : "Daily Mission Level > 8 Reward Successfully Claimed!",
+                          type: "success"
+                        });
+                      }}
                     />
                   </motion.div>
                 )}
@@ -1036,71 +1265,272 @@ export default function App() {
                   </motion.div>
                 )}
 
-                {mobileTab === "profile" && (
+                {mobileTab === "profile" && (() => {
+                  const totalCardLevels = cards.reduce((sum, c) => sum + (c.level || 1), 0);
+                  const trainerLv = getTrainerLevel(cards.length, totalCardLevels, user.points);
+                  const highestBadge = getHighestBadge(trainerLv);
+
+                  return (
+                    <motion.div
+                      key="profile-view"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6 max-w-2xl mx-auto w-full font-mono"
+                    >
+                      <div className="border-b border-slate-800 pb-4">
+                        <h2 className="text-xl font-black text-slate-100 flex items-center gap-2">
+                          <UserIcon className="w-5 h-5 text-yellow-500" />
+                          {language === "id" ? "DETAIL AKUN PEMAIN" : "PLAYER ACCOUNT DETAILS"}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {language === "id" 
+                            ? "Kelola data profil, skor, dan status keanggotaan trainer Nekomon Anda." 
+                            : "Manage profile data, score, and membership status of your Nekomon trainer."}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-4">
+                        {/* Profile Card Header */}
+                        <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-850 relative overflow-hidden">
+                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500/20 via-slate-900 to-slate-950 border-2 border-yellow-500/40 flex items-center justify-center text-3xl shadow-inner shrink-0">
+                            {highestBadge ? highestBadge.emoji : "🎒"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-black text-lg text-slate-100 truncate">@{user.username}</h3>
+                              {highestBadge && (
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold border ${highestBadge.badgeClass} shadow-sm`}>
+                                  {language === "id" ? highestBadge.badgeNameId : highestBadge.badgeNameEn}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-slate-500 block truncate">{user.email}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs font-black text-yellow-400">
+                                TRAINER LEVEL {trainerLv}
+                              </span>
+                              <span className="text-[10px] text-slate-500">• {cards.length} Cards • {totalCardLevels} Total Levels</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Player Stats Grid */}
+                        <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850">
+                            <span className="text-slate-500 block text-[9px] uppercase font-bold tracking-wider mb-1">
+                              {language === "id" ? "TOTAL POIN" : "TOTAL POINTS"}
+                            </span>
+                            <span className="font-black text-yellow-500 text-sm">{user.points} PTS</span>
+                          </div>
+                          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850">
+                            <span className="text-slate-500 block text-[9px] uppercase font-bold tracking-wider mb-1">
+                              {language === "id" ? "NEKOMON CORE" : "NEKOMON CORES"}
+                            </span>
+                            <span className="font-black text-teal-400 text-sm">{user.cores || 0} CORE</span>
+                          </div>
+                          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850">
+                            <span className="text-slate-500 block text-[9px] uppercase font-bold tracking-wider mb-1">
+                              {language === "id" ? "KARTU DEK" : "DECK CARDS"}
+                            </span>
+                            <span className="font-black text-pink-400 text-sm">{cards.length} PCS</span>
+                          </div>
+                        </div>
+
+                        {/* CAPTURE STREAK SECTION */}
+                        {(() => {
+                          const streakDays = user.captureStreak || 0;
+                          const isStreakActive = streakDays >= 3;
+                          const progressPercent = Math.min(100, Math.round((streakDays / 3) * 100));
+
+                          return (
+                            <div className={`p-4 rounded-2xl border transition-all relative overflow-hidden ${
+                              isStreakActive 
+                                ? "bg-gradient-to-r from-amber-950/80 via-slate-900 to-orange-950/80 border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                                : "bg-slate-950 border-slate-850"
+                            }`}>
+                              <div className="flex items-center justify-between gap-3 mb-2.5">
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                    isStreakActive ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse" : "bg-slate-900 text-slate-500 border border-slate-800"
+                                  }`}>
+                                    <Flame className="w-5 h-5 fill-current" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="font-black text-xs text-slate-100 uppercase tracking-wider">
+                                        {language === "id" ? "STREAK TANGKAP HARIAN" : "DAILY CAPTURE STREAK"}
+                                      </h4>
+                                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase border ${
+                                        isStreakActive 
+                                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-bounce" 
+                                          : "bg-slate-800 text-slate-400 border-slate-700"
+                                      }`}>
+                                        {isStreakActive ? (language === "id" ? "BONUS AKTIF (+15-30 PTS)" : "BONUS ACTIVE (+15-30 PTS)") : `${streakDays}/3 HARI`}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">
+                                      {language === "id" 
+                                        ? "Tangkap minimal 1 foto kucing setiap hari selama 3+ hari berturut-turut untuk mengaktifkan bonus poin!" 
+                                        : "Capture at least 1 cat photo daily for 3+ consecutive days to activate bonus points!"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="text-xl font-black text-amber-400 flex items-center justify-end gap-1 font-mono">
+                                    <span>{streakDays}</span>
+                                    <span className="text-[10px] text-slate-400">{language === "id" ? "HARI" : "DAYS"}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Progress Bar to 3-Day Milestone */}
+                              <div className="mt-3">
+                                <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 mb-1">
+                                  <span>{language === "id" ? "Progres Target Streak Bonus (3 Hari)" : "Progress to Bonus Streak Target (3 Days)"}</span>
+                                  <span className="font-bold text-amber-400">{progressPercent}%</span>
+                                </div>
+                                <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
+                                  <div 
+                                    className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${progressPercent}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Status Footer */}
+                              <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono">
+                                <span className="text-slate-400 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-amber-400" />
+                                  {user.lastCaptureDate 
+                                    ? (language === "id" ? `Foto terakhir: ${user.lastCaptureDate}` : `Last capture: ${user.lastCaptureDate}`)
+                                    : (language === "id" ? "Belum ada foto hari ini" : "No capture today")}
+                                </span>
+                                {isStreakActive ? (
+                                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                    ✓ {language === "id" ? "Bonus Streak Tangkap Aktif" : "Capture Streak Bonus Active"}
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-400 font-bold">
+                                    {language === "id" ? `Butuh ${Math.max(1, 3 - streakDays)} hari lagi` : `Need ${Math.max(1, 3 - streakDays)} more day(s)`}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* BADGES SECTION */}
+                        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-850 flex flex-col gap-3">
+                          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                            <div className="flex items-center gap-2">
+                              <Trophy className="w-4 h-4 text-amber-400" />
+                              <h4 className="font-extrabold text-xs text-slate-100 uppercase tracking-wider">
+                                {language === "id" ? "LENCANA PENCAPAIAN TRAINER" : "TRAINER ACHIEVEMENT BADGES"}
+                              </h4>
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              LEVEL {trainerLv} / 50
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {PLAYER_BADGES.map((b) => {
+                              const isUnlocked = currentTrainerLv >= b.levelRequirement;
+                              return (
+                                <div
+                                  key={b.id}
+                                  onClick={() => {
+                                    setAchievementModalData({
+                                      isOpen: true,
+                                      type: isUnlocked ? "badge_unlocked" : "inspect",
+                                      trainerLevel: currentTrainerLv,
+                                      badge: b
+                                    });
+                                    try { audio.playVictory(); } catch (e) {}
+                                  }}
+                                  className={`p-3 rounded-xl border transition-all flex items-center gap-3 relative overflow-hidden cursor-pointer group ${
+                                    isUnlocked
+                                      ? "bg-slate-900/90 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.1)] hover:border-amber-400 hover:scale-[1.01]"
+                                      : "bg-slate-950/50 border-slate-800/80 opacity-60 hover:opacity-90"
+                                  }`}
+                                >
+                                  <div
+                                    className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xl shrink-0 ${
+                                      isUnlocked ? b.badgeClass : "border-slate-800 bg-slate-900 text-slate-600"
+                                    }`}
+                                  >
+                                    {b.emoji}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className={`text-xs font-black truncate ${isUnlocked ? "text-slate-100" : "text-slate-400"}`}>
+                                        {language === "id" ? b.badgeNameId : b.badgeNameEn}
+                                      </span>
+                                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-1 ${
+                                        isUnlocked ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-500"
+                                      }`}>
+                                        {isUnlocked ? (
+                                          <>
+                                            <Share2 className="w-2.5 h-2.5" />
+                                            <span>BAGIKAN</span>
+                                          </>
+                                        ) : (
+                                          `LV. ${b.levelRequirement}`
+                                        )}
+                                      </span>
+                                    </div>
+                                    <p className="text-[9.5px] text-slate-400 mt-0.5 line-clamp-1 leading-tight">
+                                      {language === "id" ? b.descId : b.descEn}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleLogout}
+                          className="w-full bg-red-950/40 hover:bg-red-950 text-red-200 hover:text-red-100 font-bold py-3 px-4 rounded-xl text-xs transition-all border border-red-900/30 cursor-pointer flex items-center justify-center gap-2 mt-2"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          {language === "id" ? "Keluar dari Game (Logout)" : "Log Out of Game"}
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })()}
+
+                {mobileTab === "shop" && (
                   <motion.div
-                    key="profile-view"
+                    key="shop-view"
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
-                    className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6 max-w-2xl mx-auto w-full font-mono"
+                    className="w-full"
                   >
-                    <div className="border-b border-slate-800 pb-4">
-                      <h2 className="text-xl font-black text-slate-100 flex items-center gap-2">
-                        <UserIcon className="w-5 h-5 text-yellow-500" />
-                        {language === "id" ? "DETAIL AKUN PEMAIN" : "PLAYER ACCOUNT DETAILS"}
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {language === "id" 
-                          ? "Kelola data profil, skor, dan status keanggotaan trainer Nekomon Anda." 
-                          : "Manage profile data, score, and membership status of your Nekomon trainer."}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-850">
-                        <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-yellow-500/30 flex items-center justify-center text-3xl">
-                          🎒
-                        </div>
-                        <div>
-                          <h3 className="font-black text-lg text-slate-100">@{user.username}</h3>
-                          <span className="text-xs text-slate-500 block">{user.email}</span>
-                          <span className="text-[10px] text-yellow-500 mt-1 block uppercase font-bold">
-                            {language === "id" 
-                              ? `Trainer level ${Math.max(1, Math.floor(cards.length / 2) + 1)}` 
-                              : `Trainer Level ${Math.max(1, Math.floor(cards.length / 2) + 1)}`}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                        <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850">
-                          <span className="text-slate-500 block text-[9px] uppercase font-bold tracking-wider mb-1">
-                            {language === "id" ? "TOTAL POIN" : "TOTAL POINTS"}
-                          </span>
-                          <span className="font-black text-yellow-500 text-sm">{user.points} PTS</span>
-                        </div>
-                        <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850">
-                          <span className="text-slate-500 block text-[9px] uppercase font-bold tracking-wider mb-1">
-                            {language === "id" ? "NEKOMON CORE" : "NEKOMON CORES"}
-                          </span>
-                          <span className="font-black text-teal-400 text-sm">{user.cores || 0} CORE</span>
-                        </div>
-                        <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850">
-                          <span className="text-slate-500 block text-[9px] uppercase font-bold tracking-wider mb-1">
-                            {language === "id" ? "KARTU DEK" : "DECK CARDS"}
-                          </span>
-                          <span className="font-black text-pink-400 text-sm">{cards.length} PCS</span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleLogout}
-                        className="w-full bg-red-950/40 hover:bg-red-950 text-red-200 hover:text-red-100 font-bold py-3 px-4 rounded-xl text-xs transition-all border border-red-900/30 cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        {language === "id" ? "Keluar dari Game (Logout)" : "Log Out of Game"}
-                      </button>
-                    </div>
+                    <ShopView 
+                      user={user} 
+                      cards={cards}
+                      onRefreshCards={() => token && fetchGallery(token)}
+                      onRequestRewardedAd={(type) => handleOpenRewardedAd(type)}
+                      onPurchaseSuccess={(updatedPoints, updatedCores, addedCards) => {
+                        setUser(prev => prev ? { ...prev, points: updatedPoints, cores: updatedCores } : null);
+                        if (addedCards && addedCards.length > 0) {
+                          setCards(prev => [...prev, ...addedCards]);
+                        }
+                        if (token) {
+                          fetchGallery(token);
+                        }
+                        setNotification({
+                          message: language === "id"
+                            ? "Transaksi berhasil disinkronkan ke server!"
+                            : "Transaction successfully synchronized with the server!",
+                          type: "success"
+                        });
+                      }} 
+                    />
                   </motion.div>
                 )}
 
@@ -1158,6 +1588,52 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Interstitial Ad Simulator Modal */}
+      <InterstitialAdModal
+        isOpen={showInterstitialAd}
+        onClose={handleCloseInterstitial}
+        targetTabName={pendingTab ? t(`nav.${pendingTab}`) : undefined}
+      />
+
+      {/* Rewarded Video Ad Simulator Modal */}
+      <RewardedAdModal
+        isOpen={showRewardedAdModal}
+        onClose={() => setShowRewardedAdModal(false)}
+        token={token}
+        rewardType={rewardedAdType}
+        onRewardClaimed={handleRewardClaimed}
+      />
+
+      {/* Daily 24-Hour Login Bonus Modal */}
+      <DailyLoginModal
+        isOpen={showDailyBonusModal}
+        onClose={() => setShowDailyBonusModal(false)}
+        token={token}
+        userPoints={user?.points || 0}
+        userCores={user?.cores || 0}
+        onClaimSuccess={(updatedPoints, updatedCores, rewardMsg) => {
+          if (user) {
+            const updatedUser = { ...user, points: updatedPoints, cores: updatedCores };
+            setUser(updatedUser);
+            updateLocalBackup(updatedUser);
+          }
+          setNotification({
+            message: rewardMsg,
+            type: "success"
+          });
+        }}
+      />
+
+      {/* Congratulatory Level-Up & Badge Unlock Share Modal */}
+      <AchievementShareModal
+        isOpen={achievementModalData.isOpen}
+        onClose={() => setAchievementModalData(prev => ({ ...prev, isOpen: false }))}
+        username={user?.username || "Trainer"}
+        trainerLevel={achievementModalData.trainerLevel}
+        badge={achievementModalData.badge}
+        type={achievementModalData.type}
+      />
 
       {/* Floating Audio Soundtrack Controller Button (Moved to bottom right for mobile friendliness) */}
       <div className="fixed bottom-6 right-6 z-40">

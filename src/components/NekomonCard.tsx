@@ -292,11 +292,16 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
             </div>
           </div>
 
-          {/* Level Overlay Badge with Sparkles for premium cards */}
-          <div className="absolute top-3 left-3 px-2 py-0.5 bg-slate-950/90 backdrop-blur-xs border border-teal-500/50 rounded-lg shadow-md flex items-center gap-1 z-20">
+          {/* Level & Energy Overlay Badge with Sparkles for premium cards */}
+          <div className="absolute top-3 left-3 px-2 py-0.5 bg-slate-950/90 backdrop-blur-xs border border-teal-500/50 rounded-lg shadow-md flex items-center gap-1.5 z-20">
             <span className="text-[9px] font-mono font-black text-teal-400 tracking-wider">
               LV.{card.level || 1}
             </span>
+            <div className="h-2.5 w-px bg-slate-700" />
+            <div className="flex items-center gap-0.5 text-amber-400 text-[9px] font-mono font-extrabold">
+              <Zap className="w-2.5 h-2.5 fill-amber-400" />
+              <span>{card.energy ?? 5}/{card.maxEnergy || 5}</span>
+            </div>
             {(rarity === "Legend" || rarity === "Mythic" || rarity === "Epic") && (
               <Sparkles className="w-2.5 h-2.5 text-yellow-400 animate-pulse" />
             )}
@@ -342,6 +347,29 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
                 className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, ((card.xp || 0) / (card.level ? card.level * 100 : 100)) * 100)}%` }}
               />
+            </div>
+          </div>
+
+          {/* Energy Gauge */}
+          <div className="flex flex-col gap-1 bg-slate-950/60 p-1.5 rounded-lg border border-amber-500/30">
+            <div className="flex justify-between items-center text-[8px] font-mono">
+              <span className="font-bold text-amber-400 flex items-center gap-1">
+                <Zap className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                ENERGY GAUGE
+              </span>
+              <span className="font-black text-amber-300">{card.energy ?? 5} / {card.maxEnergy || 5}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {[...Array(card.maxEnergy || 5)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex-1 h-1.5 rounded-xs border transition-all duration-300 ${
+                    i < (card.energy ?? 5)
+                      ? "bg-amber-400 border-yellow-300 shadow-[0_0_5px_rgba(251,191,36,0.6)]"
+                      : "bg-slate-900 border-slate-800 opacity-40"
+                  }`}
+                />
+              ))}
             </div>
           </div>
 

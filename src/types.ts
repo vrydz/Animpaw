@@ -5,6 +5,9 @@ export interface User {
   points: number;
   cores?: number;
   lastDailyBonusAt?: string;
+  lastLevel8BonusAt?: string;
+  captureStreak?: number;
+  lastCaptureDate?: string;
 }
 
 export interface Mission {
@@ -14,6 +17,14 @@ export interface Mission {
   capturesInLast24Hours: number;
   bonusPoints: number;
   nextResetMs: number;
+  
+  highestCardLevel?: number;
+  level8Target?: number;
+  hasCardAboveLevel8?: boolean;
+  level8Completed?: boolean;
+  level8BonusPoints?: number;
+  level8BonusCores?: number;
+  level8NextResetMs?: number;
 }
 
 export interface Capture {
@@ -58,6 +69,9 @@ export interface Card {
   xp?: number;
   maxXp?: number;
   evolutionHistory?: EvolutionLog[];
+  energy?: number;
+  maxEnergy?: number;
+  lastEnergyRefillAt?: string;
 }
 
 export interface AuthResponse {

@@ -246,124 +246,163 @@ class AudioEngine {
     return this.isBgmPlaying;
   }
 
-  // Plays procedural element-specific attack sound effects
+  // Plays procedural element-specific sound effects (Fire, Water, Earth, Wind, Lightning)
   playElementSound(element: string) {
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
-    const el = element ? element.toLowerCase() : "";
+    const el = element ? element.toLowerCase().trim() : "";
 
-    if (el === "api") {
-      // Api (Fire): Whoosh followed by a crackling low-pass explosion sweep
-      const osc = this.ctx.createOscillator();
+    const isFire = el.includes("api") || el.includes("fire");
+    const isWater = el.includes("air") || el.includes("water") || el.includes("aqua");
+    const isEarth = el.includes("tanah") || el.includes("earth");
+    const isWind = el.includes("angin") || el.includes("wind");
+    const isLightning = el.includes("petir") || el.includes("thunder") || el.includes("lightning") || el.includes("electric");
+
+    if (isFire) {
+      // Fire (Api): Roaring flame crackle & fiery Whoosh sweep
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(110, now);
-      osc.frequency.linearRampToValueAtTime(35, now + 0.35);
-
       const filter = this.ctx.createBiquadFilter();
+
+      osc1.type = "sawtooth";
+      osc2.type = "triangle";
+      osc1.frequency.setValueAtTime(180, now);
+      osc1.frequency.exponentialRampToValueAtTime(45, now + 0.42);
+      osc2.frequency.setValueAtTime(360, now);
+      osc2.frequency.exponentialRampToValueAtTime(90, now + 0.42);
+
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(450, now);
-      filter.frequency.exponentialRampToValueAtTime(15, now + 0.35);
+      filter.frequency.setValueAtTime(900, now);
+      filter.frequency.exponentialRampToValueAtTime(120, now + 0.42);
 
-      gain.gain.setValueAtTime(0.28 * this.masterVolume, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      gain.gain.setValueAtTime(0.32 * this.masterVolume, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
 
-      osc.connect(filter);
+      osc1.connect(filter);
+      osc2.connect(filter);
       filter.connect(gain);
       gain.connect(this.ctx.destination);
 
-      osc.start(now);
-      osc.stop(now + 0.4);
-    } else if (el === "air") {
-      // Air (Water): High-to-low bubble splash sweep with resonance
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.45);
+      osc2.stop(now + 0.45);
+    } else if (isWater) {
+      // Water (Air): Sparkling bubble droplet splash cascade
+      const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      freqs.forEach((freq, idx) => {
+        const timeOffset = idx * 0.055;
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + timeOffset);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.45, now + timeOffset + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.75, now + timeOffset + 0.18);
+
+        gain.gain.setValueAtTime(0.22 * this.masterVolume, now + timeOffset);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.22);
+
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+
+        osc.start(now + timeOffset);
+        osc.stop(now + timeOffset + 0.24);
+      });
+    } else if (isEarth) {
+      // Earth (Tanah): Heavy seismic rock impact rumble
       const osc = this.ctx.createOscillator();
+      const subOsc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(350, now);
-      osc.frequency.exponentialRampToValueAtTime(1400, now + 0.12);
-      osc.frequency.exponentialRampToValueAtTime(550, now + 0.32);
 
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.2 * this.masterVolume, now + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.38);
-    } else if (el === "tanah") {
-      // Tanah (Earth): Deep rock impact with heavy low frequency thump
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
       osc.type = "triangle";
-      osc.frequency.setValueAtTime(75, now);
-      osc.frequency.linearRampToValueAtTime(15, now + 0.42);
+      subOsc.type = "sine";
 
-      gain.gain.setValueAtTime(0.4 * this.masterVolume, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.linearRampToValueAtTime(25, now + 0.45);
+
+      subOsc.frequency.setValueAtTime(60, now);
+      subOsc.frequency.linearRampToValueAtTime(18, now + 0.45);
+
+      gain.gain.setValueAtTime(0.45 * this.masterVolume, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
 
       osc.connect(gain);
+      subOsc.connect(gain);
       gain.connect(this.ctx.destination);
 
       osc.start(now);
+      subOsc.start(now);
       osc.stop(now + 0.48);
-    } else if (el === "angin") {
-      // Angin (Wind): Whistling wind gale whoosh sweep
+      subOsc.stop(now + 0.48);
+    } else if (isWind) {
+      // Wind (Angin): Whistling dual gale whoosh swirl
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc1.type = "sine";
+      osc2.type = "sine";
+
+      osc1.frequency.setValueAtTime(440, now);
+      osc1.frequency.exponentialRampToValueAtTime(1150, now + 0.2);
+      osc1.frequency.exponentialRampToValueAtTime(360, now + 0.45);
+
+      osc2.frequency.setValueAtTime(660, now);
+      osc2.frequency.exponentialRampToValueAtTime(1380, now + 0.2);
+      osc2.frequency.exponentialRampToValueAtTime(540, now + 0.45);
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.24 * this.masterVolume, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.48);
+      osc2.stop(now + 0.48);
+    } else if (isLightning) {
+      // Lightning (Petir): High voltage electric crackle & spark discharge
+      const notes = [1350, 320, 1850, 480, 1600, 220];
+      notes.forEach((freq, idx) => {
+        const timeOffset = idx * 0.042;
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, now + timeOffset);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.25, now + timeOffset + 0.05);
+
+        gain.gain.setValueAtTime(0.28 * this.masterVolume, now + timeOffset);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.065);
+
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+
+        osc.start(now + timeOffset);
+        osc.stop(now + timeOffset + 0.075);
+      });
+    } else {
+      // Default slice chime
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(550, now);
-      osc.frequency.linearRampToValueAtTime(950, now + 0.15);
-      osc.frequency.linearRampToValueAtTime(450, now + 0.35);
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.25);
 
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.18 * this.masterVolume, now + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      gain.gain.setValueAtTime(0.2 * this.masterVolume, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
 
       osc.start(now);
-      osc.stop(now + 0.4);
-    } else if (el === "petir") {
-      // Petir (Lightning): Electrical lightning static discharge with rapid frequency jitter
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(1300, now);
-      osc.frequency.setValueAtTime(150, now + 0.04);
-      osc.frequency.setValueAtTime(1600, now + 0.08);
-      osc.frequency.setValueAtTime(250, now + 0.12);
-      osc.frequency.setValueAtTime(1100, now + 0.16);
-      osc.frequency.setValueAtTime(100, now + 0.2);
-
-      gain.gain.setValueAtTime(0.28 * this.masterVolume, now);
-      gain.gain.setValueAtTime(0.18 * this.masterVolume, now + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.32);
-    } else {
-      // Normal: Fast clean slice / swipe slash sound effect
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(900, now);
-      osc.frequency.exponentialRampToValueAtTime(150, now + 0.22);
-
-      gain.gain.setValueAtTime(0.18 * this.masterVolume, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.26);
+      osc.stop(now + 0.28);
     }
   }
 
@@ -497,6 +536,42 @@ class AudioEngine {
       osc.start(now);
       osc.stop(now + 0.65);
     }
+  }
+
+  // Plays victory / level up fanfare sound effect
+  playVictory() {
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+
+    notes.forEach((freq, idx) => {
+      const timeOffset = idx * 0.12;
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, now + timeOffset);
+
+      gain.gain.setValueAtTime(0, now + timeOffset);
+      gain.gain.linearRampToValueAtTime(0.28 * this.masterVolume, now + timeOffset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.35);
+
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+
+      osc.start(now + timeOffset);
+      osc.stop(now + timeOffset + 0.38);
+    });
+  }
+
+  // Aliases for RewardedAdModal and other flows
+  playCaptureSuccess() {
+    this.playCaptureSound();
+  }
+
+  playLevelUp() {
+    this.playVictory();
   }
 }
 

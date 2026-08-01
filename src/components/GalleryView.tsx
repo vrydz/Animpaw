@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Capture, Card, User } from "../types";
 import { NekomonCard } from "./NekomonCard";
 import { Camera, Hammer, Download, Image as ImageIcon, Calendar, Sparkles, X, ChevronLeft, ChevronRight, Award, Trash2, AlertTriangle, Loader2, Swords, Shield, Activity, Heart, RotateCcw, History } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
+import { audio } from "../lib/audio";
 
 // Cute custom illustrations generated via Imagen
 const emptyDeckCat = new URL("../assets/images/empty_deck_cat_1784259732166.jpg", import.meta.url).href;
@@ -37,6 +38,20 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   // Carousel state
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
+  // Active card displayed in gallery
+  const activeDisplayedCard = cards[Math.min(currentCardIndex, cards.length - 1)];
+
+  // Play unique element sound whenever a card appears in the gallery view
+  useEffect(() => {
+    if (activeTab === "cards" && activeDisplayedCard) {
+      try {
+        audio.playElementSound(activeDisplayedCard.element);
+      } catch (e) {
+        console.error("Failed to play element sound:", e);
+      }
+    }
+  }, [activeDisplayedCard?.id, activeTab]);
+
   const handleNextCard = () => {
     if (cards.length === 0) return;
     setCurrentCardIndex((prev) => (prev + 1) % cards.length);
@@ -45,6 +60,15 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   const handlePrevCard = () => {
     if (cards.length === 0) return;
     setCurrentCardIndex((prev) => (prev - 1 + cards.length) % cards.length);
+  };
+
+  const handleSelectCardModal = (card: Card) => {
+    setSelectedCard(card);
+    if (card) {
+      try {
+        audio.playElementSound(card.element);
+      } catch (e) {}
+    }
   };
 
   // Capture deletion states
@@ -290,7 +314,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                         >
                           <NekomonCard
                             card={cards[Math.min(currentCardIndex, cards.length - 1)]}
-                            onClick={() => setSelectedCard(cards[Math.min(currentCardIndex, cards.length - 1)])}
+                            onClick={() => handleSelectCardModal(cards[Math.min(currentCardIndex, cards.length - 1)])}
                           />
                         </motion.div>
                       )}

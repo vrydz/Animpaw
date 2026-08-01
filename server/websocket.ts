@@ -70,6 +70,36 @@ export function getElementalMultiplier(attackerElement: string, defenderElement:
   return 1.0;
 }
 
+// Helper to update card energy (1 bar per 2 hours)
+function updateCardEnergy(card: any): any {
+  if (!card) return card;
+  const maxEnergy = card.maxEnergy ?? 5;
+  let currentEnergy = card.energy ?? 5;
+  const now = Date.now();
+  const lastRefillMs = card.lastEnergyRefillAt ? new Date(card.lastEnergyRefillAt).getTime() : now;
+  const twoHoursMs = 2 * 60 * 60 * 1000;
+
+  if (currentEnergy < maxEnergy) {
+    const elapsed = now - lastRefillMs;
+    if (elapsed >= twoHoursMs) {
+      const barsToAdd = Math.floor(elapsed / twoHoursMs);
+      const newEnergy = Math.min(maxEnergy, currentEnergy + barsToAdd);
+      const remainder = elapsed % twoHoursMs;
+      card.energy = newEnergy;
+      card.lastEnergyRefillAt = new Date(now - remainder).toISOString();
+    } else {
+      card.energy = currentEnergy;
+    }
+  } else {
+    card.energy = maxEnergy;
+    if (!card.lastEnergyRefillAt) {
+      card.lastEnergyRefillAt = new Date(now).toISOString();
+    }
+  }
+  card.maxEnergy = maxEnergy;
+  return card;
+}
+
 // Broadcasters
 function broadcastToAll(data: any) {
   const payload = JSON.stringify(data);
@@ -213,6 +243,12 @@ export function initWebSocket(server: Server, readDB: () => any, writeDB: (data:
           const card = db.cards.find((c: any) => c.id === cardId && c.userId === currentUserId);
           if (!card) {
             ws.send(JSON.stringify({ type: "error", error: "Nekomon Card tidak valid atau bukan milik Anda." }));
+            return;
+          }
+
+          updateCardEnergy(card);
+          if ((card.energy ?? 5) < 1) {
+            ws.send(JSON.stringify({ type: "error", error: "Energi Nekomon Card ini telah habis (0/5)! Di-refill 1 bar setiap 2 jam. Pilih kartu lain atau tunggu energi terisi kembali." }));
             return;
           }
 
@@ -389,6 +425,35 @@ function processMatchmaking(readDB: () => any, writeDB: (data: any) => void) {
 // Create Battle Room State
 function createBattleRoom(userA: any, cardA: any, userB: any, cardB: any, isBot: boolean, readDB: () => any, writeDB: (data: any) => void) {
   const battleId = "battle_" + Math.random().toString(36).substr(2, 9);
+
+  // Deduct 1 card energy bar from participating player cards
+  const db = readDB();
+  if (cardA && cardA.id) {
+    const dbCardA = db.cards.find((c: any) => c.id === cardA.id);
+    if (dbCardA) {
+      updateCardEnergy(dbCardA);
+      if ((dbCardA.energy ?? 5) === (dbCardA.maxEnergy ?? 5)) {
+        dbCardA.lastEnergyRefillAt = new Date().toISOString();
+      }
+      dbCardA.energy = Math.max(0, (dbCardA.energy ?? 5) - 1);
+      cardA.energy = dbCardA.energy;
+      cardA.lastEnergyRefillAt = dbCardA.lastEnergyRefillAt;
+    }
+  }
+
+  if (!isBot && cardB && cardB.id) {
+    const dbCardB = db.cards.find((c: any) => c.id === cardB.id);
+    if (dbCardB) {
+      updateCardEnergy(dbCardB);
+      if ((dbCardB.energy ?? 5) === (dbCardB.maxEnergy ?? 5)) {
+        dbCardB.lastEnergyRefillAt = new Date().toISOString();
+      }
+      dbCardB.energy = Math.max(0, (dbCardB.energy ?? 5) - 1);
+      cardB.energy = dbCardB.energy;
+      cardB.lastEnergyRefillAt = dbCardB.lastEnergyRefillAt;
+    }
+  }
+  writeDB(db);
 
   const room: BattleRoom = {
     id: battleId,
@@ -701,6 +766,30 @@ function resolveBattleRound(room: BattleRoom, readDB: () => any, writeDB: (data:
 // Award points and XP, check card Level Ups in Database
 function awardMatchRewards(winner: PlayerState, loser: PlayerState, readDB: () => any, writeDB: (data: any) => void) {
   const db = readDB();
+
+  // Record battle history entry in server database
+  if (!db.battleHistory) db.battleHistory = [];
+  const historyEntry = {
+    id: "bh_" + Math.random().toString(36).substring(2, 11),
+    winnerId: winner.userId,
+    winnerName: winner.username,
+    winnerCardName: winner.card?.name || "Nekomon",
+    winnerCardImageUrl: winner.card?.imageUrl || "",
+    winnerCardLevel: winner.card?.level || 1,
+    winnerCardElement: winner.card?.element || "Api",
+    loserId: loser.userId,
+    loserName: loser.username,
+    loserCardName: loser.card?.name || "Nekomon",
+    loserCardImageUrl: loser.card?.imageUrl || "",
+    loserCardLevel: loser.card?.level || 1,
+    loserCardElement: loser.card?.element || "Air",
+    isBotMatch: winner.isBot || loser.isBot,
+    createdAt: new Date().toISOString()
+  };
+  db.battleHistory.unshift(historyEntry);
+  if (db.battleHistory.length > 50) {
+    db.battleHistory = db.battleHistory.slice(0, 50);
+  }
 
   // 1. Process Winner
   if (!winner.isBot) {
