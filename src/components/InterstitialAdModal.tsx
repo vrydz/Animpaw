@@ -35,7 +35,7 @@ const AD_CAMPAIGNS = [
     bgGradient: "from-purple-900 via-indigo-950 to-slate-950",
     accentColor: "from-pink-500 to-purple-600",
     bannerIcon: "🐱⚡",
-    adUnitId: "ca-app-pub-3904073330139490/interstitial_01",
+    adUnitId: "ca-pub-2411657012211511/interstitial_01",
     cta: "Download Gratis di Play Store"
   },
   {
@@ -63,7 +63,7 @@ const AD_CAMPAIGNS = [
     bgGradient: "from-rose-950 via-slate-900 to-red-950",
     accentColor: "from-red-500 to-amber-500",
     bannerIcon: "🍿📺",
-    adUnitId: "ca-app-pub-3904073330139490/interstitial_02",
+    adUnitId: "ca-pub-2411657012211511/interstitial_02",
     cta: "Mulai Trial Gratis 14 Hari"
   }
 ];
