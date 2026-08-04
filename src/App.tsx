@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Capture, Card, Mission } from "./types";
+import { User, Capture, Card, Mission, NekomonSpot } from "./types";
 import { AuthForm } from "./components/AuthForm";
 import { VirtualCamera } from "./components/VirtualCamera";
+import { NekomonSpotMap } from "./components/NekomonSpotMap";
 import { ForgingStation } from "./components/ForgingStation";
 import { GalleryView } from "./components/GalleryView";
 import { CardMissions } from "./components/CardMissions";
@@ -46,7 +47,8 @@ import {
   BookOpen,
   Coins,
   Flame,
-  Share2
+  Share2,
+  MapPin
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
@@ -68,16 +70,17 @@ export default function App() {
   }, [user]);
   
   // App navigation & layout toggles
-  const [mobileTab, setMobileTab] = useState<"camera" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop">("camera");
+  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop">("spot_map");
   const [desktopView, setDesktopView] = useState<"album" | "trading">("album");
   const [showForgeModal, setShowForgeModal] = useState<boolean>(false);
   const [showDailyBonusModal, setShowDailyBonusModal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [bgmOn, setBgmOn] = useState<boolean>(false);
+  const [activeSpotToCapture, setActiveSpotToCapture] = useState<NekomonSpot | null>(null);
 
   // Ads Simulation State (AdMob & Unity Ads)
   const [showInterstitialAd, setShowInterstitialAd] = useState<boolean>(false);
-  const [pendingTab, setPendingTab] = useState<"camera" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop" | null>(null);
+  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop" | null>(null);
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
   const [interstitialFreq, setInterstitialFreq] = useState<"random" | "always" | "off">("random");
 
@@ -139,7 +142,7 @@ export default function App() {
     }
   }, [user, currentTrainerLv, language]);
 
-  const handleTabChange = (targetTab: "camera" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop") => {
+  const handleTabChange = (targetTab: "camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop") => {
     if (targetTab === mobileTab) return;
     setShowForgeModal(false);
 
@@ -338,18 +341,18 @@ export default function App() {
                   captures: backup.captures,
                   cards: backup.cards
                 }),
-              });
+              }).catch(() => null);
 
-              if (syncResponse.ok) {
+              if (syncResponse && syncResponse.ok) {
                 // Retry profile fetch now that user is restored!
                 response = await fetch("/api/user/profile", {
                   headers: { Authorization: `Bearer ${sessionToken}` },
-                });
+                }).catch(() => response);
               }
             }
           }
         } catch (syncErr) {
-          console.error("Error during auto-sync restore in fetchProfile:", syncErr);
+          console.warn("Auto-sync notice in fetchProfile:", syncErr);
         }
       }
 
@@ -416,9 +419,10 @@ export default function App() {
     setShowForgeModal(false);
   };
 
-  // Photo captured callback (+10 points)
+  // Photo captured callback (+10 points base + optional spot bonus)
   const handleCapture = async (base64Photo: string) => {
     if (!token) return;
+    const currentSpot = activeSpotToCapture;
     try {
       // Play retro captured chime!
       try {
@@ -433,11 +437,22 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ photo: base64Photo }),
+        body: JSON.stringify({ 
+          photo: base64Photo,
+          spotBonus: currentSpot ? currentSpot.bonusPoints : undefined,
+          spotName: currentSpot ? currentSpot.name : undefined
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
+        if (currentSpot) {
+          setNotification({
+            message: `Berhasil memotret kucing di spot [${currentSpot.name}] (< ${currentSpot.radiusMeters}m)! Bonus +${currentSpot.bonusPoints} Poin (${currentSpot.boostedElement})! 📍`,
+            type: "success"
+          });
+          setActiveSpotToCapture(null);
+        }
         // Update user points, streak, and captures list
         let updatedUser = user;
         if (data.user) {
@@ -950,6 +965,7 @@ export default function App() {
               <div className="flex flex-wrap bg-slate-950 p-1 border border-slate-800 rounded-xl gap-1 select-none">
                 {(
                   [
+                    { id: "spot_map", label: language === "id" ? "PETA SPOT 📍" : "SPOT MAP 📍", icon: MapPin },
                     { id: "camera", label: t("nav.camera"), icon: Camera },
                     { id: "gallery", label: t("nav.gallery"), icon: FolderHeart },
                     { id: "dex", label: t("nav.dex"), icon: BookOpen },
@@ -984,6 +1000,25 @@ export default function App() {
             {/* Main Content Area */}
             <div className="w-full">
               <AnimatePresence mode="wait">
+                {mobileTab === "spot_map" && (
+                  <motion.div
+                    key="spot-map-view"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    className="flex flex-col gap-4"
+                  >
+                    <NekomonSpotMap
+                      onSelectSpotToCapture={(spot) => {
+                        setActiveSpotToCapture(spot);
+                        setMobileTab("camera");
+                      }}
+                      userPoints={user.points}
+                      token={token || ""}
+                    />
+                  </motion.div>
+                )}
+
                 {mobileTab === "camera" && (
                   <motion.div
                     key="camera-view"
@@ -1006,6 +1041,8 @@ export default function App() {
                       <VirtualCamera
                         onCapture={handleCapture}
                         userPoints={user.points}
+                        activeSpot={activeSpotToCapture}
+                        onClearSpot={() => setActiveSpotToCapture(null)}
                       />
                     </div>
                   </motion.div>

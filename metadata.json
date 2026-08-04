@@ -2,7 +2,8 @@
   "name": "Nekomon Card Game",
   "description": "Sebuah aplikasi card game berbasis kucing di mana Anda dapat menangkap kucing asli menggunakan kamera, mengumpulkan poin, dan melakukan forging menjadi Nekomon Card bergaya anime Studio Ghibli (Sentinel) atau Studio Mappa (Scourge) dengan 5 tipe elemen.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "geolocation"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

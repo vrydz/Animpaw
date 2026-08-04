@@ -80,3 +80,41 @@ export interface AuthResponse {
   token: string;
   error?: string;
 }
+
+export type SpotCategory = "taman" | "cafe" | "stasiun" | "lapangan" | "mall" | "pantai";
+
+export interface NekomonSpot {
+  id: string;
+  name: string;
+  category: SpotCategory;
+  categoryLabel: string;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  boostedElement: "Api" | "Air" | "Tanah" | "Angin" | "Petir";
+  bonusPoints: number;
+  bonusCores?: number;
+  targetCatName: string;
+  rarity: "Common" | "Rare" | "Epic" | "Legend";
+  iconEmoji: string;
+  description: string;
+  isCommunity?: boolean;
+  submittedBy?: string;
+  votes?: number;
+  createdAt?: string;
+}
+
+export interface ExplorationDailyQuests {
+  distanceTraveledMeters: number; // e.g. 0 -> 1000m
+  distanceTargetMeters: number;   // 1000m
+  distanceClaimed: boolean;
+
+  catsCapturedToday: number;      // 0 -> 3
+  catsTarget: number;             // 3
+  catsClaimed: boolean;
+
+  spotVisitedToday: number;       // 0 -> 1
+  spotTarget: number;             // 1
+  spotClaimed: boolean;
+}
+

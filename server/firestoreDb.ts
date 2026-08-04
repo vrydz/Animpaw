@@ -42,32 +42,40 @@ export async function syncToFirestore(data: any) {
     if (Array.isArray(data.users)) {
       for (const u of data.users) {
         if (!u || !u.id) continue;
-        await fsDb.collection("users").doc(u.id).set(u, { merge: true });
+        await fsDb.collection("users").doc(u.id).set(u, { merge: true }).catch(err => {
+          console.warn("Firestore user sync warning:", err?.message || err);
+        });
       }
     }
 
     if (Array.isArray(data.captures)) {
       for (const c of data.captures) {
         if (!c || !c.id) continue;
-        await fsDb.collection("captures").doc(c.id).set(c, { merge: true });
+        await fsDb.collection("captures").doc(c.id).set(c, { merge: true }).catch(err => {
+          console.warn("Firestore capture sync warning:", err?.message || err);
+        });
       }
     }
 
     if (Array.isArray(data.cards)) {
       for (const card of data.cards) {
         if (!card || !card.id) continue;
-        await fsDb.collection("cards").doc(card.id).set(card, { merge: true });
+        await fsDb.collection("cards").doc(card.id).set(card, { merge: true }).catch(err => {
+          console.warn("Firestore card sync warning:", err?.message || err);
+        });
       }
     }
 
     if (Array.isArray(data.trades)) {
       for (const t of data.trades) {
         if (!t || !t.id) continue;
-        await fsDb.collection("trades").doc(t.id).set(t, { merge: true });
+        await fsDb.collection("trades").doc(t.id).set(t, { merge: true }).catch(err => {
+          console.warn("Firestore trade sync warning:", err?.message || err);
+        });
       }
     }
-  } catch (err) {
-    console.error("Error syncing to Firestore:", err);
+  } catch (err: any) {
+    console.warn("Firestore sync skipped due to permissions/connectivity:", err?.message || err);
   }
 }
 

@@ -1165,9 +1165,9 @@ async function analyzeCatPhoto(photoBase64: string): Promise<{ isCat: boolean; r
   return { isCat: true, reason: "Berhasil diverifikasi melalui sensor cadangan Nekomon!" };
 }
 
-// Capture photo and get 10 points
+// Capture photo and get 10 points (plus optional Nekomon Spot bonus)
 app.post("/api/capture", async (req, res) => {
-  const { photo } = req.body; // base64 photo
+  const { photo, spotBonus, spotName } = req.body; // base64 photo + optional spot bonus
   if (!photo) {
     return res.status(400).json({ error: "Data foto kucing wajib dikirim." });
   }
@@ -1185,7 +1185,13 @@ app.post("/api/capture", async (req, res) => {
   }
 
   // Add 10 points for regular capture
-  user.points += 10;
+  let basePointsAdded = 10;
+  let spotPointsAdded = 0;
+  if (spotBonus && typeof spotBonus === "number" && spotBonus > 0) {
+    spotPointsAdded = Math.min(100, spotBonus);
+  }
+
+  user.points += (basePointsAdded + spotPointsAdded);
 
   const newCapture = {
     id: "cap_" + Math.random().toString(36).substr(2, 9),
@@ -3024,6 +3030,98 @@ app.get("/api/arena/history", (req, res) => {
     (item: any) => item.winnerId === user.id || item.loserId === user.id
   );
   res.json({ success: true, history: userHistory });
+});
+
+// ----------------------------------------------------------------
+// Community Spots (Crowdsourced Spawns) Routes
+// ----------------------------------------------------------------
+app.get("/api/community-spots", (req, res) => {
+  const db = readDB();
+  const communitySpots = db.communitySpots || [];
+  res.json({ success: true, spots: communitySpots });
+});
+
+app.post("/api/community-spots", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  const { name, category, lat, lng, targetCatName, description, boostedElement } = req.body;
+
+  if (!name || !lat || !lng || !category || !targetCatName) {
+    return res.status(400).json({ error: "Nama spot, kategori, lokasi GPS, dan nama kucing target wajib diisi." });
+  }
+
+  const categoryEmojis: Record<string, string> = {
+    taman: "🌳",
+    cafe: "☕",
+    stasiun: "🚉",
+    lapangan: "⚽",
+    mall: "🛍️",
+    pantai: "🏖️"
+  };
+
+  const categoryLabels: Record<string, string> = {
+    taman: "Taman Kucing",
+    cafe: "Cafe Kucing",
+    stasiun: "Stasiun Cat",
+    lapangan: "Lapangan / Open Space",
+    mall: "Mall & Plaza",
+    pantai: "Area Pesisir / Pantai"
+  };
+
+  if (!db.communitySpots) {
+    db.communitySpots = [];
+  }
+
+  const newSpot = {
+    id: "spot_comm_" + Math.random().toString(36).substr(2, 9),
+    name: name.trim(),
+    category: category || "taman",
+    categoryLabel: categoryLabels[category] || "Spot Komunitas",
+    lat: Number(lat),
+    lng: Number(lng),
+    radiusMeters: 25,
+    boostedElement: boostedElement || "Air",
+    bonusPoints: 35,
+    bonusCores: 5,
+    targetCatName: targetCatName.trim(),
+    rarity: "Epic",
+    iconEmoji: categoryEmojis[category] || "🐾",
+    description: description ? description.trim() : "Spot kucing rekomendasi dari komunitas player!",
+    isCommunity: true,
+    submittedBy: user ? user.username : "Komunitas Player",
+    votes: 1,
+    createdAt: new Date().toISOString()
+  };
+
+  db.communitySpots.push(newSpot);
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Spot kucing berhasil didaftarkan ke Peta Komunitas! Terima kasih atas kontribusinya 🐾",
+    spot: newSpot
+  });
+});
+
+app.post("/api/community-spots/:id/vote", (req, res) => {
+  const { id } = req.params;
+  const db = readDB();
+
+  if (!db.communitySpots) db.communitySpots = [];
+  const spot = db.communitySpots.find((s: any) => s.id === id);
+
+  if (!spot) {
+    return res.status(404).json({ error: "Spot komunitas tidak ditemukan." });
+  }
+
+  spot.votes = (spot.votes || 0) + 1;
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Dukungan/vote berhasil ditambahkan!",
+    votes: spot.votes
+  });
 });
 
 // ----------------------------------------------------------------

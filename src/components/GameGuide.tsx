@@ -1,5 +1,25 @@
 import React, { useState } from "react";
-import { BookOpen, Sparkles, Swords, Camera, Hammer, ArrowLeftRight, Gamepad2, Award, Flame, Droplets, Sprout, Wind, Zap, Trophy } from "lucide-react";
+import { 
+  BookOpen, 
+  Sparkles, 
+  Swords, 
+  Camera, 
+  Hammer, 
+  ArrowLeftRight, 
+  Gamepad2, 
+  Award, 
+  Flame, 
+  Droplets, 
+  Sprout, 
+  Wind, 
+  Zap, 
+  Trophy,
+  MapPin,
+  Scan,
+  Users,
+  Target,
+  ZoomIn
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -62,10 +82,35 @@ export const GameGuide: React.FC = () => {
                     <Camera className="w-5 h-5 text-yellow-500" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">1. Buru & Potret Kucing Asli</h4>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">1. Kamera AR Scanner & Pinch-to-Zoom 🐾</h4>
                     <p className="leading-relaxed">
-                      Gunakan fitur <span className="text-yellow-400 font-bold font-mono">KAMERA</span> untuk memfoto kucing nyata secara langsung di lingkungan Anda. Setiap foto kucing yang berhasil ditangkap memberikan <span className="text-yellow-400 font-bold font-mono">+10 Poin</span> dan disimpan ke dalam Album Koleksi Anda. 
-                      <span className="block mt-1 text-slate-400 italic">*Catatan: Untuk keadilan bermain, fitur unggah foto dari galeri dan penggunaan gambar contoh telah dinonaktifkan sepenuhnya. Anda harus benar-benar berburu kucing asli menggunakan kamera perangkat!*</span>
+                      Gunakan fitur <span className="text-yellow-400 font-bold font-mono">KAMERA</span> yang kini dilengkapi dengan <span className="text-cyan-400 font-bold font-mono">AR NEKOMON SCANNER</span> real-time! Overlay scanner akan menampilkan telemetry HUD, bounding box pelacak sinyal kucing, dan persentase penguncian target.
+                      Gunakan gestur <span className="text-yellow-400 font-bold font-mono">Pinch-to-Zoom</span> (cubit layar) atau tombol zoom <span className="text-yellow-400 font-bold font-mono">1.0x - 4.0x</span> untuk memperbesar foto kucing dari jarak jauh secara presisi. Setiap tangkapan foto memberikan <span className="text-yellow-400 font-bold font-mono">+10 Poin</span>!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">2. Peta Radar Spot & Quest Eksplorasi 🗺️</h4>
+                    <p className="leading-relaxed">
+                      Jelajahi lokasi sekitar menggunakan <span className="text-emerald-400 font-bold font-mono">PETA RADAR SPOT</span> (mendukung Real GPS & GPS Simulator). Temukan Spot Kucing Liar (Taman 🌳, Cat Cafe ☕, Stasiun 🚉, Lapangan ⚽) yang memberikan booster elemen khusus!
+                      Selesaikan <span className="text-yellow-400 font-bold font-mono">Quest Eksplorasi Peta</span> seperti berjalan sejauh 1 km atau mendatangi spot khusus untuk mendapatkan hadiah gratis Poin, Nekomon Core, dan Kartu Pack!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">3. Spot Komunitas & Validasi Real-Time 👥</h4>
+                    <p className="leading-relaxed">
+                      Temukan kucing unik di area sekitar Anda? Daftarkan ke <span className="text-cyan-400 font-bold font-mono">SPOT KOMUNITAS</span> agar Trainer lain dapat berkunjung dan menangkapnya! Berikan dukungan ("Valid!") pada spot yang didaftarkan pemain lain untuk membangun reputasi komunitas Trainer terbaik.
                     </p>
                   </div>
                 </div>
@@ -75,21 +120,9 @@ export const GameGuide: React.FC = () => {
                     <Hammer className="w-5 h-5 text-teal-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">2. Tempa Menjadi Kartu Nekomon</h4>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">4. Tempa Menjadi Kartu Nekomon ⚔️</h4>
                     <p className="leading-relaxed">
                       Buka tab <span className="text-teal-400 font-bold font-mono">ALBUM KOLEKSI</span>, pilih foto kucing hasil tangkapan Anda, lalu klik tombol penempaan untuk membawanya ke <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. Kartu Nekomon baru akan ditempa secara instan menggunakan AI, lengkap dengan Elemen unik, Gaya Seni (Sentinel/Scourge), statistik acak (HP, ATK, DEF, SPD), serta tingkat kelangkaan (Rarity) dari Common hingga Legendary!
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                    <Gamepad2 className="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">3. Selesaikan Misi Harian</h4>
-                    <p className="leading-relaxed">
-                      Setiap hari, ada berbagai tantangan di tab <span className="text-indigo-400 font-bold font-mono">MISI</span>. Kirimkan Nekomon Anda yang memenuhi syarat elemen atau stats tertentu untuk menyelesaikan ekspedisi. Menyelesaikan misi akan melatih kartu Anda (+XP), serta memberikan hadiah berharga seperti <span className="text-teal-400 font-bold font-mono">Nekomon Core</span> dan Poin bonus!
                     </p>
                   </div>
                 </div>
@@ -99,21 +132,9 @@ export const GameGuide: React.FC = () => {
                     <Swords className="w-5 h-5 text-rose-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">4. Bertempur di Arena Online</h4>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">5. Bertempur & Barter Kartu Online 🏆</h4>
                     <p className="leading-relaxed">
-                      Uji kekuatan Nekomon Anda di tab <span className="text-rose-400 font-bold font-mono">ARENA</span>. Cari lawan secara real-time untuk bertanding melawan Dek milik pemain lain, atau pilih mode latih tanding melawan AI. Kelola giliran Anda untuk meluncurkan serangan elemental yang taktis, kalahkan lawan, dapatkan Poin, dan panjat papan peringkat setinggi-tingginya!
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                    <ArrowLeftRight className="w-5 h-5 text-amber-500" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">5. Sistem Barter Kartu</h4>
-                    <p className="leading-relaxed">
-                      Apakah Anda memiliki banyak kartu Nekomon duplikat? Buka menu <span className="text-amber-500 font-bold font-mono">BARTER</span> untuk mengajukan penukaran kartu secara adil dengan pemain lain yang sedang online. Tukarkan kartu Anda dengan kartu impian yang memiliki tingkat kelangkaan (rarity) setara untuk melengkapi koleksi album Anda!
+                      Uji kekuatan Dek Nekomon Anda di <span className="text-rose-400 font-bold font-mono">ARENA PVP</span> melawan pemain lain secara real-time atau lawan bot AI. Gunakan menu <span className="text-amber-500 font-bold font-mono">BARTER</span> untuk menukarkan kartu duplikat secara adil dengan sesama Trainer online untuk melengkapi koleksi Anda!
                     </p>
                   </div>
                 </div>
@@ -125,10 +146,35 @@ export const GameGuide: React.FC = () => {
                     <Camera className="w-5 h-5 text-yellow-500" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">1. Hunt & Photo Real Cats</h4>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">1. AR Scanner Camera & Pinch-to-Zoom 🐾</h4>
                     <p className="leading-relaxed">
-                      Use the <span className="text-yellow-400 font-bold font-mono">CAMERA</span> feature to take photos of real cats directly in your environment. Every successfully captured cat photo awards you <span className="text-yellow-400 font-bold font-mono">+10 Points</span> and is saved in your Collection Album.
-                      <span className="block mt-1 text-slate-400 italic">*Note: For fair play, uploading from gallery and mock placeholders are fully disabled. You must actually hunt real cats using your device camera!*</span>
+                      Use the <span className="text-yellow-400 font-bold font-mono">CAMERA</span> equipped with real-time <span className="text-cyan-400 font-bold font-mono">AR NEKOMON SCANNER</span>! The AR overlay displays tactical telemetry, floating bounding boxes tracking cat signals, and lock confidence.
+                      Use <span className="text-yellow-400 font-bold font-mono">Pinch-to-Zoom</span> gestures or <span className="text-yellow-400 font-bold font-mono">1.0x - 4.0x</span> zoom controls to capture distant cats precisely. Each capture awards <span className="text-yellow-400 font-bold font-mono">+10 Points</span>!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">2. Radar Spot Map & Map Quests 🗺️</h4>
+                    <p className="leading-relaxed">
+                      Explore surroundings using the <span className="text-emerald-400 font-bold font-mono">RADAR SPOT MAP</span> (supports Real GPS & GPS Simulator). Locate wild cat spots (Parks 🌳, Cat Cafes ☕, Stations 🚉) offering elemental boosts!
+                      Complete <span className="text-yellow-400 font-bold font-mono">Map Exploration Quests</span> such as traveling 1 km or visiting specific spots to claim free Points, Nekomon Cores, and Booster Card Packs!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">3. Community Spots & Validation 👥</h4>
+                    <p className="leading-relaxed">
+                      Spotted a unique cat nearby? Register it on <span className="text-cyan-400 font-bold font-mono">COMMUNITY SPOTS</span> for other Trainers to discover and capture! Support ("Valid!") spots created by other players to boost community trust and standing.
                     </p>
                   </div>
                 </div>
@@ -138,21 +184,9 @@ export const GameGuide: React.FC = () => {
                     <Hammer className="w-5 h-5 text-teal-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">2. Forge into Nekomon Cards</h4>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">4. Forge into Nekomon Cards ⚔️</h4>
                     <p className="leading-relaxed">
                       Open the <span className="text-teal-400 font-bold font-mono">CARDS</span> tab, select your captured cat photo, then click forge to bring it to the <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. A brand new Nekomon Card will be forged instantly using AI, featuring unique Elements, Art Style (Sentinel/Scourge), randomized stats (HP, ATK, DEF, SPD), and rarity from Common to Legendary!
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                    <Gamepad2 className="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">3. Complete Daily Missions</h4>
-                    <p className="leading-relaxed">
-                      Every day, various challenges are available on the <span className="text-indigo-400 font-bold font-mono">MISSIONS</span> tab. Dispatch your qualified Nekomon on expeditions. Completing missions gains card level (+XP) and awards valuable items like <span className="text-teal-400 font-bold font-mono">Nekomon Cores</span> and bonus Points!
                     </p>
                   </div>
                 </div>
@@ -162,21 +196,9 @@ export const GameGuide: React.FC = () => {
                     <Swords className="w-5 h-5 text-rose-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">4. Fight in Online Arena</h4>
+                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">5. Battle & Trade Cards Online 🏆</h4>
                     <p className="leading-relaxed">
-                      Test your Nekomon strength on the <span className="text-rose-400 font-bold font-mono">ARENA</span> tab. Search for real-time combat against other players' decks or practice offline against AI bots. Coordinate tactful elemental strikes, defeat opponents, earn Points, and climb the leaderboard!
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-850 flex gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                    <ArrowLeftRight className="w-5 h-5 text-amber-500" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">5. Card Trading Floor</h4>
-                    <p className="leading-relaxed">
-                      Do you have too many duplicate cards? Open the <span className="text-amber-500 font-bold font-mono">TRADING</span> floor to swap duplicate cards fairly with other online players. Trade your cards for your dream Nekomon with equal rarity to complete your album!
+                      Test your deck strength on the <span className="text-rose-400 font-bold font-mono">PVP ARENA</span> against players live or against AI bots. Use the <span className="text-amber-500 font-bold font-mono">TRADING</span> floor to swap duplicate cards fairly with online Trainers to complete your collection!
                     </p>
                   </div>
                 </div>
