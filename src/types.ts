@@ -81,7 +81,7 @@ export interface AuthResponse {
   error?: string;
 }
 
-export type SpotCategory = "taman" | "cafe" | "stasiun" | "lapangan" | "mall" | "pantai";
+export type SpotCategory = "taman" | "jalan" | "komplek" | "cafe" | "stasiun" | "terminal" | "halte" | "others" | "lapangan" | "mall" | "pantai";
 
 export interface NekomonSpot {
   id: string;

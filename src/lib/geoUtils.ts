@@ -79,66 +79,16 @@ const SPOT_PRESETS: Array<{
     description: "Area taman hijau yang sering disinggahi kucing belang tiga yang lincah."
   },
   {
-    nameTemplate: "Kopi Cat Corner",
-    category: "cafe",
-    categoryLabel: "Cafe & Warkop",
-    targetCatName: "Kucing Barista Mocha",
-    iconEmoji: "☕",
-    boostedElement: "Air",
-    rarity: "Rare",
-    bonusPoints: 20,
-    radiusMeters: 20,
-    description: "Aroma kopi hangat menarik perhatian kucing berbulu cokelat keemasan."
-  },
-  {
-    nameTemplate: "Stasiun Nekomon Central",
-    category: "stasiun",
-    categoryLabel: "Stasiun Transit",
-    targetCatName: "Kucing Kilat Stasiun",
-    iconEmoji: "🚉",
-    boostedElement: "Petir",
-    rarity: "Epic",
-    bonusPoints: 30,
-    bonusCores: 1,
-    radiusMeters: 30,
-    description: "Deru kereta membangkitkan aura listrik pada kucing hitam misterius!"
-  },
-  {
-    nameTemplate: "Lapangan Merah Felis",
-    category: "lapangan",
-    categoryLabel: "Lapangan & Alun-alun",
-    targetCatName: "Kucing Champion Oranye",
-    iconEmoji: "⚽",
-    boostedElement: "Api",
-    rarity: "Rare",
-    bonusPoints: 25,
-    radiusMeters: 25,
-    description: "Kucing oranye tangguh yang suka berlarian di tengah lapangan terbuka."
-  },
-  {
-    nameTemplate: "Nekomon Grand Mall",
-    category: "mall",
-    categoryLabel: "Pusat Perbelanjaan",
-    targetCatName: "Kucing Angora Anggun",
-    iconEmoji: "🏢",
+    nameTemplate: "Jalan / Trotoar Meow Way",
+    category: "jalan",
+    categoryLabel: "Jalan / Trotoar",
+    targetCatName: "Kucing Trotoar Oyen",
+    iconEmoji: "🛣️",
     boostedElement: "Angin",
-    rarity: "Epic",
-    bonusPoints: 35,
+    rarity: "Common",
+    bonusPoints: 15,
     radiusMeters: 20,
-    description: "Kucing putih cantik dengan bulu lebat berangin di sekitar lobi utama."
-  },
-  {
-    nameTemplate: "Danau Meow Bay",
-    category: "pantai",
-    categoryLabel: "Danau & Rawa",
-    targetCatName: "Kucing Fisher Biru",
-    iconEmoji: "🏖️",
-    boostedElement: "Air",
-    rarity: "Legend",
-    bonusPoints: 50,
-    bonusCores: 2,
-    radiusMeters: 30,
-    description: "Kucing legendaris langka yang pandai menangkap ikan di tepi air."
+    description: "Pinggir jalan bersuasana santai tempat favorit kucing liar berjemur."
   },
   {
     nameTemplate: "Taman Bunga Sakura Meow",
@@ -153,16 +103,16 @@ const SPOT_PRESETS: Array<{
     description: "Kelopak bunga Sakura berguguran di sekitar kucing berbulu merah muda."
   },
   {
-    nameTemplate: "Warkop Meow Latte",
-    category: "cafe",
-    categoryLabel: "Cafe & Warkop",
-    targetCatName: "Kucing Espresso Kilat",
-    iconEmoji: "☕",
+    nameTemplate: "Jalan Utama Felis Walk",
+    category: "jalan",
+    categoryLabel: "Jalan / Trotoar",
+    targetCatName: "Kucing Hitam Pesisir",
+    iconEmoji: "🛣️",
     boostedElement: "Petir",
-    rarity: "Common",
-    bonusPoints: 15,
-    radiusMeters: 20,
-    description: "Tempat nongkrong santai yang selalu diramaikan anak kucing imut."
+    rarity: "Rare",
+    bonusPoints: 20,
+    radiusMeters: 22,
+    description: "Aktivitas pejalan kaki di trotoar membuat kucing ini sangat gesit."
   }
 ];
 
@@ -185,7 +135,7 @@ export function generateNekomonSpots(centerLat: number, centerLng: number): Neko
     const coords = offsetCoordinates(centerLat, centerLng, off.north, off.east);
     
     return {
-      id: `spot_${index + 1}_${Date.now()}`,
+      id: `spot_default_${index + 1}`,
       name: preset.nameTemplate,
       category: preset.category,
       categoryLabel: preset.categoryLabel,

@@ -28,12 +28,21 @@ async function bootSyncFirestore() {
       // Merge remote data into current DB
       if (Array.isArray(remoteData.users)) {
         remoteData.users.forEach((u: any) => {
-          if (!current.users.some((x: any) => x.id === u.id)) {
+          const idx = current.users.findIndex((x: any) => x.id === u.id);
+          if (idx === -1) {
             current.users.push(u);
+          } else {
+            current.users[idx] = {
+              ...current.users[idx],
+              ...u,
+              points: Math.max(current.users[idx].points || 0, u.points || 0),
+              cores: Math.max(current.users[idx].cores || 0, u.cores || 0)
+            };
           }
         });
       }
       if (Array.isArray(remoteData.captures)) {
+        if (!current.captures) current.captures = [];
         remoteData.captures.forEach((c: any) => {
           if (!current.captures.some((x: any) => x.id === c.id)) {
             current.captures.push(c);
@@ -41,9 +50,13 @@ async function bootSyncFirestore() {
         });
       }
       if (Array.isArray(remoteData.cards)) {
+        if (!current.cards) current.cards = [];
         remoteData.cards.forEach((card: any) => {
-          if (!current.cards.some((x: any) => x.id === card.id)) {
+          const cIdx = current.cards.findIndex((x: any) => x.id === card.id);
+          if (cIdx === -1) {
             current.cards.push(card);
+          } else {
+            current.cards[cIdx] = { ...current.cards[cIdx], ...card };
           }
         });
       }
@@ -52,6 +65,33 @@ async function bootSyncFirestore() {
         remoteData.trades.forEach((t: any) => {
           if (!current.trades.some((x: any) => x.id === t.id)) {
             current.trades.push(t);
+          }
+        });
+      }
+      if (Array.isArray(remoteData.communitySpots)) {
+        if (!current.communitySpots) current.communitySpots = [];
+        remoteData.communitySpots.forEach((s: any) => {
+          const sIdx = current.communitySpots.findIndex((x: any) => x.id === s.id);
+          if (sIdx === -1) {
+            current.communitySpots.push(s);
+          } else {
+            current.communitySpots[sIdx] = { ...current.communitySpots[sIdx], ...s };
+          }
+        });
+      }
+      if (Array.isArray(remoteData.battleHistory)) {
+        if (!current.battleHistory) current.battleHistory = [];
+        remoteData.battleHistory.forEach((b: any) => {
+          if (!current.battleHistory.some((x: any) => x.id === b.id)) {
+            current.battleHistory.push(b);
+          }
+        });
+      }
+      if (Array.isArray(remoteData.transactions)) {
+        if (!current.transactions) current.transactions = [];
+        remoteData.transactions.forEach((tx: any) => {
+          if (!current.transactions.some((x: any) => x.id === tx.id)) {
+            current.transactions.push(tx);
           }
         });
       }
@@ -69,15 +109,18 @@ bootSyncFirestore();
 function readDB() {
   try {
     if (!fs.existsSync(DB_PATH)) {
-      const initial = { users: [], captures: [], cards: [], trades: [] };
+      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [] };
       fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2));
       return initial;
     }
     const data = fs.readFileSync(DB_PATH, "utf8");
     const parsed = JSON.parse(data);
-    if (!parsed.trades) {
-      parsed.trades = [];
-    }
+    if (!parsed.trades) parsed.trades = [];
+    if (!parsed.communitySpots) parsed.communitySpots = [];
+    if (!parsed.battleHistory) parsed.battleHistory = [];
+    if (!parsed.transactions) parsed.transactions = [];
+    if (!parsed.captures) parsed.captures = [];
+    if (!parsed.cards) parsed.cards = [];
 
     // Seed Bot Players with unique names if they don't already exist
     const bots = [
@@ -3035,6 +3078,28 @@ app.get("/api/arena/history", (req, res) => {
 // ----------------------------------------------------------------
 // Community Spots (Crowdsourced Spawns) Routes
 // ----------------------------------------------------------------
+const categoryEmojis: Record<string, string> = {
+  taman: "🌳",
+  jalan: "🛣️",
+  komplek: "🏡",
+  cafe: "☕",
+  stasiun: "🚉",
+  terminal: "🚌",
+  halte: "🚏",
+  others: "📍"
+};
+
+const categoryLabels: Record<string, string> = {
+  taman: "Taman Kucing",
+  jalan: "Jalan / Trotoar",
+  komplek: "Komplek Perumahan",
+  cafe: "Cafe Kucing",
+  stasiun: "Stasiun Cat",
+  terminal: "Terminal Bus",
+  halte: "Halte Bus",
+  others: "Spot Lainnya"
+};
+
 app.get("/api/community-spots", (req, res) => {
   const db = readDB();
   const communitySpots = db.communitySpots || [];
@@ -3050,33 +3115,17 @@ app.post("/api/community-spots", (req, res) => {
     return res.status(400).json({ error: "Nama spot, kategori, lokasi GPS, dan nama kucing target wajib diisi." });
   }
 
-  const categoryEmojis: Record<string, string> = {
-    taman: "🌳",
-    cafe: "☕",
-    stasiun: "🚉",
-    lapangan: "⚽",
-    mall: "🛍️",
-    pantai: "🏖️"
-  };
-
-  const categoryLabels: Record<string, string> = {
-    taman: "Taman Kucing",
-    cafe: "Cafe Kucing",
-    stasiun: "Stasiun Cat",
-    lapangan: "Lapangan / Open Space",
-    mall: "Mall & Plaza",
-    pantai: "Area Pesisir / Pantai"
-  };
-
   if (!db.communitySpots) {
     db.communitySpots = [];
   }
 
+  const catKey = category && categoryEmojis[category] ? category : "others";
+
   const newSpot = {
     id: "spot_comm_" + Math.random().toString(36).substr(2, 9),
     name: name.trim(),
-    category: category || "taman",
-    categoryLabel: categoryLabels[category] || "Spot Komunitas",
+    category: catKey,
+    categoryLabel: categoryLabels[catKey] || "Spot Komunitas",
     lat: Number(lat),
     lng: Number(lng),
     radiusMeters: 25,
@@ -3085,7 +3134,7 @@ app.post("/api/community-spots", (req, res) => {
     bonusCores: 5,
     targetCatName: targetCatName.trim(),
     rarity: "Epic",
-    iconEmoji: categoryEmojis[category] || "🐾",
+    iconEmoji: categoryEmojis[catKey] || "🐾",
     description: description ? description.trim() : "Spot kucing rekomendasi dari komunitas player!",
     isCommunity: true,
     submittedBy: user ? user.username : "Komunitas Player",
@@ -3100,6 +3149,91 @@ app.post("/api/community-spots", (req, res) => {
     success: true,
     message: "Spot kucing berhasil didaftarkan ke Peta Komunitas! Terima kasih atas kontribusinya 🐾",
     spot: newSpot
+  });
+});
+
+app.put("/api/community-spots/:id", (req, res) => {
+  const { id } = req.params;
+  const db = readDB();
+
+  if (!db.communitySpots) db.communitySpots = [];
+  const spotIndex = db.communitySpots.findIndex((s: any) => s.id === id);
+
+  const { name, category, targetCatName, description, boostedElement, lat, lng, radiusMeters, rarity, bonusPoints, bonusCores } = req.body;
+  const catKey = category && categoryEmojis[category] ? category : "taman";
+
+  if (spotIndex === -1) {
+    const newSpot = {
+      id,
+      name: (name || "Spot Nekomon").trim(),
+      category: catKey,
+      categoryLabel: categoryLabels[catKey] || "Spot Komunitas",
+      lat: Number(lat) || 0,
+      lng: Number(lng) || 0,
+      radiusMeters: Number(radiusMeters) || 25,
+      boostedElement: boostedElement || "Air",
+      bonusPoints: Number(bonusPoints) || 25,
+      bonusCores: Number(bonusCores) || 1,
+      targetCatName: (targetCatName || "Kucing Target").trim(),
+      rarity: rarity || "Rare",
+      iconEmoji: categoryEmojis[catKey] || "🐾",
+      description: description ? description.trim() : "Spot template yang diperbarui oleh komunitas!",
+      isCommunity: true,
+      votes: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    db.communitySpots.push(newSpot);
+    writeDB(db);
+    return res.json({
+      success: true,
+      message: "Data spot lokasi berhasil disimpan dan diperbarui! ✏️",
+      spot: newSpot
+    });
+  }
+
+  const spot = db.communitySpots[spotIndex];
+
+  if (name && name.trim()) spot.name = name.trim();
+  if (category && categoryEmojis[category]) {
+    spot.category = category;
+    spot.categoryLabel = categoryLabels[category] || spot.categoryLabel || "Spot Komunitas";
+    spot.iconEmoji = categoryEmojis[category] || spot.iconEmoji || "🐾";
+  }
+  if (targetCatName && targetCatName.trim()) spot.targetCatName = targetCatName.trim();
+  if (description !== undefined) spot.description = description.trim();
+  if (boostedElement) spot.boostedElement = boostedElement;
+  if (lat && !isNaN(Number(lat))) spot.lat = Number(lat);
+  if (lng && !isNaN(Number(lng))) spot.lng = Number(lng);
+  spot.updatedAt = new Date().toISOString();
+
+  db.communitySpots[spotIndex] = spot;
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Data spot lokasi berhasil diperbarui! ✏️",
+    spot
+  });
+});
+
+app.delete("/api/community-spots/:id", (req, res) => {
+  const { id } = req.params;
+  const db = readDB();
+
+  if (!db.communitySpots) db.communitySpots = [];
+  const spotIndex = db.communitySpots.findIndex((s: any) => s.id === id);
+
+  if (spotIndex === -1) {
+    return res.status(404).json({ error: "Spot komunitas tidak ditemukan." });
+  }
+
+  db.communitySpots.splice(spotIndex, 1);
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Spot komunitas berhasil dihapus."
   });
 });
 

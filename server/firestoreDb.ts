@@ -74,6 +74,33 @@ export async function syncToFirestore(data: any) {
         });
       }
     }
+
+    if (Array.isArray(data.communitySpots)) {
+      for (const spot of data.communitySpots) {
+        if (!spot || !spot.id) continue;
+        await fsDb.collection("communitySpots").doc(spot.id).set(spot, { merge: true }).catch(err => {
+          console.warn("Firestore communitySpot sync warning:", err?.message || err);
+        });
+      }
+    }
+
+    if (Array.isArray(data.battleHistory)) {
+      for (const b of data.battleHistory) {
+        if (!b || !b.id) continue;
+        await fsDb.collection("battleHistory").doc(b.id).set(b, { merge: true }).catch(err => {
+          console.warn("Firestore battleHistory sync warning:", err?.message || err);
+        });
+      }
+    }
+
+    if (Array.isArray(data.transactions)) {
+      for (const tx of data.transactions) {
+        if (!tx || !tx.id) continue;
+        await fsDb.collection("transactions").doc(tx.id).set(tx, { merge: true }).catch(err => {
+          console.warn("Firestore transaction sync warning:", err?.message || err);
+        });
+      }
+    }
   } catch (err: any) {
     console.warn("Firestore sync skipped due to permissions/connectivity:", err?.message || err);
   }
@@ -84,17 +111,23 @@ export async function loadFromFirestore(): Promise<any | null> {
   if (!fsDb) return null;
 
   try {
-    const usersSnap = await fsDb.collection("users").get();
-    const capturesSnap = await fsDb.collection("captures").get();
-    const cardsSnap = await fsDb.collection("cards").get();
-    const tradesSnap = await fsDb.collection("trades").get();
+    const usersSnap = await fsDb.collection("users").get().catch(() => ({ docs: [] }));
+    const capturesSnap = await fsDb.collection("captures").get().catch(() => ({ docs: [] }));
+    const cardsSnap = await fsDb.collection("cards").get().catch(() => ({ docs: [] }));
+    const tradesSnap = await fsDb.collection("trades").get().catch(() => ({ docs: [] }));
+    const communitySpotsSnap = await fsDb.collection("communitySpots").get().catch(() => ({ docs: [] }));
+    const battleHistorySnap = await fsDb.collection("battleHistory").get().catch(() => ({ docs: [] }));
+    const transactionsSnap = await fsDb.collection("transactions").get().catch(() => ({ docs: [] }));
 
     const users = usersSnap.docs.map(doc => doc.data());
     const captures = capturesSnap.docs.map(doc => doc.data());
     const cards = cardsSnap.docs.map(doc => doc.data());
     const trades = tradesSnap.docs.map(doc => doc.data());
+    const communitySpots = communitySpotsSnap.docs.map(doc => doc.data());
+    const battleHistory = battleHistorySnap.docs.map(doc => doc.data());
+    const transactions = transactionsSnap.docs.map(doc => doc.data());
 
-    if (users.length === 0 && captures.length === 0 && cards.length === 0) {
+    if (users.length === 0 && captures.length === 0 && cards.length === 0 && communitySpots.length === 0) {
       return null;
     }
 
@@ -102,7 +135,10 @@ export async function loadFromFirestore(): Promise<any | null> {
       users,
       captures,
       cards,
-      trades
+      trades,
+      communitySpots,
+      battleHistory,
+      transactions
     };
   } catch (err) {
     console.warn("Could not load initial data from Firestore:", err);
