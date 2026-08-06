@@ -962,6 +962,8 @@ app.get("/api/user/profile", (req, res) => {
       email: user.email, 
       points: user.points,
       cores: user.cores || 0,
+      avatarUrl: user.avatarUrl || "",
+      nameChangeCount: user.nameChangeCount || 0,
       lastDailyBonusAt: user.lastDailyBonusAt,
       lastLevel8BonusAt: user.lastLevel8BonusAt,
       captureStreak: user.captureStreak || 0,
@@ -1210,7 +1212,7 @@ async function analyzeCatPhoto(photoBase64: string): Promise<{ isCat: boolean; r
 
 // Capture photo and get 10 points (plus optional Nekomon Spot bonus)
 app.post("/api/capture", async (req, res) => {
-  const { photo, spotBonus, spotName } = req.body; // base64 photo + optional spot bonus
+  const { photo, spotBonus, spotName, spotId } = req.body; // base64 photo + optional spot bonus & spot info
   if (!photo) {
     return res.status(400).json({ error: "Data foto kucing wajib dikirim." });
   }
@@ -1219,6 +1221,25 @@ app.post("/api/capture", async (req, res) => {
   const user = getAuthUser(req, db);
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // 3 Cat Captures Limit per Spot per Day Check
+  if (spotId || spotName) {
+    const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const todaySpotCaptures = db.captures.filter((c: any) => {
+      if (c.userId !== user.id) return false;
+      const captureDateStr = new Date(c.createdAt).toISOString().split("T")[0];
+      if (captureDateStr !== todayStr) return false;
+      if (spotId && c.spotId === spotId) return true;
+      if (spotName && c.spotName === spotName) return true;
+      return false;
+    });
+
+    if (todaySpotCaptures.length >= 3) {
+      return res.status(400).json({
+        error: `Batas harian tercapai! Anda telah menangkap 3 kucing di spot [${spotName || "ini"}] hari ini. Pembatasan akan direset besok. Silakan berburu di spot lokasi lain!`
+      });
+    }
   }
 
   // Analisis foto menggunakan Gemini
@@ -1241,7 +1262,9 @@ app.post("/api/capture", async (req, res) => {
     userId: user.id,
     photoUrl: photo,
     isForged: false,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    spotId: spotId || null,
+    spotName: spotName || null
   };
 
   db.captures.push(newCapture);
@@ -1662,6 +1685,164 @@ app.delete("/api/captures/:id", (req, res) => {
   res.json({
     success: true,
     message: "Foto kucing berhasil dihapus dari galeri."
+  });
+});
+
+// Retake / Replace photo for an existing captured item in Gallery
+app.put("/api/captures/:id/photo", async (req, res) => {
+  const captureId = req.params.id;
+  const { photo } = req.body;
+
+  if (!captureId || !photo) {
+    return res.status(400).json({ error: "ID Foto dan data foto baru wajib diisi." });
+  }
+
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const captureIndex = db.captures.findIndex((c: any) => c.id === captureId && c.userId === user.id);
+  if (captureIndex === -1) {
+    return res.status(404).json({ error: "Foto tidak ditemukan di galeri Anda." });
+  }
+
+  const capture = db.captures[captureIndex];
+  if (capture.isForged) {
+    return res.status(400).json({ error: "Foto ini sudah di-forge menjadi Nekomon Card. Foto kartu yang telah di-forge tidak dapat diganti." });
+  }
+
+  // Analyze new cat photo with Gemini
+  const analysis = await analyzeCatPhoto(photo);
+  if (!analysis.isCat) {
+    return res.status(400).json({ error: analysis.reason });
+  }
+
+  capture.photoUrl = photo;
+  db.captures[captureIndex] = capture;
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Foto kucing berhasil di-retake dan diperbarui!",
+    capture
+  });
+});
+
+// Update Profile Picture (Avatar)
+app.post("/api/user/avatar", (req, res) => {
+  const { avatarUrl } = req.body;
+  
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  user.avatarUrl = avatarUrl || "";
+  
+  const uIdx = db.users.findIndex((u: any) => u.id === user.id);
+  if (uIdx !== -1) {
+    db.users[uIdx] = user;
+  }
+
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: avatarUrl ? "Foto profil berhasil diperbarui!" : "Foto profil berhasil dihapus.",
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      points: user.points,
+      cores: user.cores || 0,
+      avatarUrl: user.avatarUrl,
+      nameChangeCount: user.nameChangeCount || 0,
+      captureStreak: user.captureStreak,
+      lastCaptureDate: user.lastCaptureDate
+    }
+  });
+});
+
+// Change Username (1st change is FREE, 2nd and subsequent changes cost 200 Cores)
+app.post("/api/user/change-username", (req, res) => {
+  const { newUsername } = req.body;
+
+  if (!newUsername || typeof newUsername !== "string") {
+    return res.status(400).json({ error: "Username baru tidak boleh kosong." });
+  }
+
+  const cleanUsername = newUsername.trim();
+  if (cleanUsername.length < 3 || cleanUsername.length > 20) {
+    return res.status(400).json({ error: "Username harus terdiri dari 3 hingga 20 karakter." });
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+    return res.status(400).json({ error: "Username hanya boleh menggunakan huruf, angka, dan garis bawah (_)." });
+  }
+
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (user.username.toLowerCase() === cleanUsername.toLowerCase()) {
+    return res.status(400).json({ error: "Username baru sama dengan username Anda saat ini." });
+  }
+
+  // Check if username is already taken by another user
+  const isTaken = db.users.some((u: any) => u.id !== user.id && u.username.toLowerCase() === cleanUsername.toLowerCase());
+  if (isTaken) {
+    return res.status(400).json({ error: "Username tersebut sudah digunakan oleh player lain. Silakan pilih username lain." });
+  }
+
+  const currentCount = user.nameChangeCount || 0;
+
+  if (currentCount > 0) {
+    // Requires 200 Cores
+    const userCores = user.cores || 0;
+    if (userCores < 200) {
+      return res.status(400).json({
+        error: `Nekomon Cores tidak cukup! Penggantian username kedua dan seterusnya membutuhkan 200 Cores (Cores Anda saat ini: ${userCores}).`
+      });
+    }
+    user.cores = userCores - 200;
+  }
+
+  user.username = cleanUsername;
+  user.nameChangeCount = currentCount + 1;
+
+  // Update user in db
+  const uIdx = db.users.findIndex((u: any) => u.id === user.id);
+  if (uIdx !== -1) {
+    db.users[uIdx] = user;
+  }
+
+  writeDB(db);
+
+  // Generate new token since auth token is base64 of id:username
+  const newToken = Buffer.from(`${user.id}:${user.username}`).toString("base64");
+
+  res.json({
+    success: true,
+    message: currentCount === 0 
+      ? `Selamat! Username berhasil diubah menjadi @${cleanUsername} secara GRATIS (Penggantian ke-1).`
+      : `Username berhasil diubah menjadi @${cleanUsername} (-200 Nekomon Cores).`,
+    newToken,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      points: user.points,
+      cores: user.cores || 0,
+      avatarUrl: user.avatarUrl || "",
+      nameChangeCount: user.nameChangeCount,
+      captureStreak: user.captureStreak,
+      lastCaptureDate: user.lastCaptureDate
+    }
   });
 });
 

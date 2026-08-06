@@ -4,6 +4,8 @@ export interface User {
   email: string;
   points: number;
   cores?: number;
+  avatarUrl?: string;
+  nameChangeCount?: number;
   lastDailyBonusAt?: string;
   lastLevel8BonusAt?: string;
   captureStreak?: number;
@@ -33,6 +35,8 @@ export interface Capture {
   photoUrl: string;
   isForged: boolean;
   createdAt: string;
+  spotId?: string;
+  spotName?: string;
 }
 
 export interface EvolutionLog {

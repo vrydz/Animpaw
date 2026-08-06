@@ -48,7 +48,12 @@ import {
   Coins,
   Flame,
   Share2,
-  MapPin
+  MapPin,
+  Edit3,
+  ShieldCheck,
+  AlertTriangle,
+  Loader2,
+  Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
@@ -563,6 +568,125 @@ export default function App() {
     }
   };
 
+  // Retake capture handler
+  const handleRetakeCapture = async (captureId: string, newPhotoBase64: string) => {
+    if (!token) return { success: false, error: "Unauthorized" };
+    try {
+      const response = await fetch(`/api/captures/${captureId}/photo`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ photo: newPhotoBase64 })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.error || "Gagal memperbarui foto." };
+      }
+      setCaptures(prev => prev.map(c => c.id === captureId ? { ...c, photoUrl: newPhotoBase64 } : c));
+      setNotification({
+        message: "Foto kucing berhasil di-retake dan diperbarui!",
+        type: "success"
+      });
+      return { success: true, message: data.message };
+    } catch (err) {
+      return { success: false, error: "Gagal terhubung ke server." };
+    }
+  };
+
+  // Profile picture modal states
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
+  const [avatarModalError, setAvatarModalError] = useState<string | null>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Username change modal states
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [newUsernameInput, setNewUsernameInput] = useState("");
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+  const [usernameModalError, setUsernameModalError] = useState<string | null>(null);
+
+  // Avatar update handler
+  const handleSaveAvatar = async (avatarUrlToSave: string) => {
+    if (!token) return;
+    setIsSavingAvatar(true);
+    setAvatarModalError(null);
+    try {
+      const res = await fetch("/api/user/avatar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ avatarUrl: avatarUrlToSave })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAvatarModalError(data.error || "Gagal memperbarui foto profil.");
+      } else {
+        if (user) {
+          setUser({ ...user, avatarUrl: data.user.avatarUrl });
+        }
+        setShowAvatarModal(false);
+        setAvatarDraft(null);
+        setNotification({
+          message: data.message || "Foto profil berhasil diperbarui!",
+          type: "success"
+        });
+      }
+    } catch (err) {
+      setAvatarModalError("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsSavingAvatar(false);
+    }
+  };
+
+  // Username change handler
+  const handleSaveUsername = async () => {
+    if (!token) return;
+    setIsSavingUsername(true);
+    setUsernameModalError(null);
+    try {
+      const res = await fetch("/api/user/change-username", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ newUsername: newUsernameInput })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setUsernameModalError(data.error || "Gagal mengubah username.");
+      } else {
+        if (data.newToken) {
+          setToken(data.newToken);
+          localStorage.setItem("nekomon_token", data.newToken);
+        }
+        if (user && data.user) {
+          setUser({
+            ...user,
+            username: data.user.username,
+            cores: data.user.cores,
+            nameChangeCount: data.user.nameChangeCount
+          });
+        }
+        setShowUsernameModal(false);
+        setNewUsernameInput("");
+        setNotification({
+          message: data.message || "Username berhasil diubah!",
+          type: "success"
+        });
+      }
+    } catch (err) {
+      setUsernameModalError("Terjadi kesalahan jaringan.");
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
+
   // Nekomon card forged callback
   const handleForgeSuccess = (newCard: Card, updatedPoints: number, updatedCores?: number, coresEarned?: number) => {
     let updatedUser = user;
@@ -1043,6 +1167,15 @@ export default function App() {
                         userPoints={user.points}
                         activeSpot={activeSpotToCapture}
                         onClearSpot={() => setActiveSpotToCapture(null)}
+                        spotCapturesCount={
+                          activeSpotToCapture 
+                            ? captures.filter(c => {
+                                const todayStr = new Date().toISOString().split("T")[0];
+                                const cDate = new Date(c.createdAt).toISOString().split("T")[0];
+                                return cDate === todayStr && (c.spotId === activeSpotToCapture.id || c.spotName === activeSpotToCapture.name);
+                              }).length
+                            : 0
+                        }
                       />
                     </div>
                   </motion.div>
@@ -1156,6 +1289,7 @@ export default function App() {
                           onSelectForge={handleSelectForge}
                           onDestroyCard={handleDestroyCard}
                           onDeleteCapture={handleDeleteCapture}
+                          onRetakeCapture={handleRetakeCapture}
                           onEvolveCard={handleEvolveCard}
                           onCancelEvolution={handleCancelEvolution}
                           user={user}
@@ -1330,12 +1464,42 @@ export default function App() {
                       <div className="flex flex-col gap-4">
                         {/* Profile Card Header */}
                         <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-850 relative overflow-hidden">
-                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500/20 via-slate-900 to-slate-950 border-2 border-yellow-500/40 flex items-center justify-center text-3xl shadow-inner shrink-0">
-                            {highestBadge ? highestBadge.emoji : "🎒"}
+                          <div className="relative group shrink-0">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500/20 via-slate-900 to-slate-950 border-2 border-yellow-500/40 flex items-center justify-center text-3xl shadow-inner overflow-hidden">
+                              {user.avatarUrl ? (
+                                <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                              ) : (
+                                <span>{highestBadge ? highestBadge.emoji : "🎒"}</span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => {
+                                setShowAvatarModal(true);
+                                setAvatarDraft(null);
+                                setAvatarModalError(null);
+                              }}
+                              className="absolute -bottom-1 -right-1 p-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 rounded-lg shadow-md transition-all cursor-pointer border border-yellow-300"
+                              title={language === "id" ? "Ganti foto profil" : "Change profile picture"}
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                            </button>
                           </div>
+
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-black text-lg text-slate-100 truncate">@{user.username}</h3>
+                              <button
+                                onClick={() => {
+                                  setShowUsernameModal(true);
+                                  setNewUsernameInput(user.username);
+                                  setUsernameModalError(null);
+                                }}
+                                className="p-1 text-slate-400 hover:text-yellow-400 bg-slate-900 hover:bg-slate-850 rounded-md border border-slate-800 transition-all cursor-pointer text-[10px] flex items-center gap-1 font-mono"
+                                title={language === "id" ? "Ganti username" : "Change username"}
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>{(user.nameChangeCount || 0) === 0 ? "GRATIS" : "200 Cores"}</span>
+                              </button>
                               {highestBadge && (
                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold border ${highestBadge.badgeClass} shadow-sm`}>
                                   {language === "id" ? highestBadge.badgeNameId : highestBadge.badgeNameEn}
@@ -1671,6 +1835,224 @@ export default function App() {
         badge={achievementModalData.badge}
         type={achievementModalData.type}
       />
+
+      {/* Upload / Edit Profile Picture Modal */}
+      <AnimatePresence>
+        {showAvatarModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full shadow-2xl flex flex-col gap-4 font-mono relative"
+            >
+              <input
+                ref={avatarFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    const res = event.target?.result as string;
+                    if (res) setAvatarDraft(res);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+                className="hidden"
+              />
+
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2 text-yellow-500">
+                  <Camera className="w-5 h-5" />
+                  <h3 className="font-extrabold text-sm uppercase tracking-wider">
+                    {language === "id" ? "Ganti Foto Profil" : "Change Profile Picture"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowAvatarModal(false)}
+                  className="p-1 text-slate-400 hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Safety notice banner */}
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2 text-amber-300 text-[10px] leading-relaxed">
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  {language === "id" 
+                    ? "Foto profil harus pantas dan sopan. Dilarang keras mengunggah foto yang mengandung unsur penghinaan, SARA, atau pornografi." 
+                    : "Profile pictures must be appropriate. Hate speech, offensive material, and explicit content are strictly prohibited."}
+                </span>
+              </div>
+
+              {/* Preview Avatar Box */}
+              <div className="flex flex-col items-center justify-center my-1 gap-2">
+                <div 
+                  onClick={() => avatarFileInputRef.current?.click()}
+                  className="w-24 h-24 rounded-2xl bg-slate-950 border-2 border-dashed border-yellow-500/50 hover:border-yellow-400 flex items-center justify-center overflow-hidden cursor-pointer shadow-inner relative group transition-all"
+                >
+                  {avatarDraft ? (
+                    <img src={avatarDraft} alt="Preview" className="w-full h-full object-cover" />
+                  ) : user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="Current Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-500 group-hover:text-yellow-400">
+                      <Camera className="w-6 h-6 mb-1" />
+                      <span className="text-[9px] font-bold">Pilih Foto</span>
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400">Klik kotak di atas untuk memilih foto baru dari galeri</span>
+              </div>
+
+              {avatarModalError && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2.5 flex items-start gap-2 text-red-400 text-[10px]">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{avatarModalError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  disabled={!avatarDraft || isSavingAvatar}
+                  onClick={() => avatarDraft && handleSaveAvatar(avatarDraft)}
+                  className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 disabled:opacity-40 text-slate-950 font-black py-2.5 rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-md"
+                >
+                  {isSavingAvatar ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>MENYIMPAN...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>SIMPAN FOTO</span>
+                    </>
+                  )}
+                </button>
+
+                {user?.avatarUrl && (
+                  <button
+                    disabled={isSavingAvatar}
+                    onClick={() => handleSaveAvatar("")}
+                    className="px-3 bg-red-950/80 hover:bg-red-900 border border-red-800/80 text-red-300 font-bold py-2.5 rounded-xl text-xs cursor-pointer transition-all"
+                    title="Hapus foto profil saat ini"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Change Username Modal */}
+      <AnimatePresence>
+        {showUsernameModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full shadow-2xl flex flex-col gap-4 font-mono relative"
+            >
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2 text-yellow-500">
+                  <Edit3 className="w-5 h-5" />
+                  <h3 className="font-extrabold text-sm uppercase tracking-wider">
+                    {language === "id" ? "Ganti Username Player" : "Change Username"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowUsernameModal(false)}
+                  className="p-1 text-slate-400 hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Notice Banner based on change count */}
+              {(user?.nameChangeCount || 0) === 0 ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-start gap-2 text-emerald-300 text-[10px] leading-relaxed">
+                  <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Penggantian Pertama: GRATIS!</strong> Anda belum pernah mengganti username. Penggantian pertama tidak dikenakan biaya Nekomon Core.
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2 text-amber-300 text-[10px] leading-relaxed">
+                  <Coins className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Biaya: 200 Nekomon Cores.</strong> Ini adalah penggantian username ke-{(user?.nameChangeCount || 0) + 1}. (Saldo Cores Anda saat ini: <strong>{user?.cores || 0} Cores</strong>)
+                  </span>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-slate-400 font-bold uppercase">Username Baru</label>
+                <input
+                  type="text"
+                  value={newUsernameInput}
+                  onChange={(e) => setNewUsernameInput(e.target.value)}
+                  placeholder="Contoh: NekomonMaster_99"
+                  maxLength={20}
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-yellow-500 transition-all font-mono"
+                />
+                <span className="text-[9px] text-slate-500">3-20 karakter, hanya huruf, angka, dan underscore (_).</span>
+              </div>
+
+              {usernameModalError && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2.5 flex items-start gap-2 text-red-400 text-[10px]">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{usernameModalError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  disabled={!newUsernameInput.trim() || isSavingUsername}
+                  onClick={handleSaveUsername}
+                  className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 disabled:opacity-40 text-slate-950 font-black py-2.5 rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-md"
+                >
+                  {isSavingUsername ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>PROSES...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>SIMPAN USERNAME</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  disabled={isSavingUsername}
+                  onClick={() => setShowUsernameModal(false)}
+                  className="px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs cursor-pointer transition-all border border-slate-700"
+                >
+                  BATAL
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Audio Soundtrack Controller Button (Moved to bottom right for mobile friendliness) */}
       <div className="fixed bottom-6 right-6 z-40">

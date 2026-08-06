@@ -16,7 +16,8 @@ import {
   Radio,
   ShieldCheck,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -24,17 +25,19 @@ import { haptics } from "../lib/vibration";
 import { NekomonSpot } from "../types";
 
 interface VirtualCameraProps {
-  onCapture: (base64Photo: string) => Promise<void>;
+  onCapture: (base64Photo: string, spotId?: string, spotName?: string) => Promise<void>;
   userPoints: number;
   activeSpot?: NekomonSpot | null;
   onClearSpot?: () => void;
+  spotCapturesTodayCount?: number;
 }
 
 export const VirtualCamera: React.FC<VirtualCameraProps> = ({ 
   onCapture, 
   userPoints,
   activeSpot,
-  onClearSpot
+  onClearSpot,
+  spotCapturesTodayCount = 0
 }) => {
   const { language, t } = useLanguage();
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -42,6 +45,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showPointsToast, setShowPointsToast] = useState<boolean>(false);
+  const [capturedDraft, setCapturedDraft] = useState<string | null>(null);
 
   // AR Scanner Overlay States
   const [arEnabled, setArEnabled] = useState<boolean>(true);
@@ -187,11 +191,10 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
     setCameraActive(false);
   };
 
-  // Capture Photo
-  const capturePhoto = async () => {
+  // Capture Photo Draft for Preview & Retake
+  const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
     haptics.capture();
-    setIsCapturing(true);
 
     try {
       const video = videoRef.current;
@@ -199,15 +202,15 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
       const ctx = canvas.getContext("2d");
 
       if (ctx) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
         
         // Handle crop if zoomed in
         if (zoomScale > 1) {
-          const cropW = video.videoWidth / zoomScale;
-          const cropH = video.videoHeight / zoomScale;
-          const cropX = (video.videoWidth - cropW) / 2;
-          const cropY = (video.videoHeight - cropH) / 2;
+          const cropW = canvas.width / zoomScale;
+          const cropH = canvas.height / zoomScale;
+          const cropX = (canvas.width - cropW) / 2;
+          const cropY = (canvas.height - cropH) / 2;
           ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
         } else {
           // Standard full video frame
@@ -215,17 +218,34 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
         }
 
         const base64 = canvas.toDataURL("image/jpeg", 0.85);
-        
-        await onCapture(base64);
-        setShowPointsToast(true);
-        setTimeout(() => setShowPointsToast(false), 3000);
-        stopCamera();
+        setCapturedDraft(base64);
       }
     } catch (e) {
-      console.error("Error capturing photo:", e);
+      console.error("Error capturing photo draft:", e);
+    }
+  };
+
+  // Confirm photo capture submission
+  const handleConfirmPhoto = async () => {
+    if (!capturedDraft) return;
+    setIsCapturing(true);
+    try {
+      await onCapture(capturedDraft, activeSpot?.id, activeSpot?.name);
+      setShowPointsToast(true);
+      setTimeout(() => setShowPointsToast(false), 3000);
+      setCapturedDraft(null);
+      stopCamera();
+    } catch (e) {
+      console.error("Error submitting captured photo:", e);
     } finally {
       setIsCapturing(false);
     }
+  };
+
+  // Retake Photo (Clear current preview draft to take a new angle)
+  const handleRetakePhoto = () => {
+    haptics.tap();
+    setCapturedDraft(null);
   };
 
   const themeColors = {
@@ -310,13 +330,83 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
         </div>
       )}
 
+      {/* SPOT DAILY LIMIT WARNING IF 3/3 REACHED */}
+      {activeSpot && spotCapturesTodayCount >= 3 && (
+        <div className="bg-rose-950/90 border border-rose-500/50 p-2.5 rounded-xl text-xs text-rose-200 flex items-center gap-2 font-mono shadow-lg">
+          <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 animate-bounce" />
+          <div className="leading-tight">
+            <strong className="text-rose-300 block font-bold">🚫 Batas Spot Harian 3/3 Kucing!</strong>
+            <span className="text-[10px] text-slate-300">Anda sudah menangkap 3 kucing di spot ini hari ini. Silakan pindah berburu di spot lokasi lain!</span>
+          </div>
+        </div>
+      )}
+
       {/* Screen Container */}
       <div className="relative aspect-[3/4] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col justify-center items-center group">
         
         {/* Hidden Canvas for capture drawing */}
         <canvas ref={canvasRef} className="hidden" />
 
-        {cameraActive && !cameraError ? (
+        {/* PREVIEW & RETAKE OVERLAY DRAFT */}
+        {capturedDraft ? (
+          <div className="relative w-full h-full bg-slate-950 flex flex-col items-center justify-between p-3 z-30">
+            {/* Top Status */}
+            <div className="w-full bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center justify-between text-xs z-10">
+              <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                <Camera className="w-4 h-4" />
+                {language === "id" ? "Pratinjau Hasil Foto Kucing" : "Cat Photo Preview"}
+              </span>
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                Angle Terkunci
+              </span>
+            </div>
+
+            {/* Photo Image Frame */}
+            <div className="relative flex-1 w-full my-2 overflow-hidden rounded-xl border-2 border-amber-500/40 shadow-2xl bg-black">
+              <img
+                src={capturedDraft}
+                alt="Draft Cat Capture"
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Action Buttons: Retake, Delete, Confirm */}
+            <div className="w-full grid grid-cols-3 gap-2 pt-1 z-10">
+              <button
+                onClick={handleRetakePhoto}
+                disabled={isCapturing}
+                className="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-all border border-slate-700 cursor-pointer disabled:opacity-50"
+                title="Foto ulang jika angle/pencahayaan belum pas"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                <span>Foto Ulang</span>
+              </button>
+
+              <button
+                onClick={() => setCapturedDraft(null)}
+                disabled={isCapturing}
+                className="py-2.5 px-2 bg-rose-950/80 hover:bg-rose-900 active:scale-95 text-rose-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition-all border border-rose-800/80 cursor-pointer disabled:opacity-50"
+                title="Hapus foto ini"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Hapus</span>
+              </button>
+
+              <button
+                onClick={handleConfirmPhoto}
+                disabled={isCapturing || (activeSpot !== null && activeSpot !== undefined && spotCapturesTodayCount >= 3)}
+                className="py-2.5 px-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-95 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1 transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+              >
+                {isCapturing ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 font-black" />
+                )}
+                <span>Simpan</span>
+              </button>
+            </div>
+          </div>
+        ) : cameraActive && !cameraError ? (
           <div 
             className="relative w-full h-full select-none overflow-hidden touch-none"
             onTouchStart={handleTouchStart}
@@ -517,7 +607,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
             <button
               onClick={startCamera}
               disabled={isCapturing}
-              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-bold py-2.5 px-6 rounded-xl text-sm transition-all shadow-md shadow-yellow-500/10 flex items-center gap-2 cursor-pointer"
+              className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-bold py-2.5 px-6 rounded-xl text-xs transition-all shadow-md shadow-yellow-500/10 flex items-center gap-2 cursor-pointer"
             >
               <Camera className="w-4 h-4" />
               {language === "id" ? "Aktifkan Kamera & AR" : "Activate Camera & AR"}

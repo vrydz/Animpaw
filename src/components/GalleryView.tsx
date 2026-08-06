@@ -16,6 +16,7 @@ interface GalleryViewProps {
   onSelectForge: (capture: Capture) => void;
   onDestroyCard: (cardId: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   onDeleteCapture: (captureId: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  onRetakeCapture?: (captureId: string, newPhotoBase64: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   onEvolveCard: (cardId: string) => Promise<{ success: boolean; message?: string; error?: string; card?: Card }>;
   onCancelEvolution: (cardId: string) => Promise<{ success: boolean; message?: string; error?: string; card?: Card }>;
   user?: User | null;
@@ -27,6 +28,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   onSelectForge,
   onDestroyCard,
   onDeleteCapture,
+  onRetakeCapture,
   onEvolveCard,
   onCancelEvolution,
   user,
@@ -432,11 +434,18 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
 
                     {/* Metadata & Actions */}
                     <div className="p-3 flex flex-col gap-2 bg-slate-900/90">
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-mono">
-                        <Calendar className="w-3 h-3 text-slate-500" />
-                        <span>
-                          {new Date(cap.createdAt).toLocaleDateString(language === "id" ? "id-ID" : "en-US")}
-                        </span>
+                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-slate-500" />
+                          <span>
+                            {new Date(cap.createdAt).toLocaleDateString(language === "id" ? "id-ID" : "en-US")}
+                          </span>
+                        </div>
+                        {cap.spotName && (
+                          <span className="text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded truncate max-w-[100px]">
+                            📍 {cap.spotName}
+                          </span>
+                        )}
                       </div>
 
                       {!cap.isForged ? (
@@ -1309,6 +1318,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                 </motion.div>
               </motion.div>
             )}
+
           </motion.div>
         )}
       </AnimatePresence>
