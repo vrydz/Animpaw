@@ -37,7 +37,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Header & Info
     "header.title": "TANGKAP KUCING ASLI, FORGE MENJADI KARTU NEKOMON ANIME!",
-    "header.desc": "Misi utama game ini adalah memfoto kucing asli secara aktual. Dapatkan +10 poin untuk setiap tangkapan, lalu lakukan Forging dengan 50 poin untuk menyulap foto kucing biasa menjadi ilustrasi anime artistik bergaya Sentinel (lembut, magis) atau Scourge (tegas, dinamis)!",
+    "header.desc": "Misi utama game ini adalah memfoto kucing asli secara aktual. Dapatkan +10 poin untuk setiap tangkapan, lalu lakukan Forging dengan 50 poin untuk menyulap foto kucing biasa menjadi ilustrasi anime artistik Faksi Sentinel (lembut, magis) atau Faksi Scourge (tegas, dinamis)!",
     "header.stats_label": "Koleksi Anda",
     "header.total_cards": "Total Kartu",
     "header.highest_lv": "LV Tertinggi",
@@ -159,7 +159,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Header & Info
     "header.title": "CAPTURE REAL CATS, FORGE INTO NEKOMON ANIME CARDS!",
-    "header.desc": "The main objective of this game is to photograph real-life cats. Earn +10 points for every photo, then use 50 points in Forging to turn ordinary cat photos into artistic anime illustrations, choosing either Sentinel (soft, magical) or Scourge (bold, dynamic) style!",
+    "header.desc": "The main objective of this game is to photograph real-life cats. Earn +10 points for every photo, then use 50 points in Forging to turn ordinary cat photos into artistic anime illustrations, choosing either Sentinel (soft, magical) or Scourge (bold, dynamic) faction!",
     "header.stats_label": "Your Collection",
     "header.total_cards": "Total Cards",
     "header.highest_lv": "Highest LV",

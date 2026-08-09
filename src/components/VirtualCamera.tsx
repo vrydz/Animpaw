@@ -272,7 +272,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
     }
   };
 
-  const currentTheme = themeColors[arTheme];
+  const currentTheme = themeColors[arTheme] || themeColors.cyan;
 
   return (
     <div className="flex flex-col gap-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl max-w-md w-full mx-auto relative overflow-hidden">

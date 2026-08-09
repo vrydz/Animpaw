@@ -16,7 +16,7 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
   const spd = card.spd || Math.floor((hp + atk) / 4.5);
 
   // Element configs
-  const elementConfig = {
+  const elementConfigs: Record<string, any> = {
     Api: {
       label: "FIRE TYPE",
       color: "text-red-500",
@@ -67,10 +67,11 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
       gradient: "from-yellow-950/80 via-slate-900 to-slate-950",
       badgeColor: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40"
     }
-  }[element];
+  };
+  const elementConfig = elementConfigs[element] || elementConfigs.Api;
 
   // Rarity config
-  const rarityConfig = {
+  const rarityConfigs: Record<string, any> = {
     Common: {
       border: "border-slate-700",
       glow: "shadow-[0_0_15px_rgba(100,116,139,0.2)]",
@@ -95,19 +96,27 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
       badge: "bg-amber-950 text-amber-300 border-amber-500",
       labelColor: "text-amber-400"
     },
+    Legendary: {
+      border: "border-amber-500",
+      glow: "shadow-[0_0_30px_rgba(245,158,11,0.55)]",
+      badge: "bg-amber-950 text-amber-300 border-amber-500",
+      labelColor: "text-amber-400"
+    },
     Mythic: {
       border: "border-pink-500",
       glow: "shadow-[0_0_35px_rgba(236,72,153,0.7)] animate-pulse",
       badge: "bg-gradient-to-r from-pink-500 to-purple-600 text-white border-pink-400",
       labelColor: "text-pink-400"
     }
-  }[rarity];
+  };
+  const rarityConfig = rarityConfigs[rarity] || rarityConfigs.Common;
 
-  const sizeConfig = {
+  const sizeConfigs: Record<string, any> = {
     sm: "w-64 text-xs p-3.5",
     md: "w-[325px] text-sm p-4.5",
     lg: "w-[380px] text-base p-5.5"
-  }[size];
+  };
+  const sizeConfig = sizeConfigs[size] || sizeConfigs.md;
 
   // Render elemental particle or decals on bottom border of card
   const renderElementalDecals = () => {
@@ -375,7 +384,7 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
 
           {/* Skill description summary */}
           <p className="text-[10px] text-slate-300 leading-normal font-mono">
-            Berhasil ditempa dengan Gaya Studio {style === "Sentinel" ? "Sentinel" : "Scourge"} dan menguasai elemen {element === "Petir" ? "Thunder" : element === "Api" ? "Fire" : element === "Air" ? "Water" : element === "Tanah" ? "Earth" : "Wind"}!
+            Berhasil ditempa dengan Faksi {style === "Sentinel" ? "Sentinel" : "Scourge"} dan menguasai elemen {element === "Petir" ? "Thunder" : element === "Api" ? "Fire" : element === "Air" ? "Water" : element === "Tanah" ? "Earth" : "Wind"}!
           </p>
 
           {/* Skill name & detail subtitle */}

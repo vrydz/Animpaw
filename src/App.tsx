@@ -17,6 +17,8 @@ import { NekomonDex } from "./components/NekomonDex";
 import { InterstitialAdModal } from "./components/InterstitialAdModal";
 import { RewardedAdModal } from "./components/RewardedAdModal";
 import { AchievementShareModal } from "./components/AchievementShareModal";
+import { NekomonCard } from "./components/NekomonCard";
+import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
 import { 
   Sparkles, 
@@ -48,6 +50,8 @@ import {
   Coins,
   Flame,
   Share2,
+  Users,
+  Layers,
   MapPin,
   Edit3,
   ShieldCheck,
@@ -59,6 +63,124 @@ import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
 import { PLAYER_BADGES, getTrainerLevel, getHighestBadge, PlayerBadge } from "./lib/badges";
 
+// Example showcase cards for landing page visual presentation (AI Forging Results)
+const SHOWCASE_CARDS: Card[] = [
+  {
+    id: "showcase_sentinel_1",
+    userId: "showcase",
+    captureId: "showcase_c1",
+    name: "Lumina Aetheria",
+    element: "Air",
+    style: "Sentinel",
+    rarity: "Legend",
+    level: 15,
+    hp: 240,
+    atk: 110,
+    def: 88,
+    spd: 95,
+    skillName: "Nyanyian Samudra Aetheria",
+    skillDesc: "Memancarkan aura penyembuh magis suci dan menyemburkan ombak air jernih dari Faksi Sentinel.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Lumina Aetheria", "Air", "Sentinel", "Legend"),
+    geminiUsed: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "showcase_scourge_1",
+    userId: "showcase",
+    captureId: "showcase_c2",
+    name: "Shadowclaw Cyber-Ignis",
+    element: "Api",
+    style: "Scourge",
+    rarity: "Mythic",
+    level: 20,
+    hp: 280,
+    atk: 145,
+    def: 92,
+    spd: 110,
+    skillName: "Tebasan Cakar Cyberpunk",
+    skillDesc: "Menerjang dari bayangan kota cyberpunk dengan kecepatan suara, membakar musuh dengan tebasan Faksi Scourge.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Shadowclaw Cyber-Ignis", "Api", "Scourge", "Mythic"),
+    geminiUsed: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "showcase_sentinel_2",
+    userId: "showcase",
+    captureId: "showcase_c3",
+    name: "Gaiadon Terra-Guard",
+    element: "Tanah",
+    style: "Sentinel",
+    rarity: "Epic",
+    level: 14,
+    hp: 310,
+    atk: 98,
+    def: 140,
+    spd: 72,
+    skillName: "Benteng Perisai Kristal",
+    skillDesc: "Membangun perisai kristal bumi tak menembus dari Faksi Sentinel yang meregenerasi HP dan memantulkan serangan balik.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Gaiadon Terra-Guard", "Tanah", "Sentinel", "Epic"),
+    geminiUsed: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "showcase_scourge_2",
+    userId: "showcase",
+    captureId: "showcase_c4",
+    name: "Voltron Fulgur-Strike",
+    element: "Petir",
+    style: "Scourge",
+    rarity: "Legend",
+    level: 18,
+    hp: 220,
+    atk: 155,
+    def: 75,
+    spd: 135,
+    skillName: "Kilat Petir Plasma Zero",
+    skillDesc: "Menembakkan petir plasma kecepatan tinggi dari Faksi Scourge yang melumpuhkan gerakan musuh dan meningkatkan Crit Rate +50%.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Voltron Fulgur-Strike", "Petir", "Scourge", "Legend"),
+    geminiUsed: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "showcase_sentinel_3",
+    userId: "showcase",
+    captureId: "showcase_c5",
+    name: "Boreas Skydancer",
+    element: "Angin",
+    style: "Sentinel",
+    rarity: "Mythic",
+    level: 19,
+    hp: 235,
+    atk: 138,
+    def: 82,
+    spd: 148,
+    skillName: "Badai Angin Surgawi",
+    skillDesc: "Menari di udara menciptakan angin puyuh surgawi yang meningkatkan kecepatan seluruh tim sebesar +40%.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Boreas Skydancer", "Angin", "Sentinel", "Mythic"),
+    geminiUsed: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "showcase_scourge_3",
+    userId: "showcase",
+    captureId: "showcase_c6",
+    name: "Obsidian Fang",
+    element: "Tanah",
+    style: "Scourge",
+    rarity: "Epic",
+    level: 16,
+    hp: 295,
+    atk: 125,
+    def: 130,
+    spd: 80,
+    skillName: "Gigitan Magma Obsidian",
+    skillDesc: "Melapisi taring dengan batuan magma magis purba yang menghancurkan pertahanan musuh hingga 35%.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Obsidian Fang", "Tanah", "Scourge", "Epic"),
+    geminiUsed: true,
+    createdAt: new Date().toISOString()
+  }
+];
+
 export default function App() {
   const { language, setLanguage, t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
@@ -68,6 +190,27 @@ export default function App() {
   const [mission, setMission] = useState<Mission | null>(null);
   const [resetCountdown, setResetCountdown] = useState<number>(0);
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
+  
+  // Public community statistics for landing page
+  const [publicStats, setPublicStats] = useState<{ totalPlayers: number; totalCards: number }>({
+    totalPlayers: 142,
+    totalCards: 680,
+  });
+  const [showcaseFaction, setShowcaseFaction] = useState<"all" | "Sentinel" | "Scourge">("all");
+
+  useEffect(() => {
+    fetch("/api/public/stats")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setPublicStats({
+            totalPlayers: data.totalPlayers || 142,
+            totalCards: data.totalCards || 680,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
   
   const userRef = useRef<User | null>(null);
   useEffect(() => {
@@ -292,7 +435,7 @@ export default function App() {
     }
   }, []);
 
-  // Helper to update local backups
+  // Helper to update local backups safely with progressive quota protection
   const updateLocalBackup = (userObj: any, capturesList?: any[], cardsList?: any[]) => {
     if (!userObj || !userObj.username) return;
     try {
@@ -310,10 +453,56 @@ export default function App() {
         cards: cardsList !== undefined ? cardsList : (prevBackup.cards || [])
       };
       
-      localStorage.setItem(key, JSON.stringify(backups));
-      localStorage.setItem("nekomon_active_username", userObj.username);
-    } catch (e) {
-      console.error("Gagal melakukan backup lokal di App.tsx:", e);
+      // Progressive sanitizer to reduce payload size when storage quota is reached
+      const sanitize = (data: any, mode: number) => {
+        try {
+          const clean = JSON.parse(JSON.stringify(data));
+          for (const k in clean) {
+            const entry = clean[k];
+            if (entry?.captures) {
+              entry.captures = entry.captures.map((c: any) => ({
+                ...c,
+                photoBase64: mode === 0 && (c.photoBase64?.length || 0) < 30000 ? c.photoBase64 : ""
+              }));
+            }
+            if (entry?.cards) {
+              entry.cards = entry.cards.map((card: any) => ({
+                ...card,
+                imageUrl: mode === 0 && (!card.imageUrl?.startsWith("data:") || card.imageUrl.length < 30000) ? card.imageUrl : ""
+              }));
+            }
+            if (mode === 2) {
+              entry.captures = [];
+              entry.cards = [];
+            }
+          }
+          return clean;
+        } catch {
+          return data;
+        }
+      };
+
+      try {
+        localStorage.setItem(key, JSON.stringify(sanitize(backups, 0)));
+      } catch {
+        try {
+          localStorage.setItem(key, JSON.stringify(sanitize(backups, 1)));
+        } catch {
+          try {
+            localStorage.setItem(key, JSON.stringify(sanitize(backups, 2)));
+          } catch {
+            // Silently ignore quota limits for non-critical local backup
+          }
+        }
+      }
+
+      try {
+        localStorage.setItem("nekomon_active_username", userObj.username);
+      } catch {
+        // Silently handle storage limits
+      }
+    } catch {
+      // Ignore backup errors gracefully
     }
   };
 
@@ -993,44 +1182,234 @@ export default function App() {
             </span>
           </div>
         ) : !user ? (
-          /* Landing Screen / Login portal with full-page visual card-game branding */
-          <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-10 py-8">
-            <div className="flex-1 max-w-lg text-left flex flex-col gap-5">
-              <span className="px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold font-mono text-xs w-max uppercase tracking-wider">
-                {language === "id" ? "🌌 CARD GAME BERBASIS KUCING ASLI" : "🌌 REAL CAT BASED CARD GAME"}
-              </span>
-              <h2 className="text-4xl lg:text-5xl font-black text-slate-100 tracking-tight leading-none font-sans">
-                {language === "id" ? (
-                  <>TANGKAP KUCING ASLI, FORGE MENJADI <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-300">NEKOMON ANIME!</span></>
-                ) : (
-                  <>CAPTURE REAL CATS, FORGE INTO <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-300">NEKOMON ANIME!</span></>
-                )}
-              </h2>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                {t("header.desc")}
-              </p>
-              
-              <div className="grid grid-cols-2 gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-900 text-xs font-mono text-slate-400">
-                <div>
-                  <div className="text-yellow-500 font-bold mb-1">
-                    {language === "id" ? "🔥 100 POIN AWAL" : "🔥 100 INITIAL POINTS"}
-                  </div>
-                  {language === "id" 
-                    ? "Dapatkan modal melimpah langsung sesaat setelah mendaftar pertama kali."
-                    : "Get an abundant starting balance immediately upon registering for the first time."}
+          /* Landing Screen / Login portal with full-page visual card-game branding & card showcase */
+          <div className="w-full flex flex-col gap-8 py-6">
+            
+            {/* Live Community Metrics Banner */}
+            <div className="w-full bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-wrap items-center justify-around gap-4 text-center font-mono">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400">
+                  <Users className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="text-pink-400 font-bold mb-1">⚡ FORGE TO CARD</div>
-                  {language === "id"
-                    ? "Pilih tipe elemen: Api, Air, Tanah, Angin, atau Petir berkekuatan khusus."
-                    : "Choose element types: Fire, Water, Earth, Wind, or Lightning with special powers."}
+                <div className="text-left">
+                  <div className="text-xl font-black text-yellow-400">
+                    <AnimatedCounter value={publicStats.totalPlayers} suffix="+" />
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {language === "id" ? "Pemain Terdaftar" : "Registered Players"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden sm:block h-8 w-[1px] bg-slate-800" />
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xl font-black text-teal-400">
+                    <AnimatedCounter value={publicStats.totalCards} suffix="+" />
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {language === "id" ? "Kartu Forged" : "Forged Cards"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden sm:block h-8 w-[1px] bg-slate-800" />
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400">
+                  <Swords className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xl font-black text-pink-400">
+                    <AnimatedCounter value={2450} suffix="+" />
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {language === "id" ? "Pertempuran Arena" : "Arena Battles"}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="w-full max-w-md">
-              <AuthForm onSuccess={handleAuthSuccess} />
+            {/* Main Hero Section: Information & Login Portal */}
+            <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-10">
+              <div className="flex-1 max-w-lg text-left flex flex-col gap-5">
+                <span className="px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold font-mono text-xs w-max uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {language === "id" ? "CARD GAME BERBASIS KUCING ASLI" : "REAL CAT BASED CARD GAME"}
+                </span>
+                <h2 className="text-4xl lg:text-5xl font-black text-slate-100 tracking-tight leading-none font-sans">
+                  {language === "id" ? (
+                    <>TANGKAP KUCING ASLI, FORGE MENJADI <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-300">NEKOMON ANIME!</span></>
+                  ) : (
+                    <>CAPTURE REAL CATS, FORGE INTO <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-300">NEKOMON ANIME!</span></>
+                  )}
+                </h2>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  {t("header.desc")}
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-900 text-xs font-mono text-slate-400">
+                  <div>
+                    <div className="text-yellow-500 font-bold mb-1 flex items-center gap-1">
+                      <Coins className="w-3.5 h-3.5" />
+                      {language === "id" ? "100 POIN AWAL" : "100 INITIAL POINTS"}
+                    </div>
+                    {language === "id" 
+                      ? "Dapatkan modal melimpah langsung sesaat setelah mendaftar pertama kali."
+                      : "Get an abundant starting balance immediately upon registering for the first time."}
+                  </div>
+                  <div>
+                    <div className="text-pink-400 font-bold mb-1 flex items-center gap-1">
+                      <Flame className="w-3.5 h-3.5" />
+                      FAKSI & ELEMEN
+                    </div>
+                    {language === "id"
+                      ? "Tempa kartu bergaya Faksi Sentinel atau Scourge dengan 5 tipe elemen berkekuatan khusus."
+                      : "Forge cards in Sentinel or Scourge Factions with 5 special elemental powers."}
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full max-w-md">
+                <AuthForm onSuccess={handleAuthSuccess} />
+              </div>
             </div>
+
+            {/* VISUAL GAME SHOWCASE SECTION: Example Forged Nekomon Cards */}
+            <div className="w-full bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl flex flex-col gap-6 shadow-2xl mt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-yellow-500 animate-pulse" />
+                    <h3 className="text-lg font-black text-slate-100 font-mono uppercase tracking-wider">
+                      {language === "id" ? "🎴 VISUAL GAME: SHOWCASE KARTU NEKOMON FORGED" : "🎴 GAME VISUALS: FORGED NEKOMON CARD SHOWCASE"}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-400 font-mono mt-1">
+                    {language === "id"
+                      ? "Hasil penempaan (forging) foto kucing nyata menjadi Kartu Anime eksklusif Faksi Sentinel & Scourge:"
+                      : "Visual output of forging real cat photos into exclusive anime cards across Sentinel & Scourge Factions:"}
+                  </p>
+                </div>
+
+                {/* Faction Switcher */}
+                <div className="flex items-center bg-slate-950 p-1 border border-slate-800 rounded-xl gap-1 font-mono text-xs">
+                  <button
+                    onClick={() => setShowcaseFaction("all")}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      showcaseFaction === "all"
+                        ? "bg-yellow-500 text-slate-950 shadow-md"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    {language === "id" ? "SEMUA FAKSI" : "ALL FACTIONS"}
+                  </button>
+                  <button
+                    onClick={() => setShowcaseFaction("Sentinel")}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      showcaseFaction === "Sentinel"
+                        ? "bg-teal-500 text-slate-950 shadow-md"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    ✨ Sentinel
+                  </button>
+                  <button
+                    onClick={() => setShowcaseFaction("Scourge")}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      showcaseFaction === "Scourge"
+                        ? "bg-rose-500 text-slate-950 shadow-md"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    💀 Scourge
+                  </button>
+                </div>
+              </div>
+
+              {/* Cards Showcase Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
+                {SHOWCASE_CARDS.filter(c => showcaseFaction === "all" || c.style === showcaseFaction).map((c) => (
+                  <div key={c.id} className="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl flex flex-col xl:flex-row items-center gap-6 shadow-xl hover:border-slate-700 transition-all">
+                    {/* Visual Card */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                        c.style === "Sentinel" 
+                          ? "bg-teal-500/10 border border-teal-500/30 text-teal-400" 
+                          : "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                      }`}>
+                        {c.style === "Sentinel" ? <Sparkles className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
+                        <span>Faksi {c.style}</span>
+                      </div>
+                      <NekomonCard card={c} size="md" />
+                    </div>
+
+                    {/* Stats & Skill Details Breakdown */}
+                    <div className="flex-1 w-full flex flex-col gap-3 font-mono text-xs">
+                      <div className="border-b border-slate-800/80 pb-2">
+                        <span className="text-slate-500 block text-[10px] uppercase font-bold">SPECIES & FACTION</span>
+                        <h4 className="text-base font-extrabold text-slate-100 flex items-center justify-between">
+                          <span>{c.name}</span>
+                          <span className="text-yellow-400 text-xs bg-yellow-500/10 border border-yellow-500/30 px-2 py-0.5 rounded-full">
+                            LV. {c.level} • {c.rarity}
+                          </span>
+                        </h4>
+                      </div>
+
+                      {/* 4 Core Combat Stats Grid */}
+                      <div className="grid grid-cols-2 gap-2 text-slate-300">
+                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-red-400 font-bold">
+                            <span className="text-sm">🗡️</span> ATTACK
+                          </span>
+                          <span className="text-slate-100 font-extrabold text-sm">{c.atk}</span>
+                        </div>
+
+                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-blue-400 font-bold">
+                            <span className="text-sm">🛡️</span> DEFEND
+                          </span>
+                          <span className="text-slate-100 font-extrabold text-sm">{c.def}</span>
+                        </div>
+
+                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-yellow-400 font-bold">
+                            <span className="text-sm">⚡</span> SPEED
+                          </span>
+                          <span className="text-slate-100 font-extrabold text-sm">{c.spd}</span>
+                        </div>
+
+                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                            <span className="text-sm">❤️</span> HEALTH
+                          </span>
+                          <span className="text-slate-100 font-extrabold text-sm">{c.hp} HP</span>
+                        </div>
+                      </div>
+
+                      {/* Ability / Skill Description */}
+                      <div className="bg-slate-900/90 border border-slate-800/90 p-3 rounded-xl flex flex-col gap-1 mt-1">
+                        <div className="flex items-center justify-between text-yellow-400 font-extrabold text-[11px]">
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
+                            DESKRIPSI KEMAMPUAN:
+                          </span>
+                          <span className="text-slate-400 uppercase text-[10px]">{c.skillName}</span>
+                        </div>
+                        <p className="text-slate-300 text-[11px] leading-relaxed italic">
+                          "{c.skillDesc}"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         ) : (
           /* Authenticated Dashboard Game Area (Simple & Dynamic Full-Width Layout) */

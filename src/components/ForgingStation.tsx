@@ -505,7 +505,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">{language === "id" ? "Studio Gaya:" : "Art Style:"}</span>
+                      <span className="text-slate-500">{language === "id" ? "Faksi:" : "Faction:"}</span>
                       <span className="font-bold text-teal-400">{forgedCard.style === "Sentinel" ? "Sentinel" : "Scourge"}</span>
                     </div>
                     <div className="flex justify-between border-t border-slate-800/80 pt-2 mt-1">
@@ -629,10 +629,10 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
               </div>
             </div>
 
-            {/* Choose Studio Style */}
+            {/* Choose Anime Faction */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-bold text-slate-400 font-mono">
-                {language === "id" ? "3. PILIH STUDIO GAYA ANIME (STYLE) :" : "3. SELECT ANIME ART STYLE :"}
+                {language === "id" ? "3. PILIH FAKSI ANIME (SENTINEL / SCOURGE) :" : "3. SELECT ANIME FACTION (SENTINEL / SCOURGE) :"}
               </span>
               <div className="grid grid-cols-2 gap-3">
                 {STYLES.map((st) => (

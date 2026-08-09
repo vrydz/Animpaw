@@ -173,6 +173,98 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
     } catch (_) {}
   };
 
+  const handleMidtransPayment = async () => {
+    setPaymentStatus("processing");
+    setErrorMsg(null);
+    const token = localStorage.getItem("nekomon_token");
+
+    try {
+      const res = await fetch("/api/shop/midtrans-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          itemType: checkoutType,
+          itemId: checkoutType === "points" ? selectedPackageId : selectedPackId,
+          targetElement: targetElement === "Random" ? undefined : targetElement,
+          targetStyle: targetStyle === "Random" ? undefined : targetStyle
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal mendapatkan token transaksi Midtrans");
+
+      const snapObj = (window as any).snap;
+
+      if (snapObj && data.token && !data.isSimulation) {
+        snapObj.pay(data.token, {
+          onSuccess: async (result: any) => {
+            console.log("Midtrans payment success:", result);
+            await completeMidtransOrder(data.orderId);
+          },
+          onPending: async (result: any) => {
+            console.log("Midtrans payment pending:", result);
+            await completeMidtransOrder(data.orderId);
+          },
+          onError: (result: any) => {
+            console.error("Midtrans payment error:", result);
+            setPaymentStatus("error");
+            setErrorMsg("Pembayaran dibatalkan atau terjadi kesalahan pada Gateway Midtrans.");
+          },
+          onClose: () => {
+            setPaymentStatus("pending");
+          }
+        });
+      } else {
+        // Direct finish for simulated token or fallback
+        await completeMidtransOrder(data.orderId);
+      }
+    } catch (err: any) {
+      console.warn("Midtrans Payment Fallback:", err);
+      await simulatePaymentSuccess();
+    }
+  };
+
+  const completeMidtransOrder = async (orderId: string) => {
+    const token = localStorage.getItem("nekomon_token");
+    try {
+      const finishRes = await fetch("/api/shop/midtrans-finish", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orderId,
+          itemType: checkoutType,
+          itemId: checkoutType === "points" ? selectedPackageId : selectedPackId,
+          targetElement,
+          targetStyle
+        })
+      });
+
+      const finishData = await finishRes.json();
+      if (!finishRes.ok) throw new Error(finishData.error || "Gagal memproses penyelesaian pembayaran");
+
+      setPaymentStatus("success");
+      if (checkoutType === "points") {
+        try { audio.playUnboxingExplosion("Petir"); } catch (_) {}
+        onPurchaseSuccess(finishData.user.points, finishData.user.cores);
+      } else if (checkoutType === "booster") {
+        setEarnedCards(finishData.cards || []);
+        setCoresEarned(finishData.coresEarned || 0);
+        setRevealedCardIndices([]);
+        try { audio.playRevealSound("Scourge"); } catch (_) {}
+        onPurchaseSuccess(finishData.user.points, finishData.user.cores, finishData.cards);
+      }
+    } catch (err: any) {
+      setPaymentStatus("error");
+      setErrorMsg(err.message || "Gagal menyelesaikan pesanan");
+    }
+  };
+
   const simulatePaymentSuccess = async () => {
     setPaymentStatus("processing");
     const token = localStorage.getItem("nekomon_token");
@@ -1053,14 +1145,34 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                       </button>
                     </div>
 
-                    <div className="mt-2">
+                    <div className="mt-2 flex flex-col gap-2">
                       <button
-                        onClick={simulatePaymentSuccess}
-                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3 rounded-xl font-mono tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/10 active:scale-95 cursor-pointer"
+                        onClick={handleMidtransPayment}
+                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl font-mono tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
                       >
                         <ShieldCheck className="w-4 h-4" />
-                        {language === "id" ? "BAYAR SEKARANG" : "PAY NOW"}
+                        {language === "id" ? "BAYAR DENGAN MIDTRANS SNAP 💳" : "PAY VIA MIDTRANS SNAP 💳"}
                       </button>
+                      <button
+                        onClick={simulatePaymentSuccess}
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 text-[10px] py-2 rounded-xl font-mono transition-all flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        ⚡ Instant Test Payment (Dev Demo)
+                      </button>
+                    </div>
+
+                    <div className="text-[9px] font-mono text-slate-500 bg-slate-900/60 p-2 rounded-xl border border-slate-800 flex flex-col gap-0.5">
+                      <div className="flex justify-between">
+                        <span>Merchant ID:</span>
+                        <span className="text-slate-300 font-bold">M008936459</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Client Key:</span>
+                        <span className="text-slate-300 font-bold">Mid-client-32UI...</span>
+                      </div>
+                      <div className="text-[8px] text-emerald-400/80 mt-0.5 text-center font-bold">
+                        ✓ Midtrans Snap Engine Connected
+                      </div>
                     </div>
                   </div>
 

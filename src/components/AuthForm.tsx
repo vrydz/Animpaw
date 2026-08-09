@@ -79,9 +79,49 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         cards: prevBackup.cards || []
       };
       
-      localStorage.setItem(key, JSON.stringify(backups));
-    } catch (e) {
-      console.error("Gagal melakukan backup lokal:", e);
+      const sanitize = (data: any, mode: number) => {
+        try {
+          const clean = JSON.parse(JSON.stringify(data));
+          for (const k in clean) {
+            const entry = clean[k];
+            if (entry?.captures) {
+              entry.captures = entry.captures.map((c: any) => ({
+                ...c,
+                photoBase64: mode === 0 && (c.photoBase64?.length || 0) < 30000 ? c.photoBase64 : ""
+              }));
+            }
+            if (entry?.cards) {
+              entry.cards = entry.cards.map((card: any) => ({
+                ...card,
+                imageUrl: mode === 0 && (!card.imageUrl?.startsWith("data:") || card.imageUrl.length < 30000) ? card.imageUrl : ""
+              }));
+            }
+            if (mode === 2) {
+              entry.captures = [];
+              entry.cards = [];
+            }
+          }
+          return clean;
+        } catch {
+          return data;
+        }
+      };
+
+      try {
+        localStorage.setItem(key, JSON.stringify(sanitize(backups, 0)));
+      } catch {
+        try {
+          localStorage.setItem(key, JSON.stringify(sanitize(backups, 1)));
+        } catch {
+          try {
+            localStorage.setItem(key, JSON.stringify(sanitize(backups, 2)));
+          } catch {
+            // Silently ignore quota limits
+          }
+        }
+      }
+    } catch {
+      // Ignore backup errors
     }
   };
 

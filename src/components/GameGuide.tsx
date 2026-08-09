@@ -122,7 +122,7 @@ export const GameGuide: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">4. Tempa Menjadi Kartu Nekomon ⚔️</h4>
                     <p className="leading-relaxed">
-                      Buka tab <span className="text-teal-400 font-bold font-mono">ALBUM KOLEKSI</span>, pilih foto kucing hasil tangkapan Anda, lalu klik tombol penempaan untuk membawanya ke <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. Kartu Nekomon baru akan ditempa secara instan menggunakan AI, lengkap dengan Elemen unik, Gaya Seni (Sentinel/Scourge), statistik acak (HP, ATK, DEF, SPD), serta tingkat kelangkaan (Rarity) dari Common hingga Legendary!
+                      Buka tab <span className="text-teal-400 font-bold font-mono">ALBUM KOLEKSI</span>, pilih foto kucing hasil tangkapan Anda, lalu klik tombol penempaan untuk membawanya ke <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. Kartu Nekomon baru akan ditempa secara instan menggunakan AI, lengkap dengan Elemen unik, Faksi (Faksi Sentinel/Faksi Scourge), statistik acak (HP, ATK, DEF, SPD), serta tingkat kelangkaan (Rarity) dari Common hingga Legendary!
                     </p>
                   </div>
                 </div>
@@ -221,58 +221,58 @@ export const GameGuide: React.FC = () => {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                {/* Api */}
-                <div className="bg-slate-950 p-3 rounded-lg border border-red-500/20 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🔥</span>
-                    <span className="font-bold text-red-400">{language === "id" ? "API" : "FIRE"}</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {language === "id" ? "Sangat Kuat Melawan:" : "Extremely Effective Vs:"} <span className="text-emerald-400 font-bold">{language === "id" ? "Tanah" : "Earth"} 🌿</span>
-                  </div>
-                </div>
-
-                {/* Air */}
+                {/* Air (Water) */}
                 <div className="bg-slate-950 p-3 rounded-lg border border-blue-500/20 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">💧</span>
                     <span className="font-bold text-blue-400">{language === "id" ? "AIR" : "WATER"}</span>
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    {language === "id" ? "Sangat Kuat Melawan:" : "Extremely Effective Vs:"} <span className="text-red-400 font-bold">{language === "id" ? "Api" : "Fire"} 🔥</span>
+                    {language === "id" ? "Unggul Atas (+40% PWR):" : "Advantage Vs (+40% PWR):"} <span className="text-red-400 font-bold">{language === "id" ? "Api" : "Fire"} 🔥</span> & <span className="text-amber-600 font-bold">{language === "id" ? "Tanah" : "Earth"} 🪵</span>
                   </div>
                 </div>
 
-                {/* Tanah */}
-                <div className="bg-slate-950 p-3 rounded-lg border border-emerald-500/20 flex items-center justify-between">
+                {/* Api (Fire) */}
+                <div className="bg-slate-950 p-3 rounded-lg border border-red-500/20 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">🌿</span>
-                    <span className="font-bold text-emerald-400">{language === "id" ? "TANAH" : "EARTH"}</span>
+                    <span className="text-lg">🔥</span>
+                    <span className="font-bold text-red-400">{language === "id" ? "API" : "FIRE"}</span>
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    {language === "id" ? "Sangat Kuat Melawan:" : "Extremely Effective Vs:"} <span className="text-yellow-400 font-bold">{language === "id" ? "Petir" : "Lightning"} ⚡</span>
+                    {language === "id" ? "Unggul Atas (+40% PWR):" : "Advantage Vs (+40% PWR):"} <span className="text-teal-400 font-bold">{language === "id" ? "Angin" : "Wind"} 🌪️</span> & <span className="text-yellow-400 font-bold">{language === "id" ? "Petir" : "Lightning"} ⚡</span>
                   </div>
                 </div>
 
-                {/* Angin */}
+                {/* Angin (Wind) */}
                 <div className="bg-slate-950 p-3 rounded-lg border border-teal-500/20 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🌪️</span>
                     <span className="font-bold text-teal-400">{language === "id" ? "ANGIN" : "WIND"}</span>
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    {language === "id" ? "Sangat Kuat Melawan:" : "Extremely Effective Vs:"} <span className="text-blue-400 font-bold">{language === "id" ? "Air" : "Water"} 💧</span> & <span className="text-emerald-400 font-bold">{language === "id" ? "Tanah" : "Earth"} 🌿</span>
+                    {language === "id" ? "Unggul Atas (+40% PWR):" : "Advantage Vs (+40% PWR):"} <span className="text-amber-600 font-bold">{language === "id" ? "Tanah" : "Earth"} 🪵</span> & <span className="text-blue-400 font-bold">{language === "id" ? "Air" : "Water"} 💧</span>
                   </div>
                 </div>
 
-                {/* Petir */}
-                <div className="bg-slate-950 p-3 rounded-lg border border-yellow-500/20 flex items-center justify-between">
+                {/* Tanah (Earth) */}
+                <div className="bg-slate-950 p-3 rounded-lg border border-amber-600/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🪵</span>
+                    <span className="font-bold text-amber-500">{language === "id" ? "TANAH" : "EARTH"}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {language === "id" ? "Unggul Atas (+40% PWR):" : "Advantage Vs (+40% PWR):"} <span className="text-yellow-400 font-bold">{language === "id" ? "Petir" : "Lightning"} ⚡</span> & <span className="text-red-400 font-bold">{language === "id" ? "Api" : "Fire"} 🔥</span>
+                  </div>
+                </div>
+
+                {/* Petir (Lightning) */}
+                <div className="bg-slate-950 p-3 rounded-lg border border-yellow-500/20 flex items-center justify-between md:col-span-2">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">⚡</span>
                     <span className="font-bold text-yellow-400">{language === "id" ? "PETIR" : "LIGHTNING"}</span>
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    {language === "id" ? "Sangat Kuat Melawan:" : "Extremely Effective Vs:"} <span className="text-blue-400 font-bold">{language === "id" ? "Air" : "Water"} 💧</span> & <span className="text-teal-400 font-bold">{language === "id" ? "Angin" : "Wind"} 🌪️</span>
+                    {language === "id" ? "Unggul Atas (+40% PWR):" : "Advantage Vs (+40% PWR):"} <span className="text-blue-400 font-bold">{language === "id" ? "Air" : "Water"} 💧</span> & <span className="text-teal-400 font-bold">{language === "id" ? "Angin" : "Wind"} 🌪️</span>
                   </div>
                 </div>
               </div>
@@ -336,6 +336,14 @@ export const GameGuide: React.FC = () => {
           <span className="text-[10px] text-yellow-500 font-extrabold uppercase font-mono tracking-widest">Lead Developer</span>
         </div>
         <p className="text-sm font-black text-slate-100 tracking-wider">astronian22</p>
+        <a 
+          href="https://wa.me/6285624089327" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer shadow-sm"
+        >
+          <span className="text-sm">💬</span> WhatsApp: 085624089327
+        </a>
         <p className="text-[11px] text-slate-400 font-mono max-w-md mx-auto">
           {language === "id"
             ? "Dibuat dengan dedikasi penuh untuk seluruh komunitas Trainer Nekomon di seluruh dunia. Selamat berburu kucing asli! 🐾"
