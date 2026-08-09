@@ -20,6 +20,9 @@ import { AchievementShareModal } from "./components/AchievementShareModal";
 import { NekomonCard } from "./components/NekomonCard";
 import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
+
+const nekomonLogoImg = new URL("./assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
+const nekomonBottomBannerImg = new URL("./assets/images/bottom.png", import.meta.url).href;
 import { 
   Sparkles, 
   LogOut, 
@@ -39,6 +42,7 @@ import {
   VolumeX,
   Music,
   X,
+  Eye,
   Swords,
   Trash2,
   Trophy,
@@ -197,6 +201,7 @@ export default function App() {
     totalCards: 680,
   });
   const [showcaseFaction, setShowcaseFaction] = useState<"all" | "Sentinel" | "Scourge">("all");
+  const [isBottomBannerZoomed, setIsBottomBannerZoomed] = useState<boolean>(false);
 
   useEffect(() => {
     fetch("/api/public/stats")
@@ -1074,25 +1079,22 @@ export default function App() {
       <div className="absolute inset-0 bg-gradient-to-tr from-purple-950/40 via-slate-950 to-orange-950/30 z-0 pointer-events-none" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30 z-0 pointer-events-none" />
 
-      {/* Header section with bubble Nekomon title */}
-      <header className="w-full max-w-7xl px-4 py-6 flex justify-between items-center z-10 relative">
-        <div className="flex items-center gap-2">
-          {/* Logo element with custom visual ears design */}
-          <div className="relative group">
-            <div className="absolute -inset-1.5 bg-gradient-to-r from-yellow-500 to-pink-500 rounded-full blur opacity-45 group-hover:opacity-75 transition duration-500" />
-            <div className="relative w-12 h-12 bg-slate-900 border-2 border-yellow-400 rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-2xl">🐱</span>
-            </div>
-            {/* Left and right floating ear markers for cartoon pokemon style */}
-            <div className="absolute -top-1 -left-1.5 w-4 h-4 bg-yellow-400 rounded-tl-full border border-slate-950 rotate-[-15deg]" />
-            <div className="absolute -top-1 -right-1.5 w-4 h-4 bg-yellow-400 rounded-tr-full border border-slate-950 rotate-[15deg]" />
+      {/* Header section with Official NEKOMON Emblem */}
+      <header className="w-full max-w-7xl px-4 py-4 sm:py-6 flex justify-between items-center z-10 relative">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => handleTabChange("gallery")}>
+          <div className="relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-amber-500 to-red-600 rounded-2xl blur opacity-60 group-hover:opacity-90 transition duration-500" />
+            <img 
+              src={nekomonLogoImg} 
+              alt="NEKOMON Official Logo" 
+              className="relative h-11 sm:h-14 w-auto object-contain rounded-xl border border-amber-500/40 shadow-xl group-hover:scale-105 transition-all duration-300"
+            />
           </div>
-
-          <div className="flex flex-col">
-            <h1 className="text-3xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-amber-300 to-pink-400 font-sans select-none drop-shadow-md">
+          <div className="hidden sm:flex flex-col">
+            <h1 className="text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-amber-300 to-pink-400 font-sans select-none drop-shadow-md leading-none">
               NEKOMON
             </h1>
-            <span className="text-[10px] text-slate-400 font-mono tracking-widest uppercase">Mobile Card Companion</span>
+            <span className="text-[9px] text-slate-400 font-mono tracking-widest uppercase mt-0.5">Mobile Card Companion</span>
           </div>
         </div>
 
@@ -1237,11 +1239,22 @@ export default function App() {
             {/* Main Hero Section: Information & Login Portal */}
             <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-10">
               <div className="flex-1 max-w-lg text-left flex flex-col gap-5">
+                
+                {/* Official Grand Logo Emblem */}
+                <div className="relative group max-w-md w-full my-1">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 via-amber-500 to-red-600 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-700 animate-pulse" />
+                  <img 
+                    src={nekomonLogoImg} 
+                    alt="Official NEKOMON Logo Banner" 
+                    className="relative w-full h-auto object-contain rounded-2xl border-2 border-amber-500/50 shadow-2xl shadow-amber-500/20 group-hover:scale-[1.02] transition-all duration-500"
+                  />
+                </div>
+
                 <span className="px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold font-mono text-xs w-max uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
                   {language === "id" ? "CARD GAME BERBASIS KUCING ASLI" : "REAL CAT BASED CARD GAME"}
                 </span>
-                <h2 className="text-4xl lg:text-5xl font-black text-slate-100 tracking-tight leading-none font-sans">
+                <h2 className="text-3xl lg:text-4xl font-black text-slate-100 tracking-tight leading-tight font-sans">
                   {language === "id" ? (
                     <>TANGKAP KUCING ASLI, FORGE MENJADI <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-300">NEKOMON ANIME!</span></>
                   ) : (
@@ -1279,136 +1292,138 @@ export default function App() {
               </div>
             </div>
 
-            {/* VISUAL GAME SHOWCASE SECTION: Example Forged Nekomon Cards */}
-            <div className="w-full bg-slate-900/40 border border-slate-800/80 p-6 rounded-3xl flex flex-col gap-6 shadow-2xl mt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            {/* OFFICIAL GAME VISUAL & CARD SYSTEM SHOWCASE */}
+            <div className="w-full bg-slate-900/40 border border-amber-500/30 p-5 sm:p-7 rounded-3xl flex flex-col gap-6 shadow-2xl shadow-amber-500/5 mt-4 relative overflow-hidden backdrop-blur-sm">
+              {/* Decorative Background Glows */}
+              <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full filter blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/10 rounded-full filter blur-3xl pointer-events-none" />
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4 relative z-10">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-500 animate-pulse" />
-                    <h3 className="text-lg font-black text-slate-100 font-mono uppercase tracking-wider">
-                      {language === "id" ? "🎴 VISUAL GAME: SHOWCASE KARTU NEKOMON FORGED" : "🎴 GAME VISUALS: FORGED NEKOMON CARD SHOWCASE"}
+                    <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+                    <h3 className="text-lg sm:text-xl font-black text-slate-100 font-sans tracking-wide uppercase">
+                      {language === "id" ? "🎴 SISTEM KARTU & VISUAL GAME RESMI" : "🎴 OFFICIAL CARD SYSTEM & GAME VISUALS"}
                     </h3>
                   </div>
                   <p className="text-xs text-slate-400 font-mono mt-1">
                     {language === "id"
-                      ? "Hasil penempaan (forging) foto kucing nyata menjadi Kartu Anime eksklusif Faksi Sentinel & Scourge:"
-                      : "Visual output of forging real cat photos into exclusive anime cards across Sentinel & Scourge Factions:"}
+                      ? "Detail tampilan kartu Nekomon hasil Forging AI, statistik pertempuran (ATK, SPD, HP, DEF), serta Ultimate Skill Faksi Sentinel & Scourge:"
+                      : "Visual breakdown of AI Forged Nekomon Cards, combat stats (ATK, SPD, HP, DEF), and Ultimate Skills for Sentinel & Scourge:"}
                   </p>
                 </div>
 
-                {/* Faction Switcher */}
-                <div className="flex items-center bg-slate-950 p-1 border border-slate-800 rounded-xl gap-1 font-mono text-xs">
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setShowcaseFaction("all")}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      showcaseFaction === "all"
-                        ? "bg-yellow-500 text-slate-950 shadow-md"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
+                    onClick={() => setIsBottomBannerZoomed(true)}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black font-mono text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
                   >
-                    {language === "id" ? "SEMUA FAKSI" : "ALL FACTIONS"}
-                  </button>
-                  <button
-                    onClick={() => setShowcaseFaction("Sentinel")}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      showcaseFaction === "Sentinel"
-                        ? "bg-teal-500 text-slate-950 shadow-md"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    ✨ Sentinel
-                  </button>
-                  <button
-                    onClick={() => setShowcaseFaction("Scourge")}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      showcaseFaction === "Scourge"
-                        ? "bg-rose-500 text-slate-950 shadow-md"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    💀 Scourge
+                    <Eye className="w-4 h-4" />
+                    {language === "id" ? "LIHAT FULLSCREEN 🔍" : "EXPAND FULLSCREEN 🔍"}
                   </button>
                 </div>
               </div>
 
-              {/* Cards Showcase Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
-                {SHOWCASE_CARDS.filter(c => showcaseFaction === "all" || c.style === showcaseFaction).map((c) => (
-                  <div key={c.id} className="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl flex flex-col xl:flex-row items-center gap-6 shadow-xl hover:border-slate-700 transition-all">
-                    {/* Visual Card */}
-                    <div className="flex flex-col items-center gap-2">
-                      <div className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-                        c.style === "Sentinel" 
-                          ? "bg-teal-500/10 border border-teal-500/30 text-teal-400" 
-                          : "bg-rose-500/10 border border-rose-500/30 text-rose-400"
-                      }`}>
-                        {c.style === "Sentinel" ? <Sparkles className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
-                        <span>Faksi {c.style}</span>
-                      </div>
-                      <NekomonCard card={c} size="md" />
-                    </div>
+              {/* Dynamic Bottom Banner Visual Display */}
+              <div className="relative group rounded-2xl overflow-hidden border border-amber-500/30 bg-slate-950 shadow-2xl transition-all duration-500 hover:border-amber-400/60">
+                <img 
+                  src={nekomonBottomBannerImg} 
+                  alt="Official NEKOMON Card Game System & Showcase" 
+                  className="w-full h-auto object-cover rounded-2xl transition-transform duration-700 group-hover:scale-[1.01] cursor-pointer"
+                  onClick={() => setIsBottomBannerZoomed(true)}
+                />
+                
+                {/* Subtle Hover Hint */}
+                <div 
+                  onClick={() => setIsBottomBannerZoomed(true)}
+                  className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center cursor-pointer backdrop-blur-[2px]"
+                >
+                  <span className="bg-slate-950/90 text-amber-300 border border-amber-500/50 px-5 py-2.5 rounded-2xl font-mono text-xs font-bold shadow-2xl flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                    <Eye className="w-4 h-4 text-amber-400" />
+                    {language === "id" ? "Klik Untuk Memperbesar Tampilan Kartu 🔍" : "Click to Enlarge Card System Showcase 🔍"}
+                  </span>
+                </div>
+              </div>
 
-                    {/* Stats & Skill Details Breakdown */}
-                    <div className="flex-1 w-full flex flex-col gap-3 font-mono text-xs">
-                      <div className="border-b border-slate-800/80 pb-2">
-                        <span className="text-slate-500 block text-[10px] uppercase font-bold">SPECIES & FACTION</span>
-                        <h4 className="text-base font-extrabold text-slate-100 flex items-center justify-between">
-                          <span>{c.name}</span>
-                          <span className="text-yellow-400 text-xs bg-yellow-500/10 border border-yellow-500/30 px-2 py-0.5 rounded-full">
-                            LV. {c.level} • {c.rarity}
-                          </span>
-                        </h4>
-                      </div>
+              {/* Dynamic Key Features & Stats Breakdown Ribbon */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-xs relative z-10">
+                <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-2xl flex flex-col gap-1 shadow-md">
+                  <span className="text-red-400 font-bold flex items-center gap-1.5 text-xs">
+                    <span>🗡️</span> ATK (Attack)
+                  </span>
+                  <span className="text-slate-400 text-[11px] leading-tight">
+                    {language === "id" ? "Mempengaruhi jumlah damage serangan dasar & skill." : "Determines base & skill attack damage dealt."}
+                  </span>
+                </div>
 
-                      {/* 4 Core Combat Stats Grid */}
-                      <div className="grid grid-cols-2 gap-2 text-slate-300">
-                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-red-400 font-bold">
-                            <span className="text-sm">🗡️</span> ATTACK
-                          </span>
-                          <span className="text-slate-100 font-extrabold text-sm">{c.atk}</span>
-                        </div>
+                <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-2xl flex flex-col gap-1 shadow-md">
+                  <span className="text-amber-400 font-bold flex items-center gap-1.5 text-xs">
+                    <span>⚡</span> SPD (Speed)
+                  </span>
+                  <span className="text-slate-400 text-[11px] leading-tight">
+                    {language === "id" ? "Menentukan urutan giliran bertindak di Arena." : "Controls turn priority order in Arena combat."}
+                  </span>
+                </div>
 
-                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-blue-400 font-bold">
-                            <span className="text-sm">🛡️</span> DEFEND
-                          </span>
-                          <span className="text-slate-100 font-extrabold text-sm">{c.def}</span>
-                        </div>
+                <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-2xl flex flex-col gap-1 shadow-md">
+                  <span className="text-emerald-400 font-bold flex items-center gap-1.5 text-xs">
+                    <span>❤️</span> HP (Health)
+                  </span>
+                  <span className="text-slate-400 text-[11px] leading-tight">
+                    {language === "id" ? "Daya tahan hidup. Jika 0 maka Nekomon gugur." : "Health points. Reaching 0 results in knockout."}
+                  </span>
+                </div>
 
-                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-yellow-400 font-bold">
-                            <span className="text-sm">⚡</span> SPEED
-                          </span>
-                          <span className="text-slate-100 font-extrabold text-sm">{c.spd}</span>
-                        </div>
-
-                        <div className="bg-slate-900/80 border border-slate-800/80 p-2 rounded-xl flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                            <span className="text-sm">❤️</span> HEALTH
-                          </span>
-                          <span className="text-slate-100 font-extrabold text-sm">{c.hp} HP</span>
-                        </div>
-                      </div>
-
-                      {/* Ability / Skill Description */}
-                      <div className="bg-slate-900/90 border border-slate-800/90 p-3 rounded-xl flex flex-col gap-1 mt-1">
-                        <div className="flex items-center justify-between text-yellow-400 font-extrabold text-[11px]">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
-                            DESKRIPSI KEMAMPUAN:
-                          </span>
-                          <span className="text-slate-400 uppercase text-[10px]">{c.skillName}</span>
-                        </div>
-                        <p className="text-slate-300 text-[11px] leading-relaxed italic">
-                          "{c.skillDesc}"
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-2xl flex flex-col gap-1 shadow-md">
+                  <span className="text-blue-400 font-bold flex items-center gap-1.5 text-xs">
+                    <span>🛡️</span> DEF (Defense)
+                  </span>
+                  <span className="text-slate-400 text-[11px] leading-tight">
+                    {language === "id" ? "Mengurangi besaran damage fisik & sihir." : "Reduces incoming physical & magic damage."}
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Lightbox Fullscreen Modal for Official Game Card System Image */}
+            {isBottomBannerZoomed && (
+              <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 animate-fadeIn">
+                <div className="relative max-w-5xl w-full bg-slate-900 border border-amber-500/40 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-400" />
+                      <h3 className="font-extrabold text-sm sm:text-base text-slate-100 font-mono uppercase tracking-wider">
+                        NEKOMON OFFICIAL CARD SYSTEM & GAMEPLAY VISUAL
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setIsBottomBannerZoomed(false)}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="flex justify-center items-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+                    <img 
+                      src={nekomonBottomBannerImg} 
+                      alt="NEKOMON Official Card Showcase" 
+                      className="w-full h-auto max-h-[75vh] object-contain rounded-2xl"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+                    <span className="text-amber-400 font-bold">nekomon.online</span>
+                    <button
+                      onClick={() => setIsBottomBannerZoomed(false)}
+                      className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl transition-all cursor-pointer shadow-lg"
+                    >
+                      {language === "id" ? "TUTUP" : "CLOSE"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         ) : (

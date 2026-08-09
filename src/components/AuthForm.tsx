@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { User, ShieldAlert, CheckCircle, Sparkles, Mail, Lock, Gamepad2, ArrowRight, KeyRound, RefreshCw } from "lucide-react";
 import { motion } from "motion/react";
 import { signInWithGoogleFirebase } from "../lib/firebase";
+const nekomonLogoImg = new URL("../assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
 
 interface AuthFormProps {
   onSuccess: (token: string, userData: any) => void;
@@ -330,12 +331,17 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
       <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full filter blur-xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/5 rounded-full filter blur-xl pointer-events-none"></div>
 
-      {/* Header section */}
+      {/* Header section with Official NEKOMON Logo */}
       <div className="text-center flex flex-col items-center gap-2 mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-yellow-500 to-amber-600 flex items-center justify-center border-2 border-yellow-300 shadow-lg shadow-yellow-500/10">
-          <Gamepad2 className="w-9 h-9 text-slate-950 animate-bounce" />
+        <div className="relative group max-w-[200px] w-full mb-1">
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-amber-500 to-red-600 rounded-2xl blur-md opacity-60 group-hover:opacity-90 transition duration-500" />
+          <img 
+            src={nekomonLogoImg} 
+            alt="Official NEKOMON Logo" 
+            className="relative w-full h-auto object-contain rounded-xl border border-amber-500/40 shadow-xl"
+          />
         </div>
-        <h2 className="text-2xl font-black text-slate-100 font-sans tracking-wide">
+        <h2 className="text-xl font-black text-slate-100 font-sans tracking-wide">
           {headerInfo.title}
         </h2>
         <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
