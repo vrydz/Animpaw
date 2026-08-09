@@ -17,6 +17,7 @@ import { NekomonDex } from "./components/NekomonDex";
 import { InterstitialAdModal } from "./components/InterstitialAdModal";
 import { RewardedAdModal } from "./components/RewardedAdModal";
 import { AchievementShareModal } from "./components/AchievementShareModal";
+import { AudioPlayerWidget } from "./components/AudioPlayerWidget";
 import { NekomonCard } from "./components/NekomonCard";
 import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
@@ -2448,31 +2449,8 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Floating Audio Soundtrack Controller Button (Moved to bottom right for mobile friendliness) */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          onClick={toggleBGM}
-          className={`flex items-center justify-center w-12 h-12 rounded-full border shadow-2xl transition-all cursor-pointer hover:scale-110 active:scale-95 group relative ${
-            bgmOn 
-              ? "bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 border-yellow-400" 
-              : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200"
-          }`}
-          title={bgmOn ? "Matikan Musik BGM" : "Mainkan Musik BGM"}
-        >
-          {bgmOn ? (
-            <>
-              <Volume2 className="w-5 h-5 animate-pulse" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full animate-ping" />
-            </>
-          ) : (
-            <VolumeX className="w-5 h-5" />
-          )}
-          {/* Tooltip on hover */}
-          <span className="absolute right-14 bg-slate-900/95 text-slate-200 text-[10px] font-bold font-mono px-2 py-1 rounded-lg border border-slate-850 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-            {bgmOn ? "BGM: AKTIF" : "BGM: MATI"}
-          </span>
-        </button>
-      </div>
+      {/* Floating Audio Soundtrack Controller Widget */}
+      <AudioPlayerWidget />
 
     </div>
   );

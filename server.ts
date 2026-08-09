@@ -19,12 +19,14 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Synchronize memory cache / file DB on server boot
 let isFirestoreLoaded = false;
+let bootPromise: Promise<void> | null = null;
+
 async function bootSyncFirestore() {
   if (isFirestoreLoaded) return;
   try {
     const remoteData = await loadFromFirestore();
     if (remoteData) {
-      const current = readDB();
+      const current = readDBRaw();
       // Merge remote data into current DB
       if (Array.isArray(remoteData.users)) {
         remoteData.users.forEach((u: any) => {
@@ -103,7 +105,49 @@ async function bootSyncFirestore() {
     console.warn("Boot Firestore sync warning:", err);
   }
 }
-bootSyncFirestore();
+
+async function ensureFirestoreLoaded() {
+  if (isFirestoreLoaded) return;
+  if (!bootPromise) {
+    bootPromise = bootSyncFirestore();
+  }
+  await bootPromise;
+}
+
+// Trigger initial boot sync
+ensureFirestoreLoaded();
+
+// Express middleware for API routes to await Firestore sync
+app.use("/api", async (req, res, next) => {
+  try {
+    await ensureFirestoreLoaded();
+  } catch (e) {
+    console.warn("Middleware Firestore sync wait notice:", e);
+  }
+  next();
+});
+
+// Raw sync readDB helper
+function readDBRaw() {
+  try {
+    if (!fs.existsSync(DB_PATH)) {
+      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [] };
+      fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2));
+      return initial;
+    }
+    const data = fs.readFileSync(DB_PATH, "utf8");
+    const parsed = JSON.parse(data);
+    if (!parsed.trades) parsed.trades = [];
+    if (!parsed.communitySpots) parsed.communitySpots = [];
+    if (!parsed.battleHistory) parsed.battleHistory = [];
+    if (!parsed.transactions) parsed.transactions = [];
+    if (!parsed.captures) parsed.captures = [];
+    if (!parsed.cards) parsed.cards = [];
+    return parsed;
+  } catch (err) {
+    return { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [] };
+  }
+}
 
 // Initialize DB structure if somehow empty
 function readDB() {

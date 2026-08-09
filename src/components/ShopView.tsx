@@ -222,8 +222,9 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
         await completeMidtransOrder(data.orderId);
       }
     } catch (err: any) {
-      console.warn("Midtrans Payment Fallback:", err);
-      await simulatePaymentSuccess();
+      console.error("Midtrans Payment Error:", err);
+      setPaymentStatus("error");
+      setErrorMsg(err.message || "Gagal memproses pembayaran Midtrans.");
     }
   };
 
@@ -1152,12 +1153,6 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                       >
                         <ShieldCheck className="w-4 h-4" />
                         {language === "id" ? "BAYAR DENGAN MIDTRANS SNAP 💳" : "PAY VIA MIDTRANS SNAP 💳"}
-                      </button>
-                      <button
-                        onClick={simulatePaymentSuccess}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 text-[10px] py-2 rounded-xl font-mono transition-all flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        ⚡ Instant Test Payment (Dev Demo)
                       </button>
                     </div>
 

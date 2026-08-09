@@ -130,6 +130,18 @@ const translations: Record<Language, Record<string, string>> = {
     "guide.tab_tutorial": "CARA BERMAIN",
     "guide.tab_elements": "TABEL ELEMEN",
     "guide.tab_tips": "TIPS PRO",
+
+    // BGM Audio Controller
+    "bgm.title": "MUSIK BACKSOUND 🎵",
+    "bgm.subtitle": "Atur musik & volume backsound aplikasi",
+    "bgm.active": "BGM: AKTIF",
+    "bgm.muted": "BGM: MATI",
+    "bgm.volume_label": "Volume Backsound",
+    "bgm.theme_label": "Pilih Tema Musik",
+    "bgm.theme_cozy": "Kota Nekomon (Cozy Lofi)",
+    "bgm.theme_battle": "Arena Pertarungan (RPG)",
+    "bgm.theme_shrine": "Kuil Mistik (Anime)",
+    "bgm.theme_scourge": "Cyber Scourge (Synth)",
   },
   en: {
     // Nav & Common
@@ -252,6 +264,18 @@ const translations: Record<Language, Record<string, string>> = {
     "guide.tab_tutorial": "HOW TO PLAY",
     "guide.tab_elements": "ELEMENT TABLE",
     "guide.tab_tips": "PRO TIPS",
+
+    // BGM Audio Controller
+    "bgm.title": "BACKGROUND MUSIC 🎵",
+    "bgm.subtitle": "Adjust game background music & volume",
+    "bgm.active": "BGM: ON",
+    "bgm.muted": "BGM: OFF",
+    "bgm.volume_label": "BGM Volume",
+    "bgm.theme_label": "Select Soundtrack Theme",
+    "bgm.theme_cozy": "Nekomon Town (Cozy Lofi)",
+    "bgm.theme_battle": "Battle Arena (RPG)",
+    "bgm.theme_shrine": "Mystic Shrine (Anime)",
+    "bgm.theme_scourge": "Cyber Scourge (Synth)",
   }
 };
 

@@ -1,20 +1,79 @@
 // Procedural Web Audio API sound generator for Nekomon Game Companion.
 // No external assets are loaded to guarantee 100% offline-ready reliability, zero latency, and zero CORS issues.
 
+export type BGMTheme = "cozy" | "battle" | "shrine" | "scourge";
+
 class AudioEngine {
   private ctx: AudioContext | null = null;
+  private bgmGainNode: GainNode | null = null;
   private bgmOscs: { osc: OscillatorNode; gain: GainNode }[] = [];
   private bgmInterval: any = null;
   private isBgmPlaying = false;
-  private masterVolume = 0.15; // Safe comfortable master volume
+  private masterVolume = 0.25; // Safe comfortable master volume
+  private bgmVolume = 0.5; // BGM volume multiplier (0.0 to 1.0)
+  private currentTheme: BGMTheme = "cozy";
+
+  constructor() {
+    try {
+      const savedVol = localStorage.getItem("nekomon_bgm_volume");
+      if (savedVol !== null) {
+        const parsed = parseFloat(savedVol);
+        if (!isNaN(parsed)) this.bgmVolume = Math.max(0, Math.min(1, parsed));
+      }
+      const savedTheme = localStorage.getItem("nekomon_bgm_theme");
+      if (savedTheme && ["cozy", "battle", "shrine", "scourge"].includes(savedTheme)) {
+        this.currentTheme = savedTheme as BGMTheme;
+      }
+    } catch (_) {}
+  }
 
   init() {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+    if (!this.bgmGainNode && this.ctx) {
+      this.bgmGainNode = this.ctx.createGain();
+      this.bgmGainNode.connect(this.ctx.destination);
+      this.bgmGainNode.gain.setValueAtTime(this.bgmVolume * this.masterVolume, this.ctx.currentTime);
+    }
     if (this.ctx.state === "suspended") {
       this.ctx.resume();
     }
+  }
+
+  // Set BGM Volume (0.0 to 1.0)
+  setBgmVolume(volume: number) {
+    this.bgmVolume = Math.max(0, Math.min(1, volume));
+    try {
+      localStorage.setItem("nekomon_bgm_volume", String(this.bgmVolume));
+    } catch (_) {}
+
+    if (this.ctx && this.bgmGainNode) {
+      const targetGain = this.bgmVolume * this.masterVolume;
+      this.bgmGainNode.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  getBgmVolume(): number {
+    return this.bgmVolume;
+  }
+
+  // Set BGM Theme ("cozy", "battle", "shrine", "scourge")
+  setBgmTheme(theme: BGMTheme) {
+    if (this.currentTheme === theme && this.isBgmPlaying) return;
+    this.currentTheme = theme;
+    try {
+      localStorage.setItem("nekomon_bgm_theme", theme);
+    } catch (_) {}
+
+    if (this.isBgmPlaying) {
+      this.stopBGM();
+      this.startBGM(theme);
+    }
+  }
+
+  getBgmTheme(): BGMTheme {
+    return this.currentTheme;
   }
 
   // Plays a procedural retro chime
@@ -149,88 +208,132 @@ class AudioEngine {
     }
   }
 
-  // 3. Start cute retro cozy game BGM (Cozy Anime Lofi theme)
-  startBGM() {
+  // 3. Start cute retro cozy game BGM
+  startBGM(selectedTheme?: BGMTheme) {
     this.init();
-    if (!this.ctx || this.isBgmPlaying) return;
+    if (!this.ctx || !this.bgmGainNode) return;
+
+    if (selectedTheme) {
+      this.currentTheme = selectedTheme;
+    }
+
+    // Always update gain to current volume
+    this.bgmGainNode.gain.setValueAtTime(this.bgmVolume * this.masterVolume, this.ctx.currentTime);
+
+    if (this.isBgmPlaying) {
+      this.stopBGM();
+    }
     this.isBgmPlaying = true;
 
     let step = 0;
-    // A beautiful cozy pentatonic melody loop: C4, D4, E4, G4, A4, C5
-    const melody = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
-    const sequence = [
-      0, 2, 3, 5, 
-      4, 3, 2, 0, 
-      1, 3, 4, 3, 
-      2, 5, 4, 1
-    ];
-    
-    // Play warm background synth chords continuously
+
+    const themeConfigs: Record<BGMTheme, {
+      bpm: number;
+      intervalMs: number;
+      melody: number[];
+      sequence: number[];
+      chordRoots: number[];
+      oscType: OscillatorType;
+    }> = {
+      cozy: {
+        bpm: 110,
+        intervalMs: 545,
+        melody: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25], // C4, D4, E4, G4, A4, C5 (Pentatonic)
+        sequence: [0, 2, 3, 5, 4, 3, 2, 0, 1, 3, 4, 3, 2, 5, 4, 1],
+        chordRoots: [196.00, 220.00, 174.61, 261.63], // G3, A3, F3, C4
+        oscType: "triangle",
+      },
+      battle: {
+        bpm: 138,
+        intervalMs: 434,
+        melody: [220.00, 261.63, 293.66, 329.63, 392.00, 440.00, 523.25], // A3 Minor scale
+        sequence: [0, 3, 5, 3, 2, 4, 6, 5, 1, 3, 5, 2, 0, 2, 4, 3],
+        chordRoots: [110.00, 130.81, 146.83, 164.81],
+        oscType: "sawtooth",
+      },
+      shrine: {
+        bpm: 88,
+        intervalMs: 681,
+        melody: [293.66, 311.13, 392.00, 440.00, 523.25, 587.33], // Japanese Insen scale
+        sequence: [0, 1, 3, 2, 4, 3, 1, 0, 2, 4, 5, 4, 3, 1, 2, 0],
+        chordRoots: [146.83, 155.56, 196.00, 220.00],
+        oscType: "sine",
+      },
+      scourge: {
+        bpm: 125,
+        intervalMs: 480,
+        melody: [146.83, 174.61, 196.00, 220.00, 261.63, 293.66], // D3 Synthwave
+        sequence: [0, 2, 4, 5, 3, 1, 4, 2, 0, 3, 5, 4, 2, 1, 3, 0],
+        chordRoots: [146.83, 174.61, 196.00, 220.00],
+        oscType: "square",
+      },
+    };
+
+    const cfg = themeConfigs[this.currentTheme] || themeConfigs.cozy;
+
     const playChord = (rootFreq: number, duration: number) => {
-      if (!this.ctx || !this.isBgmPlaying) return;
+      if (!this.ctx || !this.isBgmPlaying || !this.bgmGainNode) return;
       const now = this.ctx.currentTime;
-      
-      const freqs = [rootFreq, rootFreq * 1.2, rootFreq * 1.5]; // Triad
+      const freqs = [rootFreq, rootFreq * 1.2, rootFreq * 1.5];
+
       freqs.forEach((f) => {
         const osc = this.ctx!.createOscillator();
         const gain = this.ctx!.createGain();
-        
-        osc.type = "sine";
+
+        osc.type = cfg.oscType === "sawtooth" ? "triangle" : "sine";
         osc.frequency.setValueAtTime(f, now);
-        
+
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.03 * this.masterVolume, now + 1.0);
-        gain.gain.linearRampToValueAtTime(0.03 * this.masterVolume, now + duration - 1.0);
+        gain.gain.linearRampToValueAtTime(0.025, now + 0.6);
+        gain.gain.linearRampToValueAtTime(0.025, now + duration - 0.6);
         gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        
+
         osc.connect(gain);
-        gain.connect(this.ctx!.destination);
-        
+        gain.connect(this.bgmGainNode!);
+
         osc.start(now);
         osc.stop(now + duration);
       });
     };
 
-    // Main sequencer step
     const playNextStep = () => {
-      if (!this.ctx || !this.isBgmPlaying) return;
+      if (!this.ctx || !this.isBgmPlaying || !this.bgmGainNode) return;
       const now = this.ctx.currentTime;
 
-      // Play melody note
-      const noteIdx = sequence[step % sequence.length];
-      const freq = melody[noteIdx];
+      // Play melody
+      const noteIdx = cfg.sequence[step % cfg.sequence.length];
+      const freq = cfg.melody[noteIdx];
 
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
 
-      osc.type = "triangle"; // Warm retro cozy tone
+      osc.type = cfg.oscType;
       osc.frequency.setValueAtTime(freq, now);
-      
-      // Gentle slide/portamento
-      osc.frequency.linearRampToValueAtTime(freq * 1.01, now + 0.35);
+      osc.frequency.linearRampToValueAtTime(freq * 1.008, now + 0.3);
+
+      const attack = cfg.oscType === "square" ? 0.02 : 0.04;
+      const gainVal = cfg.oscType === "square" ? 0.025 : cfg.oscType === "sawtooth" ? 0.03 : 0.045;
 
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.04 * this.masterVolume, now + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      gain.gain.linearRampToValueAtTime(gainVal, now + attack);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + (cfg.intervalMs / 1000) * 0.9);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.bgmGainNode);
 
       osc.start(now);
-      osc.stop(now + 0.5);
+      osc.stop(now + (cfg.intervalMs / 1000));
 
-      // Trigger warm pad chord every 4 beats (2 seconds)
+      // Trigger chord pads every 4 steps
       if (step % 4 === 0) {
-        const chordRoots = [196.00, 220.00, 174.61, 261.63]; // G3, A3, F3, C4
-        const root = chordRoots[Math.floor(step / 4) % chordRoots.length];
-        playChord(root, 2.0);
+        const root = cfg.chordRoots[Math.floor(step / 4) % cfg.chordRoots.length];
+        playChord(root, (cfg.intervalMs / 1000) * 3.8);
       }
 
       step++;
     };
 
-    // Run melody steps at 120 BPM (0.5 seconds per step)
-    this.bgmInterval = setInterval(playNextStep, 500);
+    this.bgmInterval = setInterval(playNextStep, cfg.intervalMs);
     playNextStep();
   }
 
