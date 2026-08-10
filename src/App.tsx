@@ -23,6 +23,7 @@ import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
 
 const nekomonLogoImg = new URL("./assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
+const nekomonCardShowcaseImg = new URL("./assets/images/nekomon_card_showcase_banner_1786349079069.jpg", import.meta.url).href;
 const nekomonBottomBannerImg = new URL("./assets/images/bottom.png", import.meta.url).href;
 import { 
   Sparkles, 
@@ -1294,54 +1295,80 @@ export default function App() {
             </div>
 
             {/* OFFICIAL GAME VISUAL & CARD SYSTEM SHOWCASE */}
-            <div className="w-full bg-slate-900/40 border border-amber-500/30 p-5 sm:p-7 rounded-3xl flex flex-col gap-6 shadow-2xl shadow-amber-500/5 mt-4 relative overflow-hidden backdrop-blur-sm">
+            <div className="w-full bg-slate-900/40 border border-amber-500/30 p-4 sm:p-7 rounded-3xl flex flex-col gap-5 shadow-2xl shadow-amber-500/5 mt-4 relative overflow-hidden backdrop-blur-sm">
               {/* Decorative Background Glows */}
               <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full filter blur-3xl pointer-events-none" />
               <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/10 rounded-full filter blur-3xl pointer-events-none" />
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4 relative z-10">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
-                    <h3 className="text-lg sm:text-xl font-black text-slate-100 font-sans tracking-wide uppercase">
-                      {language === "id" ? "🎴 SISTEM KARTU & VISUAL GAME RESMI" : "🎴 OFFICIAL CARD SYSTEM & GAME VISUALS"}
-                    </h3>
+              {/* Header with Official Logo & Controls */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="p-1 bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-600 rounded-2xl shadow-lg shadow-amber-500/20 flex-shrink-0">
+                    <img 
+                      src={nekomonLogoImg} 
+                      alt="Official Nekomon Logo" 
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover border border-slate-950 shadow-inner"
+                      referrerPolicy="no-referrer"
+                    />
                   </div>
-                  <p className="text-xs text-slate-400 font-mono mt-1">
-                    {language === "id"
-                      ? "Detail tampilan kartu Nekomon hasil Forging AI, statistik pertempuran (ATK, SPD, HP, DEF), serta Ultimate Skill Faksi Sentinel & Scourge:"
-                      : "Visual breakdown of AI Forged Nekomon Cards, combat stats (ATK, SPD, HP, DEF), and Ultimate Skills for Sentinel & Scourge:"}
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <h3 className="text-base sm:text-lg lg:text-xl font-black text-slate-100 font-sans tracking-wide uppercase">
+                        {language === "id" ? "🎴 SISTEM KARTU & VISUAL GAME RESMI" : "🎴 OFFICIAL CARD SYSTEM & GAME VISUALS"}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">
+                      {language === "id"
+                        ? "Detail tampilan kartu Nekomon hasil Forging AI, statistik pertempuran (ATK, SPD, HP, DEF), serta Faksi Sentinel & Scourge:"
+                        : "Visual breakdown of AI Forged Nekomon Cards, combat stats (ATK, SPD, HP, DEF), and Sentinel & Scourge Factions:"}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsBottomBannerZoomed(true)}
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black font-mono text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black font-mono text-xs rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
                   >
-                    <Eye className="w-4 h-4" />
-                    {language === "id" ? "LIHAT FULLSCREEN 🔍" : "EXPAND FULLSCREEN 🔍"}
+                    <Eye className="w-4 h-4 text-slate-950" />
+                    <span>{language === "id" ? "LIHAT FULLSCREEN 🔍" : "EXPAND FULLSCREEN 🔍"}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Dynamic Bottom Banner Visual Display */}
+              {/* Responsive High-Res Banner Visual Display */}
               <div className="relative group rounded-2xl overflow-hidden border border-amber-500/30 bg-slate-950 shadow-2xl transition-all duration-500 hover:border-amber-400/60">
-                <img 
-                  src={nekomonBottomBannerImg} 
-                  alt="Official NEKOMON Card Game System & Showcase" 
-                  className="w-full h-auto object-cover rounded-2xl transition-transform duration-700 group-hover:scale-[1.01] cursor-pointer"
-                  onClick={() => setIsBottomBannerZoomed(true)}
-                />
+                {/* Official Nekomon Watermark Badge */}
+                <div className="absolute top-3 left-3 bg-slate-950/90 backdrop-blur-md border border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl z-20 font-mono text-[11px] text-amber-300 font-extrabold">
+                  <img 
+                    src={nekomonLogoImg} 
+                    alt="Nekomon Badge" 
+                    className="w-5 h-5 rounded-md object-cover border border-amber-400/50" 
+                    referrerPolicy="no-referrer"
+                  />
+                  <span>NEKOMON OFFICIAL</span>
+                </div>
+
+                {/* Responsive High-Res Banner */}
+                <div className="w-full overflow-hidden flex items-center justify-center bg-slate-950">
+                  <img 
+                    src={nekomonCardShowcaseImg} 
+                    alt="Official NEKOMON Card Game System & Showcase" 
+                    className="w-full h-auto max-h-[380px] sm:max-h-[520px] lg:max-h-[620px] object-cover sm:object-contain rounded-2xl transition-transform duration-700 group-hover:scale-[1.01] cursor-pointer"
+                    onClick={() => setIsBottomBannerZoomed(true)}
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
                 
                 {/* Subtle Hover Hint */}
                 <div 
                   onClick={() => setIsBottomBannerZoomed(true)}
-                  className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center cursor-pointer backdrop-blur-[2px]"
+                  className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center cursor-pointer backdrop-blur-[2px] z-10"
                 >
                   <span className="bg-slate-950/90 text-amber-300 border border-amber-500/50 px-5 py-2.5 rounded-2xl font-mono text-xs font-bold shadow-2xl flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                     <Eye className="w-4 h-4 text-amber-400" />
-                    {language === "id" ? "Klik Untuk Memperbesar Tampilan Kartu 🔍" : "Click to Enlarge Card System Showcase 🔍"}
+                    {language === "id" ? "Klik Untuk Memperbesar Tampilan Fullscreen 🔍" : "Click to Enlarge Fullscreen View 🔍"}
                   </span>
                 </div>
               </div>
@@ -1388,12 +1415,17 @@ export default function App() {
 
             {/* Lightbox Fullscreen Modal for Official Game Card System Image */}
             {isBottomBannerZoomed && (
-              <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 animate-fadeIn">
-                <div className="relative max-w-5xl w-full bg-slate-900 border border-amber-500/40 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+              <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-8 animate-fadeIn">
+                <div className="relative max-w-5xl w-full bg-slate-900 border border-amber-500/40 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-amber-400" />
-                      <h3 className="font-extrabold text-sm sm:text-base text-slate-100 font-mono uppercase tracking-wider">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={nekomonLogoImg} 
+                        alt="Nekomon Logo" 
+                        className="w-8 h-8 rounded-xl object-cover border border-amber-500/50 shadow-md"
+                        referrerPolicy="no-referrer"
+                      />
+                      <h3 className="font-extrabold text-xs sm:text-base text-slate-100 font-mono uppercase tracking-wider">
                         NEKOMON OFFICIAL CARD SYSTEM & GAMEPLAY VISUAL
                       </h3>
                     </div>
@@ -1405,16 +1437,20 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="flex justify-center items-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+                  <div className="flex justify-center items-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-2">
                     <img 
-                      src={nekomonBottomBannerImg} 
+                      src={nekomonCardShowcaseImg} 
                       alt="NEKOMON Official Card Showcase" 
-                      className="w-full h-auto max-h-[75vh] object-contain rounded-2xl"
+                      className="w-full h-auto max-h-[72vh] object-contain rounded-xl"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
 
                   <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                    <span className="text-amber-400 font-bold">nekomon.online</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-400 font-bold">nekomon.online</span>
+                      <span className="hidden sm:inline text-slate-600">• Official Showcase</span>
+                    </div>
                     <button
                       onClick={() => setIsBottomBannerZoomed(false)}
                       className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl transition-all cursor-pointer shadow-lg"
