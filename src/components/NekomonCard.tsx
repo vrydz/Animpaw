@@ -315,14 +315,6 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
               <Sparkles className="w-2.5 h-2.5 text-yellow-400 animate-pulse" />
             )}
           </div>
-
-          {/* AI Forged Badge Overlay */}
-          {card.geminiUsed && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black font-mono text-[8px] tracking-wider rounded-full shadow-lg border border-yellow-200 flex items-center gap-1 z-20 uppercase">
-              <Sparkles className="w-2.5 h-2.5 text-slate-950 fill-slate-950 animate-spin" />
-              <span>AI FORGED</span>
-            </div>
-          )}
         </div>
 
         {/* HUD Stats & Elemental summary matching screen 2 */}
@@ -331,9 +323,9 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
           {/* Label Row */}
           <div className="flex justify-between items-center text-[10px] font-mono tracking-wider uppercase">
             <span className="text-slate-400 font-bold">{elementConfig.label}</span>
-            <span className={`font-extrabold flex items-center gap-1 ${card.geminiUsed ? "text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40" : "text-yellow-400"}`}>
-              <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-400" />
-              {card.geminiUsed ? "AI FORGED ⚡" : "95% AI"}
+            <span className="text-yellow-400 font-extrabold flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 animate-pulse text-yellow-400" />
+              95% AI
             </span>
           </div>
 
