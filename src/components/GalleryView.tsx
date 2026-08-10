@@ -980,7 +980,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                           {language === "id" 
                             ? `Spesies Domestik • Tempaan Faksi ` 
                             : `Domestic Species • Forged by Faction `}
-                          <span className="text-teal-400 font-bold">{selectedCard.style === "Sentinel" ? "Sentinel" : "Scourge"}</span>
+                          <span className="text-teal-400 font-bold">{selectedCard.style === "Sentinel" ? "Sentinel" : "Vanguard"}</span>
                         </p>
                       </div>
 
@@ -1084,7 +1084,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                         <div className="bg-slate-950/40 border border-slate-800/50 p-2.5 rounded-xl flex flex-col gap-0.5">
                           <span className="text-slate-500 block font-bold">{language === "id" ? "FAKSI" : "FACTION"}</span>
                           <span className="font-extrabold text-teal-400 text-[11px] uppercase tracking-wider">
-                            {selectedCard.style === "Sentinel" ? "Sentinel" : "Scourge"}
+                            {selectedCard.style === "Sentinel" ? "Sentinel" : "Vanguard"}
                           </span>
                         </div>
                       </div>

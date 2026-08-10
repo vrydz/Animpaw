@@ -122,7 +122,7 @@ export const GameGuide: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">4. Tempa Menjadi Kartu Nekomon ⚔️</h4>
                     <p className="leading-relaxed">
-                      Buka tab <span className="text-teal-400 font-bold font-mono">ALBUM KOLEKSI</span>, pilih foto kucing hasil tangkapan Anda, lalu klik tombol penempaan untuk membawanya ke <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. Kartu Nekomon baru akan ditempa secara instan menggunakan AI, lengkap dengan Elemen unik, Faksi (Faksi Sentinel/Faksi Scourge), statistik acak (HP, ATK, DEF, SPD), serta tingkat kelangkaan (Rarity) dari Common hingga Legendary!
+                      Buka tab <span className="text-teal-400 font-bold font-mono">ALBUM KOLEKSI</span>, pilih foto kucing hasil tangkapan Anda, lalu klik tombol penempaan untuk membawanya ke <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. Kartu Nekomon baru akan ditempa secara instan menggunakan AI, lengkap dengan Elemen unik, Faksi (Faksi Sentinel/Faksi Vanguard), statistik acak (HP, ATK, DEF, SPD), serta tingkat kelangkaan (Rarity) dari Common hingga Legendary!
                     </p>
                   </div>
                 </div>
@@ -186,7 +186,7 @@ export const GameGuide: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">4. Forge into Nekomon Cards ⚔️</h4>
                     <p className="leading-relaxed">
-                      Open the <span className="text-teal-400 font-bold font-mono">CARDS</span> tab, select your captured cat photo, then click forge to bring it to the <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. A brand new Nekomon Card will be forged instantly using AI, featuring unique Elements, Art Style (Sentinel/Scourge), randomized stats (HP, ATK, DEF, SPD), and rarity from Common to Legendary!
+                      Open the <span className="text-teal-400 font-bold font-mono">CARDS</span> tab, select your captured cat photo, then click forge to bring it to the <span className="text-teal-400 font-bold font-mono">FORGING STATION</span>. A brand new Nekomon Card will be forged instantly using AI, featuring unique Elements, Art Style (Sentinel/Vanguard), randomized stats (HP, ATK, DEF, SPD), and rarity from Common to Legendary!
                     </p>
                   </div>
                 </div>

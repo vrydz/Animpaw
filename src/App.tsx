@@ -91,12 +91,12 @@ const SHOWCASE_CARDS: Card[] = [
     createdAt: new Date().toISOString()
   },
   {
-    id: "showcase_scourge_1",
+    id: "showcase_vanguard_1",
     userId: "showcase",
     captureId: "showcase_c2",
     name: "Shadowclaw Cyber-Ignis",
     element: "Api",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Mythic",
     level: 20,
     hp: 280,
@@ -104,8 +104,8 @@ const SHOWCASE_CARDS: Card[] = [
     def: 92,
     spd: 110,
     skillName: "Tebasan Cakar Cyberpunk",
-    skillDesc: "Menerjang dari bayangan kota cyberpunk dengan kecepatan suara, membakar musuh dengan tebasan Faksi Scourge.",
-    imageUrl: getAnimeNekomonSpeciesArtwork("Shadowclaw Cyber-Ignis", "Api", "Scourge", "Mythic"),
+    skillDesc: "Menerjang dari bayangan kota cyberpunk dengan kecepatan suara, membakar musuh dengan tebasan Faksi Vanguard.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Shadowclaw Cyber-Ignis", "Api", "Vanguard", "Mythic"),
     geminiUsed: true,
     createdAt: new Date().toISOString()
   },
@@ -129,12 +129,12 @@ const SHOWCASE_CARDS: Card[] = [
     createdAt: new Date().toISOString()
   },
   {
-    id: "showcase_scourge_2",
+    id: "showcase_vanguard_2",
     userId: "showcase",
     captureId: "showcase_c4",
     name: "Voltron Fulgur-Strike",
     element: "Petir",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Legend",
     level: 18,
     hp: 220,
@@ -142,8 +142,8 @@ const SHOWCASE_CARDS: Card[] = [
     def: 75,
     spd: 135,
     skillName: "Kilat Petir Plasma Zero",
-    skillDesc: "Menembakkan petir plasma kecepatan tinggi dari Faksi Scourge yang melumpuhkan gerakan musuh dan meningkatkan Crit Rate +50%.",
-    imageUrl: getAnimeNekomonSpeciesArtwork("Voltron Fulgur-Strike", "Petir", "Scourge", "Legend"),
+    skillDesc: "Menembakkan petir plasma kecepatan tinggi dari Faksi Vanguard yang melumpuhkan gerakan musuh dan meningkatkan Crit Rate +50%.",
+    imageUrl: getAnimeNekomonSpeciesArtwork("Voltron Fulgur-Strike", "Petir", "Vanguard", "Legend"),
     geminiUsed: true,
     createdAt: new Date().toISOString()
   },
@@ -167,12 +167,12 @@ const SHOWCASE_CARDS: Card[] = [
     createdAt: new Date().toISOString()
   },
   {
-    id: "showcase_scourge_3",
+    id: "showcase_vanguard_3",
     userId: "showcase",
     captureId: "showcase_c6",
     name: "Obsidian Fang",
     element: "Tanah",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Epic",
     level: 16,
     hp: 295,
@@ -181,7 +181,7 @@ const SHOWCASE_CARDS: Card[] = [
     spd: 80,
     skillName: "Gigitan Magma Obsidian",
     skillDesc: "Melapisi taring dengan batuan magma magis purba yang menghancurkan pertahanan musuh hingga 35%.",
-    imageUrl: getAnimeNekomonSpeciesArtwork("Obsidian Fang", "Tanah", "Scourge", "Epic"),
+    imageUrl: getAnimeNekomonSpeciesArtwork("Obsidian Fang", "Tanah", "Vanguard", "Epic"),
     geminiUsed: true,
     createdAt: new Date().toISOString()
   }
@@ -202,7 +202,7 @@ export default function App() {
     totalPlayers: 142,
     totalCards: 680,
   });
-  const [showcaseFaction, setShowcaseFaction] = useState<"all" | "Sentinel" | "Scourge">("all");
+  const [showcaseFaction, setShowcaseFaction] = useState<"all" | "Sentinel" | "Vanguard">("all");
   const [isBottomBannerZoomed, setIsBottomBannerZoomed] = useState<boolean>(false);
 
   useEffect(() => {
@@ -241,6 +241,37 @@ export default function App() {
 
   const [showRewardedAdModal, setShowRewardedAdModal] = useState<boolean>(false);
   const [rewardedAdType, setRewardedAdType] = useState<"points_50" | "cores_5" | "standard">("standard");
+
+  // Rewarded Ad Cooldown State (Prevents spamming)
+  const [rewardedAdCooldown, setRewardedAdCooldown] = useState<number>(() => {
+    const saved = localStorage.getItem("nekomon_rewarded_ad_cooldown_end");
+    if (saved) {
+      const end = parseInt(saved, 10);
+      const now = Date.now();
+      if (end > now) return Math.ceil((end - now) / 1000);
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    if (rewardedAdCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setRewardedAdCooldown((prev) => {
+        if (prev <= 1) {
+          localStorage.removeItem("nekomon_rewarded_ad_cooldown_end");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [rewardedAdCooldown]);
+
+  const startAdCooldown = (seconds = 30) => {
+    const endTime = Date.now() + seconds * 1000;
+    localStorage.setItem("nekomon_rewarded_ad_cooldown_end", endTime.toString());
+    setRewardedAdCooldown(seconds);
+  };
 
   // Achievement Share & Level Up Modal State
   const [achievementModalData, setAchievementModalData] = useState<{
@@ -331,11 +362,21 @@ export default function App() {
   };
 
   const handleOpenRewardedAd = (type: "points_50" | "cores_5" | "standard" = "standard") => {
+    if (rewardedAdCooldown > 0) {
+      setNotification({
+        message: language === "id"
+          ? `Iklan video belum siap! Mohon tunggu ${rewardedAdCooldown} detik lagi.`
+          : `Video ad is cooling down! Please wait ${rewardedAdCooldown} seconds.`,
+        type: "warning"
+      });
+      return;
+    }
     setRewardedAdType(type);
     setShowRewardedAdModal(true);
   };
 
   const handleRewardClaimed = (updatedUser: any, rewardMsg: string) => {
+    startAdCooldown(30); // 30 seconds cooldown timer
     if (updatedUser) {
       setUser(prev => prev ? { ...prev, points: updatedUser.points, cores: updatedUser.cores } : updatedUser);
     }
@@ -1283,8 +1324,8 @@ export default function App() {
                       FAKSI & ELEMEN
                     </div>
                     {language === "id"
-                      ? "Tempa kartu bergaya Faksi Sentinel atau Scourge dengan 5 tipe elemen berkekuatan khusus."
-                      : "Forge cards in Sentinel or Scourge Factions with 5 special elemental powers."}
+                      ? "Tempa kartu bergaya Faksi Sentinel atau Vanguard dengan 5 tipe elemen berkekuatan khusus."
+                      : "Forge cards in Sentinel or Vanguard Factions with 5 special elemental powers."}
                   </div>
                 </div>
               </div>
@@ -1320,8 +1361,8 @@ export default function App() {
                     </div>
                     <p className="text-xs text-slate-400 font-mono mt-0.5">
                       {language === "id"
-                        ? "Detail tampilan kartu Nekomon hasil Forging AI, statistik pertempuran (ATK, SPD, HP, DEF), serta Faksi Sentinel & Scourge:"
-                        : "Visual breakdown of AI Forged Nekomon Cards, combat stats (ATK, SPD, HP, DEF), and Sentinel & Scourge Factions:"}
+                        ? "Detail tampilan kartu Nekomon hasil Forging AI, statistik pertempuran (ATK, SPD, HP, DEF), serta Faksi Sentinel & Vanguard:"
+                        : "Visual breakdown of AI Forged Nekomon Cards, combat stats (ATK, SPD, HP, DEF), and Sentinel & Vanguard Factions:"}
                     </p>
                   </div>
                 </div>
@@ -1494,12 +1535,40 @@ export default function App() {
                 {/* Quick Ad Buttons in Header */}
                 <div className="ml-auto flex items-center gap-2">
                   <button
+                    disabled={rewardedAdCooldown > 0}
                     onClick={() => handleOpenRewardedAd("standard")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white font-black text-[10px] tracking-wider transition-all shadow-md active:scale-95 cursor-pointer uppercase border border-pink-400/30"
-                    title="Tonton video iklan berhadiah 5s untuk klaim Poin & Cores gratis"
+                    className={`relative overflow-hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] tracking-wider font-black uppercase border transition-all shadow-md ${
+                      rewardedAdCooldown > 0
+                        ? "bg-slate-900 border-slate-700 text-slate-400 cursor-not-allowed select-none"
+                        : "bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white cursor-pointer active:scale-95 border-pink-400/30"
+                    }`}
+                    title={
+                      rewardedAdCooldown > 0
+                        ? `Video iklan berikutnya siap dalam ${rewardedAdCooldown} detik. Mohon tunggu...`
+                        : "Tonton video iklan berhadiah 5s untuk klaim Poin & Cores gratis"
+                    }
                   >
-                    <Gift className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-                    <span>Tonton Iklan (+Poin & Core)</span>
+                    {/* Animated Progress Overlay */}
+                    {rewardedAdCooldown > 0 && (
+                      <div
+                        className="absolute inset-y-0 left-0 bg-pink-500/20 border-r border-pink-400/40 transition-all duration-1000 ease-linear pointer-events-none"
+                        style={{ width: `${(rewardedAdCooldown / 30) * 100}%` }}
+                      />
+                    )}
+
+                    {rewardedAdCooldown > 0 ? (
+                      <>
+                        <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin relative z-10" />
+                        <span className="relative z-10 font-mono text-amber-300">
+                          Siap {rewardedAdCooldown}s
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Gift className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+                        <span>Tonton Iklan (+Poin & Core)</span>
+                      </>
+                    )}
                   </button>
 
                   <button
@@ -2147,6 +2216,7 @@ export default function App() {
                       cards={cards}
                       onRefreshCards={() => token && fetchGallery(token)}
                       onRequestRewardedAd={(type) => handleOpenRewardedAd(type)}
+                      rewardedAdCooldown={rewardedAdCooldown}
                       onPurchaseSuccess={(updatedPoints, updatedCores, addedCards) => {
                         setUser(prev => prev ? { ...prev, points: updatedPoints, cores: updatedCores } : null);
                         if (addedCards && addedCards.length > 0) {

@@ -58,7 +58,7 @@ export interface Card {
   captureId: string;
   name: string;
   element: "Api" | "Air" | "Tanah" | "Angin" | "Petir";
-  style: "Sentinel" | "Scourge";
+  style: "Sentinel" | "Vanguard";
   rarity: "Common" | "Rare" | "Epic" | "Legend" | "Mythic";
   hp: number;
   atk: number;

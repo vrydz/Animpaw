@@ -69,7 +69,7 @@ export const AudioPlayerWidget: React.FC = () => {
     { id: "cozy", labelKey: "bgm.theme_cozy", icon: "🏡", desc: "110 BPM • Melodi Santai & Cozy Pentatonik" },
     { id: "battle", labelKey: "bgm.theme_battle", icon: "⚔️", desc: "138 BPM • Rhythm Pertarungan RPG Semangat" },
     { id: "shrine", labelKey: "bgm.theme_shrine", icon: "⛩️", desc: "88 BPM • Nuansa Kuil Mistik & Ghibli" },
-    { id: "scourge", labelKey: "bgm.theme_scourge", icon: "⚡", desc: "125 BPM • Modern Synthwave & High Energy" },
+    { id: "vanguard", labelKey: "bgm.theme_vanguard", icon: "⚡", desc: "125 BPM • Modern Synthwave & High Energy" },
   ];
 
   const VolumeIcon = bgmOn ? (volume > 0.4 ? Volume2 : Volume1) : VolumeX;

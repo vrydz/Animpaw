@@ -223,14 +223,38 @@ export function RewardedAdModal({
 
               {/* Live Video Playing Animation */}
               {!isCompleted ? (
-                <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-400 bg-amber-500/10 py-2 px-4 rounded-xl border border-amber-500/20">
-                  <Play className="w-3.5 h-3.5 fill-amber-400 animate-ping" />
-                  <span>Memutar Video Iklan... ({Math.ceil(timeLeft)}s)</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-400 bg-amber-500/10 py-2 px-4 rounded-xl border border-amber-500/20">
+                    <Play className="w-3.5 h-3.5 fill-amber-400 animate-ping" />
+                    <span>Memutar Video Iklan Adsterra... ({Math.ceil(timeLeft)}s)</span>
+                  </div>
+                  <a
+                    href="https://www.effectivecpmnetwork.com/ztq3ewy6?key=2d94eee8c23563828aaaffbdfba18e46"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      setIsCompleted(true);
+                      setTimeLeft(0);
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 text-[11px] font-extrabold text-amber-300 hover:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    <span>🚀 Klik Untuk Buka Iklan Sponsor Adsterra</span>
+                  </a>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-2 text-xs font-black text-emerald-400 bg-emerald-500/10 py-2 px-4 rounded-xl border border-emerald-500/30 animate-bounce">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>VIDEO SELESAI! HADIAH SIAP DIKLAIM</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-center gap-2 text-xs font-black text-emerald-400 bg-emerald-500/10 py-2 px-4 rounded-xl border border-emerald-500/30 animate-bounce">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>VIDEO SELESAI! HADIAH SIAP DIKLAIM</span>
+                  </div>
+                  <a
+                    href="https://www.effectivecpmnetwork.com/ztq3ewy6?key=2d94eee8c23563828aaaffbdfba18e46"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-teal-400 hover:text-teal-300 underline font-mono"
+                  >
+                    🔗 Visit Sponsor Link (Adsterra Smartlink)
+                  </a>
                 </div>
               )}
             </div>

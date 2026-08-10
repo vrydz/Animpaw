@@ -458,7 +458,7 @@ export function ArenaView({ cards, token, onBattleEndRefresh }: ArenaViewProps) 
     }
   };
 
-  // Trigger Victory Confetti & Haptics on Rewards
+  // Trigger Victory Confetti / Defeat Sound & Haptics on Rewards
   useEffect(() => {
     if (rewards) {
       const isWin = (myBattleState?.hp ?? 0) > 0 || rewards.pointsGained >= 20;
@@ -466,6 +466,10 @@ export function ArenaView({ cards, token, onBattleEndRefresh }: ArenaViewProps) 
         triggerVictoryConfetti();
         try {
           haptics.victory();
+        } catch (_) {}
+      } else {
+        try {
+          audio.playDefeat();
         } catch (_) {}
       }
     }
@@ -1387,8 +1391,14 @@ export function ArenaView({ cards, token, onBattleEndRefresh }: ArenaViewProps) 
                   {/* Reward Metrics */}
                   <div className="grid grid-cols-2 gap-3 w-full font-mono text-xs relative z-10">
                     <div className="bg-slate-950/90 p-3 rounded-2xl border border-slate-800 flex flex-col gap-1 shadow-inner">
-                      <span className="text-[9px] text-slate-500 uppercase font-extrabold">{language === "id" ? "POIN DITERIMA" : "POINTS EARNED"}</span>
-                      <span className="font-extrabold text-yellow-400 text-base">+{rewards.pointsGained} {language === "id" ? "Poin" : "Pts"}</span>
+                      <span className="text-[9px] text-slate-500 uppercase font-extrabold">
+                        {language === "id" 
+                          ? (rewards.pointsGained < 0 ? "PENALTI POIN" : "POIN DITERIMA") 
+                          : (rewards.pointsGained < 0 ? "POINTS DEDUCTED" : "POINTS EARNED")}
+                      </span>
+                      <span className={`font-extrabold text-base ${rewards.pointsGained < 0 ? "text-rose-400" : "text-yellow-400"}`}>
+                        {rewards.pointsGained > 0 ? `+${rewards.pointsGained}` : rewards.pointsGained} {language === "id" ? "Poin" : "Pts"}
+                      </span>
                     </div>
                     <div className="bg-slate-950/90 p-3 rounded-2xl border border-slate-800 flex flex-col gap-1 shadow-inner">
                       <span className="text-[9px] text-slate-500 uppercase font-extrabold">{language === "id" ? "EXP KARTU" : "CARD EXP"}</span>
@@ -1615,6 +1625,24 @@ export function ArenaView({ cards, token, onBattleEndRefresh }: ArenaViewProps) 
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Arena Rules & Rewards Information Sheet */}
+            <div className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl shrink-0 font-mono flex flex-col gap-2">
+              <span className="text-[9px] font-extrabold text-amber-400 tracking-widest uppercase flex items-center gap-1.5">
+                <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                {language === "id" ? "INFORMASI HADIAH & ATURAN ARENA" : "ARENA RULES & REWARD INFO"}
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                <div className="bg-emerald-950/30 border border-emerald-500/30 p-2 rounded-xl flex items-center justify-between">
+                  <span className="text-emerald-400 font-bold">{language === "id" ? "🏆 KEMENANGAN" : "🏆 VICTORY"}</span>
+                  <span className="text-emerald-300 font-extrabold">+25 Poin • +120 XP</span>
+                </div>
+                <div className="bg-rose-950/30 border border-rose-500/30 p-2 rounded-xl flex items-center justify-between">
+                  <span className="text-rose-400 font-bold">{language === "id" ? "💔 KEKALAHAN" : "💔 DEFEAT"}</span>
+                  <span className="text-rose-300 font-extrabold">-10 Poin • +50 XP</span>
+                </div>
+              </div>
             </div>
 
             {/* Elements RPS Mechanics Help Sheet */}

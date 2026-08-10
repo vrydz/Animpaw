@@ -124,9 +124,9 @@ export function InterstitialAdModal({
   };
 
   const handleBannerClick = () => {
-    addLog(`User clicked ad banner! Triggering onAdClicked() event.`);
+    addLog(`User clicked ad banner! Triggering Adsterra Smartlink navigation.`);
     if (onAdClicked) onAdClicked();
-    window.open("https://ai.studio/build", "_blank");
+    window.open("https://www.effectivecpmnetwork.com/ztq3ewy6?key=2d94eee8c23563828aaaffbdfba18e46", "_blank");
   };
 
   const handleClose = () => {
@@ -149,10 +149,10 @@ export function InterstitialAdModal({
           <div className="flex items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800 text-xs">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded font-black text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest">
-                IKLAN ADMOB / UNITY ADS
+                ADSTERRA NETWORK & SMARTLINK
               </span>
-              <span className="hidden sm:inline text-[10px] text-slate-400 font-mono">
-                SDK v22.4 (Simulasi)
+              <span className="hidden sm:inline text-[10px] text-teal-400 font-mono font-bold">
+                Smartlink Direct Active
               </span>
             </div>
 

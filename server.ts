@@ -281,7 +281,7 @@ const FALLBACKS: Record<string, Record<string, string[]>> = {
     Angin: ["Zephyr", "Breeze Whiskers", "Gale Dancer", "Sky Guardian", "Astral Wind"],
     Petir: ["Raijin", "Lightning Strike", "Thunder Fang", "Storm Surge", "Volt Empress"],
   },
-  Scourge: {
+  Vanguard: {
     Api: ["Inferno Claw", "Blaze Shadow", "Scorched Fang", "Crimson Dread", "Hellfire Overlord"],
     Air: ["Abyssal Maw", "Vortex Whisper", "Riptide Shadow", "Frozen Abyss", "Tsunami Emperor"],
     Tanah: ["Ruin Claw", "Obelisk Mew", "Iron Root", "Titan Sentinel", "Worldbreaker Cat"],
@@ -423,7 +423,7 @@ function generateFallbackImage(name: string, element: string, style: string, rar
     <!-- Style Watermark -->
     <rect x="130" y="325" width="140" height="20" fill="${style === 'Sentinel' ? '#0f766e' : '#be123c'}" rx="5" />
     <text x="200" y="339" font-family="sans-serif" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">
-      ${style === 'Sentinel' ? 'SENTINEL' : 'SCOURGE'}
+      ${style === 'Sentinel' ? 'SENTINEL' : 'VANGUARD'}
     </text>
 
     <!-- Sparkles for Rarity -->
@@ -2875,7 +2875,7 @@ app.get("/api/leaderboard", async (req, res) => {
 // SHOP & VIRTUAL MICROTRANSACTIONS ENDPOINTS
 // ----------------------------------------------------------------
 
-async function generateBoosterCard(userId: string, rarity: string, element: "Api" | "Air" | "Tanah" | "Angin" | "Petir", style: "Sentinel" | "Scourge", db: any): Promise<any> {
+async function generateBoosterCard(userId: string, rarity: string, element: "Api" | "Air" | "Tanah" | "Angin" | "Petir", style: "Sentinel" | "Vanguard", db: any): Promise<any> {
   let cardName = "";
   let stats = { hp: 120, atk: 65, def: 55, spd: 45 };
   let skill = { name: "Spark Claw", desc: "Cakaran cepat bermuatan energi." };
@@ -3229,7 +3229,7 @@ app.post("/api/shop/midtrans-finish", async (req, res) => {
     let packName = "Booster Pack";
     let cardsToGenerate: { rarity: string; element: string; style: string }[] = [];
     const elements: ("Api" | "Air" | "Tanah" | "Angin" | "Petir")[] = ["Api", "Air", "Tanah", "Angin", "Petir"];
-    const styles: ("Sentinel" | "Scourge")[] = ["Sentinel", "Scourge"];
+    const styles: ("Sentinel" | "Vanguard")[] = ["Sentinel", "Vanguard"];
 
     const el = targetElement && targetElement !== "Random" && elements.includes(targetElement) ? targetElement : elements[Math.floor(Math.random() * elements.length)];
     const st = targetStyle && targetStyle !== "Random" && styles.includes(targetStyle) ? targetStyle : styles[Math.floor(Math.random() * styles.length)];
@@ -3498,7 +3498,7 @@ app.post("/api/shop/buy-booster", async (req, res) => {
   let cardsToGenerate: { rarity: string; element: string; style: string }[] = [];
 
   const elements: ("Api" | "Air" | "Tanah" | "Angin" | "Petir")[] = ["Api", "Air", "Tanah", "Angin", "Petir"];
-  const styles: ("Sentinel" | "Scourge")[] = ["Sentinel", "Scourge"];
+  const styles: ("Sentinel" | "Vanguard")[] = ["Sentinel", "Vanguard"];
 
   const getRandElement = () => element && elements.includes(element) ? element : elements[Math.floor(Math.random() * elements.length)];
   const getRandStyle = () => style && styles.includes(style) ? style : styles[Math.floor(Math.random() * styles.length)];

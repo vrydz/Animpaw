@@ -291,7 +291,7 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
 
           {/* Style watermark in bottom left corner of art */}
           <span className="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur-xs border border-slate-800 text-[8px] font-mono font-bold tracking-widest px-2 py-0.5 rounded text-slate-300">
-            {style === "Sentinel" ? "SENTINEL" : "SCOURGE"}
+            {style === "Sentinel" ? "SENTINEL" : "VANGUARD"}
           </span>
 
           {/* Elemental Circle Indicator in top right corner of artwork frame */}
@@ -384,7 +384,7 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
 
           {/* Skill description summary */}
           <p className="text-[10px] text-slate-300 leading-normal font-mono">
-            Berhasil ditempa dengan Faksi {style === "Sentinel" ? "Sentinel" : "Scourge"} dan menguasai elemen {element === "Petir" ? "Thunder" : element === "Api" ? "Fire" : element === "Air" ? "Water" : element === "Tanah" ? "Earth" : "Wind"}!
+            Berhasil ditempa dengan Faksi {style === "Sentinel" ? "Sentinel" : "Vanguard"} dan menguasai elemen {element === "Petir" ? "Thunder" : element === "Api" ? "Fire" : element === "Air" ? "Water" : element === "Tanah" ? "Earth" : "Wind"}!
           </p>
 
           {/* Skill name & detail subtitle */}

@@ -95,7 +95,7 @@ export const CardMissions: React.FC<CardMissionsProps> = ({
         setShowResult(true);
         if (resultData?.leveledUp) {
           try {
-            audio.playRevealSound("Scourge");
+            audio.playRevealSound("Vanguard");
           } catch (_) {}
         } else {
           try {

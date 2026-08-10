@@ -37,7 +37,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Header & Info
     "header.title": "TANGKAP KUCING ASLI, FORGE MENJADI KARTU NEKOMON ANIME!",
-    "header.desc": "Misi utama game ini adalah memfoto kucing asli secara aktual. Dapatkan +10 poin untuk setiap tangkapan, lalu lakukan Forging dengan 50 poin untuk menyulap foto kucing biasa menjadi ilustrasi anime artistik Faksi Sentinel (lembut, magis) atau Faksi Scourge (tegas, dinamis)!",
+    "header.desc": "Misi utama game ini adalah memfoto kucing asli secara aktual. Dapatkan +10 poin untuk setiap tangkapan, lalu lakukan Forging dengan 50 poin untuk menyulap foto kucing biasa menjadi ilustrasi anime artistik Faksi Sentinel (lembut, magis) atau Faksi Vanguard (tegas, dinamis)!",
     "header.stats_label": "Koleksi Anda",
     "header.total_cards": "Total Kartu",
     "header.highest_lv": "LV Tertinggi",
@@ -72,7 +72,7 @@ const translations: Record<Language, Record<string, string>> = {
     "forge.success_finish": "MASUKKAN KE ALBUM 🐾",
     "forge.preview_desc": "Foto ini akan dilarutkan menjadi Nekomon Card bergaya",
     "forge.style_sentinel_desc": "Karakter anime dengan komposisi lembut, magis, menggunakan referensi studio Ghibli/A-1 picture/Kyoto animation atau nuansa Steampunk.",
-    "forge.style_scourge_desc": "Karakter anime dengan komposisi tegas, dinamis, tajam, sinematik menggunakan referensi studio Mappa/Bones/Madhouse atau nuansa Cyberpunk.",
+    "forge.style_vanguard_desc": "Karakter anime dengan komposisi tegas, dinamis, tajam, sinematik menggunakan referensi studio Mappa/Bones/Madhouse atau nuansa Cyberpunk.",
 
     // Gallery View
     "gallery.title": "ALBUM KARTU NEKOMON ANDA",
@@ -141,7 +141,8 @@ const translations: Record<Language, Record<string, string>> = {
     "bgm.theme_cozy": "Kota Nekomon (Cozy Lofi)",
     "bgm.theme_battle": "Arena Pertarungan (RPG)",
     "bgm.theme_shrine": "Kuil Mistik (Anime)",
-    "bgm.theme_scourge": "Cyber Scourge (Synth)",
+    "bgm.theme_vanguard": "Cyber Vanguard (Synth)",
+    "bgm.theme_scourge": "Cyber Vanguard (Synth)",
   },
   en: {
     // Nav & Common
@@ -171,7 +172,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Header & Info
     "header.title": "CAPTURE REAL CATS, FORGE INTO NEKOMON ANIME CARDS!",
-    "header.desc": "The main objective of this game is to photograph real-life cats. Earn +10 points for every photo, then use 50 points in Forging to turn ordinary cat photos into artistic anime illustrations, choosing either Sentinel (soft, magical) or Scourge (bold, dynamic) faction!",
+    "header.desc": "The main objective of this game is to photograph real-life cats. Earn +10 points for every photo, then use 50 points in Forging to turn ordinary cat photos into artistic anime illustrations, choosing either Sentinel (soft, magical) or Vanguard (bold, dynamic) faction!",
     "header.stats_label": "Your Collection",
     "header.total_cards": "Total Cards",
     "header.highest_lv": "Highest LV",
@@ -206,7 +207,7 @@ const translations: Record<Language, Record<string, string>> = {
     "forge.success_finish": "ADD TO ALBUM 🐾",
     "forge.preview_desc": "This photo will be dissolved into a Nekomon Card styled as",
     "forge.style_sentinel_desc": "Anime character with soft, magical composition, hand-drawn aesthetic, highly detailed, cozy, heartwarming, inspired by Ghibli, A-1 Pictures, Kyoto Animation, or Steampunk elements.",
-    "forge.style_scourge_desc": "Anime character with sharp, dynamic, cinematic composition, modern high-contrast action anime style, cinematic lighting, sleek and energetic, inspired by Mappa, Bones, Madhouse, or Cyberpunk elements.",
+    "forge.style_vanguard_desc": "Anime character with sharp, dynamic, cinematic composition, modern high-contrast action anime style, cinematic lighting, sleek and energetic, inspired by Mappa, Bones, Madhouse, or Cyberpunk elements.",
 
     // Gallery View
     "gallery.title": "YOUR NEKOMON CARD ALBUM",
@@ -275,7 +276,8 @@ const translations: Record<Language, Record<string, string>> = {
     "bgm.theme_cozy": "Nekomon Town (Cozy Lofi)",
     "bgm.theme_battle": "Battle Arena (RPG)",
     "bgm.theme_shrine": "Mystic Shrine (Anime)",
-    "bgm.theme_scourge": "Cyber Scourge (Synth)",
+    "bgm.theme_vanguard": "Cyber Vanguard (Synth)",
+    "bgm.theme_scourge": "Cyber Vanguard (Synth)",
   }
 };
 

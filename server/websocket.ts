@@ -842,11 +842,11 @@ function awardMatchRewards(winner: PlayerState, loser: PlayerState, readDB: () =
     }
   }
 
-  // 2. Process Loser (Consolation Prize)
+  // 2. Process Loser (10 Points Penalty)
   if (!loser.isBot) {
     const lUser = db.users.find((u: any) => u.id === loser.userId);
     if (lUser) {
-      lUser.points = (lUser.points || 0) + 10; // Loser gets 10 points
+      lUser.points = Math.max(0, (lUser.points || 0) - 10); // Loser loses 10 points
     }
 
     const lCardIdx = db.cards.findIndex((c: any) => c.id === loser.card.id && c.userId === loser.userId);
@@ -878,7 +878,7 @@ function awardMatchRewards(winner: PlayerState, loser: PlayerState, readDB: () =
 
       sendToUser(loser.userId, {
         type: "battle_rewards",
-        pointsGained: 10,
+        pointsGained: -10,
         xpGained: 50,
         leveledUp,
         newLevel: card.level,

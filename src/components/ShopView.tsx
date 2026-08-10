@@ -23,7 +23,8 @@ import {
   Layers,
   ChevronRight,
   Sparkle,
-  Award
+  Award,
+  Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NekomonCard } from "./NekomonCard";
@@ -35,6 +36,7 @@ interface ShopViewProps {
   onPurchaseSuccess: (updatedPoints: number, updatedCores: number, addedCards?: Card[]) => void;
   onRefreshCards?: () => void;
   onRequestRewardedAd?: (rewardType: "points_50" | "cores_5" | "standard") => void;
+  rewardedAdCooldown?: number;
 }
 
 interface Transaction {
@@ -50,7 +52,7 @@ interface Transaction {
   createdAt: string;
 }
 
-export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, onRequestRewardedAd }: ShopViewProps) {
+export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, onRequestRewardedAd, rewardedAdCooldown = 0 }: ShopViewProps) {
   const { language, t } = useLanguage();
   const [activeTab, setActiveTab] = useState<"points" | "gacha" | "energy" | "ads" | "history">("points");
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
@@ -257,7 +259,7 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
         setEarnedCards(finishData.cards || []);
         setCoresEarned(finishData.coresEarned || 0);
         setRevealedCardIndices([]);
-        try { audio.playRevealSound("Scourge"); } catch (_) {}
+        try { audio.playRevealSound("Vanguard"); } catch (_) {}
         onPurchaseSuccess(finishData.user.points, finishData.user.cores, finishData.cards);
       }
     } catch (err: any) {
@@ -315,7 +317,7 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
           setCoresEarned(data.coresEarned || 0);
           setRevealedCardIndices([]);
           try {
-            audio.playRevealSound("Scourge");
+            audio.playRevealSound("Vanguard");
           } catch (_) {}
           onPurchaseSuccess(data.user.points, data.user.cores, data.cards);
         }, 1500);
@@ -575,7 +577,7 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                 >
                   <option value="Random">🎲 Random Styles</option>
                   <option value="Sentinel">🌸 Sentinel Style</option>
-                  <option value="Scourge">💀 Scourge Style</option>
+                  <option value="Vanguard">⚡ Vanguard Style</option>
                 </select>
               </div>
             </div>
@@ -897,11 +899,25 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
               <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
                 <span className="text-xs font-mono text-emerald-400 font-extrabold uppercase">GRATIS 100%</span>
                 <button
+                  disabled={rewardedAdCooldown > 0}
                   onClick={() => onRequestRewardedAd && onRequestRewardedAd("standard")}
-                  className="bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer uppercase"
+                  className={`relative overflow-hidden font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md uppercase ${
+                    rewardedAdCooldown > 0
+                      ? "bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed select-none"
+                      : "bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white active:scale-95 cursor-pointer"
+                  }`}
                 >
-                  <Sparkles className="w-4 h-4 fill-current" />
-                  <span>Tonton Video</span>
+                  {rewardedAdCooldown > 0 ? (
+                    <>
+                      <Clock className="w-4 h-4 text-amber-400 animate-spin" />
+                      <span className="font-mono text-amber-300">Siap Dalam {rewardedAdCooldown}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 fill-current" />
+                      <span>Tonton Video</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -923,11 +939,25 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
               <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
                 <span className="text-xs font-mono text-emerald-400 font-extrabold uppercase">GRATIS 100%</span>
                 <button
+                  disabled={rewardedAdCooldown > 0}
                   onClick={() => onRequestRewardedAd && onRequestRewardedAd("points_50")}
-                  className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:brightness-110 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer uppercase"
+                  className={`relative overflow-hidden font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md uppercase ${
+                    rewardedAdCooldown > 0
+                      ? "bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed select-none"
+                      : "bg-gradient-to-r from-yellow-500 to-amber-600 hover:brightness-110 text-slate-950 active:scale-95 cursor-pointer"
+                  }`}
                 >
-                  <Coins className="w-4 h-4 fill-current" />
-                  <span>Tonton Video</span>
+                  {rewardedAdCooldown > 0 ? (
+                    <>
+                      <Clock className="w-4 h-4 text-amber-400 animate-spin" />
+                      <span className="font-mono text-amber-300">Siap Dalam {rewardedAdCooldown}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <Coins className="w-4 h-4 fill-current" />
+                      <span>Tonton Video</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -949,11 +979,25 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
               <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
                 <span className="text-xs font-mono text-emerald-400 font-extrabold uppercase">GRATIS 100%</span>
                 <button
+                  disabled={rewardedAdCooldown > 0}
                   onClick={() => onRequestRewardedAd && onRequestRewardedAd("cores_5")}
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer uppercase"
+                  className={`relative overflow-hidden font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md uppercase ${
+                    rewardedAdCooldown > 0
+                      ? "bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed select-none"
+                      : "bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 text-slate-950 active:scale-95 cursor-pointer"
+                  }`}
                 >
-                  <Layers className="w-4 h-4 fill-current" />
-                  <span>Tonton Video</span>
+                  {rewardedAdCooldown > 0 ? (
+                    <>
+                      <Clock className="w-4 h-4 text-amber-400 animate-spin" />
+                      <span className="font-mono text-amber-300">Siap Dalam {rewardedAdCooldown}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <Layers className="w-4 h-4 fill-current" />
+                      <span>Tonton Video</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

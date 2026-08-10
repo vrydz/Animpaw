@@ -24,7 +24,7 @@ const ELEMENTS = [
 
 const STYLES = [
   { id: "Sentinel", label: "Sentinel", desc: "Karakter anime dengan komposisi lembut, magis, menggunakan referensi studio A-1 picture/Kyoto animation atau nuansa Steampunk.", color: "border-teal-500 text-teal-300 bg-teal-950/30" },
-  { id: "Scourge", label: "Scourge", desc: "Karakter anime dengan komposisi tegas, dinamis, tajam, sinematik menggunakan referensi studio Bones/Madhouse atau nuansa Cyberpunk.", color: "border-rose-500 text-rose-300 bg-rose-950/30" },
+  { id: "Vanguard", label: "Vanguard", desc: "Karakter anime dengan komposisi tegas, dinamis, tajam, sinematik menggunakan referensi studio Bones/Madhouse atau nuansa Cyberpunk.", color: "border-rose-500 text-rose-300 bg-rose-950/30" },
 ] as const;
 
 const ELEMENT_REVEAL_DETAILS: Record<string, {
@@ -118,7 +118,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
     unforgedCaptures[0] || null
   );
   const [selectedElement, setSelectedElement] = useState<"Api" | "Air" | "Tanah" | "Angin" | "Petir">("Api");
-  const [selectedStyle, setSelectedStyle] = useState<"Sentinel" | "Scourge">("Sentinel");
+  const [selectedStyle, setSelectedStyle] = useState<"Sentinel" | "Vanguard">("Sentinel");
   
   const [isForging, setIsForging] = useState<boolean>(false);
   const [forgedCard, setForgedCard] = useState<Card | null>(null);
@@ -506,7 +506,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">{language === "id" ? "Faksi:" : "Faction:"}</span>
-                      <span className="font-bold text-teal-400">{forgedCard.style === "Sentinel" ? "Sentinel" : "Scourge"}</span>
+                      <span className="font-bold text-teal-400">{forgedCard.style === "Sentinel" ? "Sentinel" : "Vanguard"}</span>
                     </div>
                     <div className="flex justify-between border-t border-slate-800/80 pt-2 mt-1">
                       <span className="text-slate-500">{language === "id" ? "Nekomon Core Didapat:" : "Nekomon Cores Gained:"}</span>
@@ -632,7 +632,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
             {/* Choose Anime Faction */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-bold text-slate-400 font-mono">
-                {language === "id" ? "3. PILIH FAKSI ANIME (SENTINEL / SCOURGE) :" : "3. SELECT ANIME FACTION (SENTINEL / SCOURGE) :"}
+                {language === "id" ? "3. PILIH FAKSI ANIME (SENTINEL / VANGUARD) :" : "3. SELECT ANIME FACTION (SENTINEL / VANGUARD) :"}
               </span>
               <div className="grid grid-cols-2 gap-3">
                 {STYLES.map((st) => (
@@ -647,7 +647,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
                   >
                     <span className="font-bold text-xs font-mono uppercase tracking-wider mb-1 flex items-center gap-1">
                       <Sparkles className="w-3.5 h-3.5 text-yellow-500 animate-pulse" />
-                      {st.id === "Sentinel" ? "SENTINEL" : "SCOURGE"}
+                      {st.id === "Sentinel" ? "SENTINEL" : "VANGUARD"}
                     </span>
                     <span className="text-[10px] text-slate-400 leading-normal">
                       {language === "id" ? st.desc : (
@@ -696,13 +696,13 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
                 </h4>
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   {language === "id"
-                    ? `Foto ini akan dilarutkan menjadi Nekomon Card ${selectedElement} bergaya ${selectedStyle === "Sentinel" ? "Sentinel" : "Scourge"}`
+                    ? `Foto ini akan dilarutkan menjadi Nekomon Card ${selectedElement} bergaya ${selectedStyle === "Sentinel" ? "Sentinel" : "Vanguard"}`
                     : `This photo will be fused into a ${
                         selectedElement === "Api" ? "Fire" :
                         selectedElement === "Air" ? "Water" :
                         selectedElement === "Tanah" ? "Earth" :
                         selectedElement === "Angin" ? "Wind" : "Lightning"
-                      } Nekomon Card with ${selectedStyle === "Sentinel" ? "Sentinel" : "Scourge"} style`}
+                      } Nekomon Card with ${selectedStyle === "Sentinel" ? "Sentinel" : "Vanguard"} style`}
                 </p>
               </div>
             </div>

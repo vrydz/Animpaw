@@ -3,7 +3,7 @@ export interface SpeciesEntry {
   id: string;
   name: string;
   element: "Api" | "Air" | "Tanah" | "Angin" | "Petir";
-  style: "Sentinel" | "Scourge";
+  style: "Sentinel" | "Vanguard";
   rarity: "Common" | "Rare" | "Epic" | "Legend" | "Mythic";
   baseHp: number;
   baseAtk: number;
@@ -24,7 +24,7 @@ export interface SpeciesEntry {
 export function getAnimeNekomonSpeciesArtwork(
   name: string,
   element: "Api" | "Air" | "Tanah" | "Angin" | "Petir",
-  style: "Sentinel" | "Scourge",
+  style: "Sentinel" | "Vanguard",
   rarity: "Common" | "Rare" | "Epic" | "Legend" | "Mythic"
 ): string {
   const elementColors = {
@@ -56,7 +56,7 @@ export function getAnimeNekomonSpeciesArtwork(
   };
 
   const theme = elementColors[element] || elementColors.Api;
-  const isScourge = style === "Scourge";
+  const isVanguard = style === "Vanguard";
   const cleanId = name.replace(/[^a-zA-Z0-9]/g, '');
   
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 650" width="100%" height="100%">
@@ -93,13 +93,13 @@ export function getAnimeNekomonSpeciesArtwork(
       <path d="M 250,100 L 250,50 M 140,170 L 100,130 M 360,170 L 400,130 M 100,280 L 50,280 M 400,280 L 450,280" stroke="${theme.accent}" stroke-width="3"/>
     </g>
 
-    <path d="M 160,220 L 110,100 Q 150,110 200,170 Z" fill="${isScourge ? '#181825' : '#2a2a3e'}" stroke="${theme.accent}" stroke-width="4" filter="url(#glow_${cleanId})"/>
+    <path d="M 160,220 L 110,100 Q 150,110 200,170 Z" fill="${isVanguard ? '#181825' : '#2a2a3e'}" stroke="${theme.accent}" stroke-width="4" filter="url(#glow_${cleanId})"/>
     <path d="M 165,210 L 125,120 Q 155,125 190,170 Z" fill="${theme.aura}" opacity="0.8"/>
 
-    <path d="M 340,220 L 390,100 Q 350,110 300,170 Z" fill="${isScourge ? '#181825' : '#2a2a3e'}" stroke="${theme.accent}" stroke-width="4" filter="url(#glow_${cleanId})"/>
+    <path d="M 340,220 L 390,100 Q 350,110 300,170 Z" fill="${isVanguard ? '#181825' : '#2a2a3e'}" stroke="${theme.accent}" stroke-width="4" filter="url(#glow_${cleanId})"/>
     <path d="M 335,210 L 375,120 Q 345,125 310,170 Z" fill="${theme.aura}" opacity="0.8"/>
 
-    <ellipse cx="250" cy="290" rx="110" ry="95" fill="${isScourge ? '#11111d' : '#222235'}" stroke="${theme.accent}" stroke-width="3" filter="url(#glow_${cleanId})"/>
+    <ellipse cx="250" cy="290" rx="110" ry="95" fill="${isVanguard ? '#11111d' : '#222235'}" stroke="${theme.accent}" stroke-width="3" filter="url(#glow_${cleanId})"/>
 
     <path d="M 250,215 L 260,235 L 250,255 L 240,235 Z" fill="${theme.accent}" filter="url(#glow_${cleanId})"/>
     <text x="250" y="210" text-anchor="middle" fill="${theme.accent}" font-family="sans-serif" font-size="12" font-weight="900" letter-spacing="2">${theme.rune}</text>
@@ -122,7 +122,7 @@ export function getAnimeNekomonSpeciesArtwork(
     <path d="M 140,310 L 80,300 M 135,325 L 75,325 M 140,340 L 85,350" stroke="${theme.accent}" stroke-width="2" opacity="0.8"/>
     <path d="M 360,310 L 420,300 M 365,325 L 425,325 M 360,340 L 415,350" stroke="${theme.accent}" stroke-width="2" opacity="0.8"/>
 
-    <path d="M 170,365 Q 250,420 330,365 L 350,470 Q 250,510 150,470 Z" fill="${isScourge ? '#1f132b' : '#1e293b'}" stroke="${theme.accent}" stroke-width="3" filter="url(#glow_${cleanId})"/>
+    <path d="M 170,365 Q 250,420 330,365 L 350,470 Q 250,510 150,470 Z" fill="${isVanguard ? '#1f132b' : '#1e293b'}" stroke="${theme.accent}" stroke-width="3" filter="url(#glow_${cleanId})"/>
     <circle cx="250" cy="420" r="18" fill="${theme.accent}" filter="url(#glow_${cleanId})"/>
 
     <text x="70" y="180" font-size="28" opacity="0.95">${theme.particles[0]}</text>
@@ -188,7 +188,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_003_vulkanos_lynx",
     name: "Vulkanos Lynx",
     element: "Api",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Epic",
     baseHp: 210,
     baseAtk: 88,
@@ -210,7 +210,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_004_infernal_blaze",
     name: "Infernal Blaze",
     element: "Api",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Legend",
     baseHp: 280,
     baseAtk: 120,
@@ -298,7 +298,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_008_tsunami_saber",
     name: "Tsunami Saber",
     element: "Air",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Epic",
     baseHp: 215,
     baseAtk: 82,
@@ -320,7 +320,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_009_leviathan_whisker",
     name: "Leviathan Whisker",
     element: "Air",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Legend",
     baseHp: 290,
     baseAtk: 110,
@@ -408,7 +408,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_013_obsidian_fang",
     name: "Obsidian Fang",
     element: "Tanah",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Epic",
     baseHp: 230,
     baseAtk: 85,
@@ -430,7 +430,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_014_titan_colossus",
     name: "Titan Colossus",
     element: "Tanah",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Legend",
     baseHp: 310,
     baseAtk: 115,
@@ -518,7 +518,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_018_vortex_panther",
     name: "Vortex Panther",
     element: "Angin",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Epic",
     baseHp: 200,
     baseAtk: 92,
@@ -540,7 +540,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_019_tempest_phantom",
     name: "Tempest Phantom",
     element: "Angin",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Legend",
     baseHp: 270,
     baseAtk: 125,
@@ -628,7 +628,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_023_thunder_claws",
     name: "Thunder Claws",
     element: "Petir",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Epic",
     baseHp: 205,
     baseAtk: 96,
@@ -650,7 +650,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_024_raijin_executor",
     name: "Raijin Executor",
     element: "Petir",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Legend",
     baseHp: 275,
     baseAtk: 132,
@@ -694,7 +694,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_026_mecha_meow",
     name: "Mecha Meow",
     element: "Api",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Rare",
     baseHp: 162,
     baseAtk: 64,
@@ -738,7 +738,7 @@ const RAW_SPECIES: (Omit<SpeciesEntry, "imageUrl"> & { imageUrl?: string })[] = 
     id: "dex_028_phantom_shadow",
     name: "Phantom Shadow",
     element: "Petir",
-    style: "Scourge",
+    style: "Vanguard",
     rarity: "Legend",
     baseHp: 268,
     baseAtk: 128,

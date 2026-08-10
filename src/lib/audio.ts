@@ -1,7 +1,7 @@
 // Procedural Web Audio API sound generator for Nekomon Game Companion.
 // No external assets are loaded to guarantee 100% offline-ready reliability, zero latency, and zero CORS issues.
 
-export type BGMTheme = "cozy" | "battle" | "shrine" | "scourge";
+export type BGMTheme = "cozy" | "battle" | "shrine" | "vanguard" | "scourge";
 
 class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -21,7 +21,7 @@ class AudioEngine {
         if (!isNaN(parsed)) this.bgmVolume = Math.max(0, Math.min(1, parsed));
       }
       const savedTheme = localStorage.getItem("nekomon_bgm_theme");
-      if (savedTheme && ["cozy", "battle", "shrine", "scourge"].includes(savedTheme)) {
+      if (savedTheme && ["cozy", "battle", "shrine", "vanguard", "scourge"].includes(savedTheme)) {
         this.currentTheme = savedTheme as BGMTheme;
       }
     } catch (_) {}
@@ -151,7 +151,7 @@ class AudioEngine {
   }
 
   // 2. Plays a custom success reveal fanfare depending on style
-  playRevealSound(style: "Sentinel" | "Scourge") {
+  playRevealSound(style: "Sentinel" | "Vanguard" | "Scourge") {
     this.init();
     if (!this.ctx) return;
 
@@ -182,7 +182,7 @@ class AudioEngine {
         osc.stop(now + timeOffset + 1.5);
       });
     } else {
-      // Scourge/Mappa: modern dynamic high-contrast synth sweep (A minor chord with laser glide)
+      // Vanguard / Scourge: modern dynamic high-contrast synth sweep (A minor chord with laser glide)
       const notes = [220.00, 261.63, 329.63, 440.00]; // A3, C4, E4, A4
       notes.forEach((freq) => {
         const osc = this.ctx!.createOscillator();
@@ -258,6 +258,14 @@ class AudioEngine {
         sequence: [0, 1, 3, 2, 4, 3, 1, 0, 2, 4, 5, 4, 3, 1, 2, 0],
         chordRoots: [146.83, 155.56, 196.00, 220.00],
         oscType: "sine",
+      },
+      vanguard: {
+        bpm: 125,
+        intervalMs: 480,
+        melody: [146.83, 174.61, 196.00, 220.00, 261.63, 293.66], // D3 Synthwave
+        sequence: [0, 2, 4, 5, 3, 1, 4, 2, 0, 3, 5, 4, 2, 1, 3, 0],
+        chordRoots: [146.83, 174.61, 196.00, 220.00],
+        oscType: "square",
       },
       scourge: {
         bpm: 125,
@@ -665,6 +673,35 @@ class AudioEngine {
 
       osc.start(now + timeOffset);
       osc.stop(now + timeOffset + 0.38);
+    });
+  }
+
+  // Plays defeat / battle loss sound effect
+  playDefeat() {
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    // Downward minor descent notes
+    const notes = [392.00, 329.63, 261.63, 196.00];
+
+    notes.forEach((freq, idx) => {
+      const timeOffset = idx * 0.15;
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(freq, now + timeOffset);
+      osc.frequency.linearRampToValueAtTime(freq - 20, now + timeOffset + 0.25);
+
+      gain.gain.setValueAtTime(0, now + timeOffset);
+      gain.gain.linearRampToValueAtTime(0.25 * this.masterVolume, now + timeOffset + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + 0.38);
+
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+
+      osc.start(now + timeOffset);
+      osc.stop(now + timeOffset + 0.42);
     });
   }
 
