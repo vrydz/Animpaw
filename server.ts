@@ -328,6 +328,7 @@ const ABILITIES: Record<string, { name: string; desc: string }[]> = {
 
 // Simple helper to generate a fallback SVG-based image representation of the Nekomon Card
 function generateFallbackImage(name: string, element: string, style: string, rarity: string, photoUrl?: string) {
+  const safePhotoUrl = photoUrl && photoUrl.length < 30000 ? photoUrl : undefined;
   const elementColors: Record<string, { bg: string; accent: string; text: string }> = {
     Api: { bg: "linear-gradient(135deg, #450a0a, #7f1d1d, #b91c1c)", accent: "#ef4444", text: "#fecaca" },
     Air: { bg: "linear-gradient(135deg, #172554, #1e3a8a, #2563eb)", accent: "#3b82f6", text: "#dbeafe" },
@@ -363,13 +364,13 @@ function generateFallbackImage(name: string, element: string, style: string, rar
     
     <rect width="400" height="400" fill="url(#bg)" />
     
-    ${photoUrl ? `
+    ${safePhotoUrl ? `
     <!-- Original User Cat Photo framed with elemental vignette -->
     <g>
       <clipPath id="photo-clip">
         <rect x="35" y="90" width="330" height="225" rx="15" />
       </clipPath>
-      <image href="${photoUrl}" x="35" y="90" width="330" height="225" clip-path="url(#photo-clip)" preserveAspectRatio="xMidYMid slice" />
+      <image href="${safePhotoUrl}" x="35" y="90" width="330" height="225" clip-path="url(#photo-clip)" preserveAspectRatio="xMidYMid slice" />
       <!-- Stylized elemental tint overlay -->
       <rect x="35" y="90" width="330" height="225" fill="${color.accent}" fill-opacity="0.12" clip-path="url(#photo-clip)" style="mix-blend-mode: color;" />
       <!-- Artwork frame border -->

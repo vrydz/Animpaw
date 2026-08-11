@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { User, ShieldAlert, CheckCircle, Sparkles, Mail, Lock, Gamepad2, ArrowRight, KeyRound, RefreshCw } from "lucide-react";
 import { motion } from "motion/react";
 import { signInWithGoogleFirebase } from "../lib/firebase";
+import { getAnimeNekomonSpeciesArtwork } from "../data/nekomonSpeciesData";
 const nekomonLogoImg = new URL("../assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
 
 interface AuthFormProps {
@@ -92,10 +93,21 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
               }));
             }
             if (entry?.cards) {
-              entry.cards = entry.cards.map((card: any) => ({
-                ...card,
-                imageUrl: mode === 0 && (!card.imageUrl?.startsWith("data:") || card.imageUrl.length < 30000) ? card.imageUrl : ""
-              }));
+              entry.cards = entry.cards.map((card: any) => {
+                let img = card.imageUrl;
+                if (!img || typeof img !== "string" || img.trim() === "" || (mode > 0 && img.length > 50000)) {
+                  img = getAnimeNekomonSpeciesArtwork(
+                    card.name || "Nekomon",
+                    card.element || "Api",
+                    card.style || "Sentinel",
+                    card.rarity || "Common"
+                  );
+                }
+                return {
+                  ...card,
+                  imageUrl: img
+                };
+              });
             }
             if (mode === 2) {
               entry.captures = [];

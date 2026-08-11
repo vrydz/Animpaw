@@ -1,7 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Card } from "../types";
 import { Sparkles, Flame, Droplet, Trees, Wind, Zap, Award } from "lucide-react";
 import { motion } from "motion/react";
+import { getAnimeNekomonSpeciesArtwork } from "../data/nekomonSpeciesData";
 
 interface NekomonCardProps {
   card: Card;
@@ -11,6 +12,28 @@ interface NekomonCardProps {
 
 export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = "md" }) => {
   const { name, element, style, rarity, hp, atk, def, skillName, skillDesc, imageUrl } = card;
+
+  const fallbackArt = getAnimeNekomonSpeciesArtwork(
+    name || "Nekomon",
+    (element as any) || "Api",
+    (style as any) || "Sentinel",
+    (rarity as any) || "Common"
+  );
+
+  const [imgSrc, setImgSrc] = useState<string>(() => {
+    if (imageUrl && typeof imageUrl === "string" && imageUrl.trim() !== "") {
+      return imageUrl;
+    }
+    return fallbackArt;
+  });
+
+  useEffect(() => {
+    if (imageUrl && typeof imageUrl === "string" && imageUrl.trim() !== "") {
+      setImgSrc(imageUrl);
+    } else {
+      setImgSrc(fallbackArt);
+    }
+  }, [imageUrl, name, element, style, rarity]);
 
   // Gracefully handle cards created before the 'spd' stat was added
   const spd = card.spd || Math.floor((hp + atk) / 4.5);
@@ -283,9 +306,14 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
         {/* Card Portrait Art with element sticker overlay */}
         <div className="relative aspect-[4/5] w-full rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-900 shadow-inner group">
           <img
-            src={imageUrl}
+            src={imgSrc}
             alt={name}
             referrerPolicy="no-referrer"
+            onError={() => {
+              if (imgSrc !== fallbackArt) {
+                setImgSrc(fallbackArt);
+              }
+            }}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
 

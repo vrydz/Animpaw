@@ -514,10 +514,21 @@ export default function App() {
               }));
             }
             if (entry?.cards) {
-              entry.cards = entry.cards.map((card: any) => ({
-                ...card,
-                imageUrl: mode === 0 && (!card.imageUrl?.startsWith("data:") || card.imageUrl.length < 30000) ? card.imageUrl : ""
-              }));
+              entry.cards = entry.cards.map((card: any) => {
+                let img = card.imageUrl;
+                if (!img || typeof img !== "string" || img.trim() === "" || (mode > 0 && img.length > 50000)) {
+                  img = getAnimeNekomonSpeciesArtwork(
+                    card.name || "Nekomon",
+                    card.element || "Api",
+                    card.style || "Sentinel",
+                    card.rarity || "Common"
+                  );
+                }
+                return {
+                  ...card,
+                  imageUrl: img
+                };
+              });
             }
             if (mode === 2) {
               entry.captures = [];
@@ -624,7 +635,21 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         const capturesList = data.captures || [];
-        const cardsList = data.cards || [];
+        const rawCards = data.cards || [];
+        const cardsList = rawCards.map((card: any) => {
+          if (!card.imageUrl || typeof card.imageUrl !== "string" || card.imageUrl.trim() === "") {
+            return {
+              ...card,
+              imageUrl: getAnimeNekomonSpeciesArtwork(
+                card.name || "Nekomon",
+                card.element || "Api",
+                card.style || "Sentinel",
+                card.rarity || "Common"
+              )
+            };
+          }
+          return card;
+        });
         setCaptures(capturesList);
         setCards(cardsList);
         if (data.mission) {
