@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Trophy, Award, Crown, Loader2, Sparkles, FolderHeart, Star } from "lucide-react";
+import { Trophy, Award, Crown, Loader2, Sparkles, FolderHeart, Star, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 import { User } from "../types";
 import { useLanguage } from "../context/LanguageContext";
@@ -24,9 +24,10 @@ export interface LeaderboardEntry {
 interface LeaderboardViewProps {
   currentUser?: User | null;
   token: string;
+  onMessagePlayer?: (partnerId: string, partnerUsername: string) => void;
 }
 
-export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ currentUser, token }) => {
+export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ currentUser, token, onMessagePlayer }) => {
   const { language, t } = useLanguage();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,6 +226,19 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ currentUser, t
                     <span className="text-[10px] font-extrabold text-pink-400">
                       Lv. {entry.highestLevel}
                     </span>
+                    {!isMe && onMessagePlayer && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMessagePlayer(entry.id, entry.username);
+                        }}
+                        className="ml-1 p-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                        title={`Kirim pesan ke @${entry.username}`}
+                      >
+                        <MessageSquare className="w-2.5 h-2.5" />
+                        <span>Chat</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 

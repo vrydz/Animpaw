@@ -1,7 +1,7 @@
 // Procedural Web Audio API sound generator for Nekomon Game Companion.
 // No external assets are loaded to guarantee 100% offline-ready reliability, zero latency, and zero CORS issues.
 
-export type BGMTheme = "cozy" | "battle" | "shrine" | "vanguard" | "scourge";
+export type BGMTheme = "cozy" | "battle" | "shrine" | "vanguard";
 
 class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -21,7 +21,7 @@ class AudioEngine {
         if (!isNaN(parsed)) this.bgmVolume = Math.max(0, Math.min(1, parsed));
       }
       const savedTheme = localStorage.getItem("nekomon_bgm_theme");
-      if (savedTheme && ["cozy", "battle", "shrine", "vanguard", "scourge"].includes(savedTheme)) {
+      if (savedTheme && ["cozy", "battle", "shrine", "vanguard"].includes(savedTheme)) {
         this.currentTheme = savedTheme as BGMTheme;
       }
     } catch (_) {}
@@ -58,7 +58,7 @@ class AudioEngine {
     return this.bgmVolume;
   }
 
-  // Set BGM Theme ("cozy", "battle", "shrine", "scourge")
+  // Set BGM Theme ("cozy", "battle", "shrine", "vanguard")
   setBgmTheme(theme: BGMTheme) {
     if (this.currentTheme === theme && this.isBgmPlaying) return;
     this.currentTheme = theme;
@@ -151,7 +151,7 @@ class AudioEngine {
   }
 
   // 2. Plays a custom success reveal fanfare depending on style
-  playRevealSound(style: "Sentinel" | "Vanguard" | "Scourge") {
+  playRevealSound(style: "Sentinel" | "Vanguard") {
     this.init();
     if (!this.ctx) return;
 
@@ -182,7 +182,7 @@ class AudioEngine {
         osc.stop(now + timeOffset + 1.5);
       });
     } else {
-      // Vanguard / Scourge: modern dynamic high-contrast synth sweep (A minor chord with laser glide)
+      // Vanguard: modern dynamic high-contrast synth sweep (A minor chord with laser glide)
       const notes = [220.00, 261.63, 329.63, 440.00]; // A3, C4, E4, A4
       notes.forEach((freq) => {
         const osc = this.ctx!.createOscillator();
@@ -260,14 +260,6 @@ class AudioEngine {
         oscType: "sine",
       },
       vanguard: {
-        bpm: 125,
-        intervalMs: 480,
-        melody: [146.83, 174.61, 196.00, 220.00, 261.63, 293.66], // D3 Synthwave
-        sequence: [0, 2, 4, 5, 3, 1, 4, 2, 0, 3, 5, 4, 2, 1, 3, 0],
-        chordRoots: [146.83, 174.61, 196.00, 220.00],
-        oscType: "square",
-      },
-      scourge: {
         bpm: 125,
         intervalMs: 480,
         melody: [146.83, 174.61, 196.00, 220.00, 261.63, 293.66], // D3 Synthwave
@@ -712,6 +704,29 @@ class AudioEngine {
 
   playLevelUp() {
     this.playVictory();
+  }
+
+  playVictorySound() {
+    this.playVictory();
+  }
+
+  playCardSelectSound() {
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // A5
+      gain.gain.setValueAtTime(0.08 * this.masterVolume, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    } catch (_) {}
   }
 }
 

@@ -46,6 +46,33 @@
         "creatorId": { "type": "string" },
         "status": { "type": "string" }
       }
+    },
+    "officialMails": {
+      "title": "Official Mails",
+      "description": "Official broadcast announcements, welcome gifts, patch notes, and maintenance notices from support@nekomon.online",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "sender": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "directMessages": {
+      "title": "Direct Messages",
+      "description": "Private peer-to-peer messages between Nekomon trainers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "recipientId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "read": { "type": "boolean" }
+      }
     }
   }
 }

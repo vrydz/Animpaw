@@ -142,7 +142,21 @@ const translations: Record<Language, Record<string, string>> = {
     "bgm.theme_battle": "Arena Pertarungan (RPG)",
     "bgm.theme_shrine": "Kuil Mistik (Anime)",
     "bgm.theme_vanguard": "Cyber Vanguard (Synth)",
-    "bgm.theme_scourge": "Cyber Vanguard (Synth)",
+
+    // Mail & Direct Messages
+    "nav.mail": "KOTAK SURAT",
+    "mail.title": "KOTAK SURAT & PESAN TRAINER",
+    "mail.desc": "Pusat informasi resmi, update game, kompensasi hadiah, serta pesan pribadi antar pemain!",
+    "mail.tab_official": "SURAT RESMI & UPDATE",
+    "mail.tab_direct": "PESAN PRIBADI (DM)",
+    "mail.broadcast_btn": "BUAT PENGUMUMAN RESMI",
+    "mail.new_chat": "CHAT BARU",
+    "mail.claim_reward": "KLAIM HADIAH",
+    "mail.claimed": "SUDAH DIKLAIM",
+    "mail.empty_official": "Belum ada surat resmi baru.",
+    "mail.empty_messages": "Belum ada percakapan pribadi. Mulai kirim pesan ke trainer lain!",
+    "mail.official_sender": "Nekomon Studio (support@nekomon.online)",
+    "mail.send_placeholder": "Tulis pesan ke trainer...",
   },
   en: {
     // Nav & Common
@@ -156,6 +170,7 @@ const translations: Record<Language, Record<string, string>> = {
     "nav.trading": "TRADING",
     "nav.guide": "GUIDE",
     "nav.shop": "SHOP 🛒",
+    "nav.mail": "MAILBOX",
     "shop.title": "NEKOMON SHOP & BOOSTER PACKS",
     "shop.desc": "Buy Nekomon Points (Microtransactions) and virtual Gacha Booster Packs to instantly summon high-rarity cards!",
     "common.logout": "Log Out",
@@ -277,7 +292,20 @@ const translations: Record<Language, Record<string, string>> = {
     "bgm.theme_battle": "Battle Arena (RPG)",
     "bgm.theme_shrine": "Mystic Shrine (Anime)",
     "bgm.theme_vanguard": "Cyber Vanguard (Synth)",
-    "bgm.theme_scourge": "Cyber Vanguard (Synth)",
+
+    // Mail & Direct Messages
+    "mail.title": "TRAINER MAILBOX & MESSAGES",
+    "mail.desc": "Center for official announcements, game updates, reward gifts, and direct messages between players!",
+    "mail.tab_official": "OFFICIAL MAIL & UPDATES",
+    "mail.tab_direct": "DIRECT MESSAGES (DM)",
+    "mail.broadcast_btn": "CREATE OFFICIAL BROADCAST",
+    "mail.new_chat": "NEW CHAT",
+    "mail.claim_reward": "CLAIM REWARD",
+    "mail.claimed": "CLAIMED",
+    "mail.empty_official": "No official mail yet.",
+    "mail.empty_messages": "No direct messages yet. Start chatting with other trainers!",
+    "mail.official_sender": "Nekomon Studio (support@nekomon.online)",
+    "mail.send_placeholder": "Type a message to trainer...",
   }
 };
 

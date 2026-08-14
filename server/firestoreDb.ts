@@ -101,6 +101,24 @@ export async function syncToFirestore(data: any) {
         });
       }
     }
+
+    if (Array.isArray(data.officialMails)) {
+      for (const mail of data.officialMails) {
+        if (!mail || !mail.id) continue;
+        await fsDb.collection("officialMails").doc(mail.id).set(mail, { merge: true }).catch(err => {
+          console.warn("Firestore officialMail sync warning:", err?.message || err);
+        });
+      }
+    }
+
+    if (Array.isArray(data.directMessages)) {
+      for (const dm of data.directMessages) {
+        if (!dm || !dm.id) continue;
+        await fsDb.collection("directMessages").doc(dm.id).set(dm, { merge: true }).catch(err => {
+          console.warn("Firestore directMessage sync warning:", err?.message || err);
+        });
+      }
+    }
   } catch (err: any) {
     console.warn("Firestore sync skipped due to permissions/connectivity:", err?.message || err);
   }
@@ -118,6 +136,8 @@ export async function loadFromFirestore(): Promise<any | null> {
     const communitySpotsSnap = await fsDb.collection("communitySpots").get().catch(() => ({ docs: [] }));
     const battleHistorySnap = await fsDb.collection("battleHistory").get().catch(() => ({ docs: [] }));
     const transactionsSnap = await fsDb.collection("transactions").get().catch(() => ({ docs: [] }));
+    const officialMailsSnap = await fsDb.collection("officialMails").get().catch(() => ({ docs: [] }));
+    const directMessagesSnap = await fsDb.collection("directMessages").get().catch(() => ({ docs: [] }));
 
     const users = usersSnap.docs.map(doc => doc.data());
     const captures = capturesSnap.docs.map(doc => doc.data());
@@ -126,8 +146,10 @@ export async function loadFromFirestore(): Promise<any | null> {
     const communitySpots = communitySpotsSnap.docs.map(doc => doc.data());
     const battleHistory = battleHistorySnap.docs.map(doc => doc.data());
     const transactions = transactionsSnap.docs.map(doc => doc.data());
+    const officialMails = officialMailsSnap.docs.map(doc => doc.data());
+    const directMessages = directMessagesSnap.docs.map(doc => doc.data());
 
-    if (users.length === 0 && captures.length === 0 && cards.length === 0 && communitySpots.length === 0) {
+    if (users.length === 0 && captures.length === 0 && cards.length === 0 && communitySpots.length === 0 && officialMails.length === 0) {
       return null;
     }
 
@@ -138,7 +160,9 @@ export async function loadFromFirestore(): Promise<any | null> {
       trades,
       communitySpots,
       battleHistory,
-      transactions
+      transactions,
+      officialMails,
+      directMessages
     };
   } catch (err) {
     console.warn("Could not load initial data from Firestore:", err);

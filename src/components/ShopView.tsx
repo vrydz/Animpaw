@@ -198,7 +198,30 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mendapatkan token transaksi Midtrans");
 
-      const snapObj = (window as any).snap;
+      // Dynamically ensure the correct Snap JS script (Sandbox vs Production) is loaded
+      let snapObj = (window as any).snap;
+      if (data.clientKey) {
+        const isSandbox = data.clientKey.startsWith("SB-");
+        const scriptSrc = isSandbox
+          ? "https://app.sandbox.midtrans.com/snap/snap.js"
+          : "https://app.midtrans.com/snap/snap.js";
+
+        if (!snapObj || document.querySelector(`script[src*="midtrans"]`)?.getAttribute("src") !== scriptSrc) {
+          await new Promise<void>((resolve) => {
+            const script = document.createElement("script");
+            script.src = scriptSrc;
+            script.setAttribute("data-client-key", data.clientKey);
+            script.onload = () => {
+              snapObj = (window as any).snap;
+              resolve();
+            };
+            script.onerror = () => resolve();
+            document.head.appendChild(script);
+          });
+        }
+      }
+
+      snapObj = snapObj || (window as any).snap;
 
       if (snapObj && data.token && !data.isSimulation) {
         snapObj.pay(data.token, {

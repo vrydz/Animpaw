@@ -122,3 +122,47 @@ export interface ExplorationDailyQuests {
   spotClaimed: boolean;
 }
 
+export type OfficialMailCategory = "welcome" | "patch_update" | "maintenance" | "system_reward" | "announcement";
+
+export interface OfficialMail {
+  id: string;
+  title: string;
+  category: OfficialMailCategory;
+  sender: string;
+  senderEmail: string;
+  summary: string;
+  content: string;
+  reward?: {
+    points?: number;
+    cores?: number;
+  };
+  claimedUserIds?: string[];
+  readUserIds?: string[];
+  createdAt: string;
+  pinned?: boolean;
+}
+
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  senderUsername: string;
+  senderAvatar?: string;
+  recipientId: string;
+  recipientUsername: string;
+  recipientAvatar?: string;
+  content: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface ConversationThread {
+  partnerId: string;
+  partnerUsername: string;
+  partnerAvatar?: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  isBot?: boolean;
+}
+
+

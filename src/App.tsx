@@ -19,6 +19,9 @@ import { RewardedAdModal } from "./components/RewardedAdModal";
 import { AchievementShareModal } from "./components/AchievementShareModal";
 import { AudioPlayerWidget } from "./components/AudioPlayerWidget";
 import { NekomonCard } from "./components/NekomonCard";
+import { AdSenseBanner } from "./components/AdSenseBanner";
+import { LegalPagesModal, LegalTabType } from "./components/LegalPagesModal";
+import { MailboxView } from "./components/MailboxView";
 import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
 
@@ -63,7 +66,11 @@ import {
   ShieldCheck,
   AlertTriangle,
   Loader2,
-  Check
+  Check,
+  Lock,
+  FileText,
+  Info,
+  Mail
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
@@ -225,7 +232,7 @@ export default function App() {
   }, [user]);
   
   // App navigation & layout toggles
-  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop">("spot_map");
+  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop">("spot_map");
   const [desktopView, setDesktopView] = useState<"album" | "trading">("album");
   const [showForgeModal, setShowForgeModal] = useState<boolean>(false);
   const [showDailyBonusModal, setShowDailyBonusModal] = useState<boolean>(false);
@@ -233,9 +240,32 @@ export default function App() {
   const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [activeSpotToCapture, setActiveSpotToCapture] = useState<NekomonSpot | null>(null);
 
+  // Mail & Direct Messages State
+  const [mailUnreadCount, setMailUnreadCount] = useState<number>(0);
+  const [mailPartnerId, setMailPartnerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token || !user) return;
+    const fetchUnread = () => {
+      fetch("/api/messages/unread-count", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setMailUnreadCount(data.totalUnread || 0);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, [token, user]);
+
   // Ads Simulation State (AdMob & Unity Ads)
   const [showInterstitialAd, setShowInterstitialAd] = useState<boolean>(false);
-  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop" | null>(null);
+  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop" | null>(null);
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
   const [interstitialFreq, setInterstitialFreq] = useState<"random" | "always" | "off">("random");
 
@@ -271,6 +301,15 @@ export default function App() {
     const endTime = Date.now() + seconds * 1000;
     localStorage.setItem("nekomon_rewarded_ad_cooldown_end", endTime.toString());
     setRewardedAdCooldown(seconds);
+  };
+
+  // Landing Page Legal Pages Modal State
+  const [showLandingLegalModal, setShowLandingLegalModal] = useState<boolean>(false);
+  const [landingLegalTab, setLandingLegalTab] = useState<LegalTabType>("privacy");
+
+  const openLandingLegalModal = (tab: LegalTabType) => {
+    setLandingLegalTab(tab);
+    setShowLandingLegalModal(true);
   };
 
   // Achievement Share & Level Up Modal State
@@ -328,7 +367,7 @@ export default function App() {
     }
   }, [user, currentTrainerLv, language]);
 
-  const handleTabChange = (targetTab: "camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "guide" | "shop") => {
+  const handleTabChange = (targetTab: "camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop") => {
     if (targetTab === mobileTab) return;
     setShowForgeModal(false);
 
@@ -1330,7 +1369,9 @@ export default function App() {
                   )}
                 </h2>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                  {t("header.desc")}
+                  {language === "id"
+                    ? "Misi utama game ini adalah memfoto kucing asli secara aktual. Dapatkan +10 poin untuk setiap tangkapan, lalu lakukan Forging dengan 50 poin untuk menyulap foto kucing biasa menjadi ilustrasi anime artistik Faksi Sentinel (lembut, magis) atau Faksi Vanguard (tegas, dinamis)!"
+                    : "The main objective of this game is to photograph real-life cats. Earn +10 points for every photo, then use 50 points in Forging to turn ordinary cat photos into artistic anime illustrations, choosing either Sentinel (soft, magical) or Vanguard (bold, dynamic) faction!"}
                 </p>
                 
                 <div className="grid grid-cols-2 gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-900 text-xs font-mono text-slate-400">
@@ -1346,11 +1387,78 @@ export default function App() {
                   <div>
                     <div className="text-pink-400 font-bold mb-1 flex items-center gap-1">
                       <Flame className="w-3.5 h-3.5" />
-                      FAKSI & ELEMEN
+                      {language === "id" ? "FAKSI & 5 ELEMEN" : "FACTIONS & 5 ELEMENTS"}
                     </div>
                     {language === "id"
-                      ? "Tempa kartu bergaya Faksi Sentinel atau Vanguard dengan 5 tipe elemen berkekuatan khusus."
-                      : "Forge cards in Sentinel or Vanguard Factions with 5 special elemental powers."}
+                      ? "Faksi Sentinel & Vanguard dengan 5 elemen: Air, Api, Tanah, Angin, Petir."
+                      : "Sentinel & Vanguard factions with 5 elements: Aqua, Fire, Earth, Wind, Thunder."}
+                  </div>
+                </div>
+
+                {/* 4 Feature Highlights Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs text-slate-300">
+                  <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400 shrink-0">
+                      <Camera className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-200">
+                        {language === "id" ? "1. AR Detection Scanner" : "1. AR Detection Scanner"}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                        {language === "id"
+                          ? "Mendeteksi objek kucing secara otomatis dengan HUD telemetri presisi."
+                          : "Automatically detects cats in real-time with precision telemetry HUD."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                      <Hammer className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-200">
+                        {language === "id" ? "2. Penempaan Kartu Anime" : "2. Anime Card Forging"}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                        {language === "id"
+                          ? "Ubah foto menjadi kartu tipe Air, Api, Tanah, Angin, atau Petir."
+                          : "Transform photos into cards with Aqua, Fire, Earth, Wind, or Thunder."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 shrink-0">
+                      <Swords className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-200">
+                        {language === "id" ? "3. Real-time PvP Arena" : "3. Real-time PvP Arena"}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                        {language === "id"
+                          ? "Tantang sesama trainer secara langsung dengan strategi kombinasi jurus TCG."
+                          : "Challenge fellow trainers live with strategic TCG skill combinations."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                      <MapPin className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-200">
+                        {language === "id" ? "4. Radar Spot GPS" : "4. Radar Spot GPS"}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                        {language === "id"
+                          ? "Temukan titik kucing liar sekitar untuk bonus booster poin."
+                          : "Discover nearby wild cat spots for point boosters and special items."}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1478,6 +1586,151 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {/* AdSense Banner Placement */}
+            <AdSenseBanner slotId="8821940125" className="my-2" />
+
+            {/* FAQ Section (Indexable Questions & Answers for Players & Compliance) */}
+            <section className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
+              <div className="border-b border-slate-800 pb-4">
+                <h3 className="text-lg font-extrabold text-slate-100 font-mono tracking-tight flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-yellow-500" />
+                  {language === "id" ? "Pertanyaan Umum (FAQ) Nekomon Online" : "Frequently Asked Questions (FAQ) Nekomon Online"}
+                </h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  {language === "id"
+                    ? "Panduan singkat seputar cara bermain, sistem poin, dan kebijakan game."
+                    : "Brief guide on how to play, the points system, and game policies."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+                  <h4 className="font-bold text-slate-200 font-mono flex items-center gap-2">
+                    <span className="text-yellow-500 font-black">Q:</span> 
+                    {language === "id" ? "Bagaimana cara mendapatkan kartu Nekomon pertama?" : "How do I get my first Nekomon card?"}
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed">
+                    {language === "id"
+                      ? "Buka tab Kamera, ambil foto kucing nyata di sekitar Anda. Foto akan dideteksi oleh AI dan otomatis ditempa di Forging Station menjadi kartu anime berstat unik!"
+                      : "Open the Camera tab and take a photo of a real cat around you. The photo is detected by AI and forged at the Forging Station into an anime card with unique stats!"}
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+                  <h4 className="font-bold text-slate-200 font-mono flex items-center gap-2">
+                    <span className="text-yellow-500 font-black">Q:</span> 
+                    {language === "id" ? "Apakah game Nekomon Online gratis dimainkan?" : "Is Nekomon Online free to play?"}
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed">
+                    {language === "id"
+                      ? "Ya! Nekomon Online 100% gratis dimainkan. Anda dapat mengumpulkan poin, energi, dan kartu hanya dengan berburu foto kucing harian dan menyelesaikan misi."
+                      : "Yes! Nekomon Online is 100% free to play. You can collect points, energy, and cards by hunting cat photos and completing daily trainer missions."}
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+                  <h4 className="font-bold text-slate-200 font-mono flex items-center gap-2">
+                    <span className="text-yellow-500 font-black">Q:</span> 
+                    {language === "id" ? "Bagaimana sistem pertarungan Arena PvP & 5 Elemen bekerja?" : "How does the PvP Arena & 5 Elements system work?"}
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed">
+                    {language === "id"
+                      ? "Dalam Arena PvP, susun dek kartu terbaik Anda dan pilih jurus berdasarkan efektivitas 5 tipe elemen: Air, Api, Tanah, Angin, dan Petir untuk mengalahkan kartu lawan."
+                      : "In the PvP Arena, build your best deck and deploy skills according to the 5 elemental affinities: Aqua, Fire, Earth, Wind, and Thunder to defeat opponent cards."}
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1.5">
+                  <h4 className="font-bold text-slate-200 font-mono flex items-center gap-2">
+                    <span className="text-yellow-500 font-black">Q:</span> 
+                    {language === "id" ? "Bagaimana cara kerja iklan Google AdSense di Nekomon?" : "How do Google AdSense ads work on Nekomon?"}
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed">
+                    {language === "id"
+                      ? "Kami menampilkan banner iklan AdSense non-intrusif dan rewarded video opsional untuk mendukung operasional server. Pengguna dapat membaca kebijakan privasi kami."
+                      : "We display non-intrusive AdSense banners and optional rewarded videos to support game server operations. Players can review our privacy policy."}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Footer Navigation & Legal Links */}
+            <footer className="bg-slate-950 border-t border-slate-800/80 px-4 py-8 mt-6 text-xs font-mono rounded-2xl">
+              <div className="max-w-6xl mx-auto space-y-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-6">
+                  <div className="flex items-center gap-3">
+                    <img src={nekomonLogoImg} alt="Nekomon" className="w-8 h-8 object-contain rounded-lg border border-amber-500/40" />
+                    <div>
+                      <span className="font-black text-slate-200 text-sm tracking-wider">NEKOMON ONLINE STUDIO</span>
+                      <p className="text-[10px] text-slate-500">
+                        {language === "id" ? "Platform AR Cat Trading Card Game Indonesia" : "Global AR Cat Trading Card Game Platform"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Policy Footer Links */}
+                  <div className="flex items-center flex-wrap gap-4 text-slate-400">
+                    <button 
+                      type="button"
+                      onClick={() => openLandingLegalModal("privacy")} 
+                      className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-yellow-500" /> 
+                      {language === "id" ? "Kebijakan Privasi" : "Privacy Policy"}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => openLandingLegalModal("terms")} 
+                      className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> 
+                      {language === "id" ? "Syarat & Ketentuan" : "Terms & Conditions"}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => openLandingLegalModal("about")} 
+                      className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Info className="w-3.5 h-3.5 text-cyan-400" /> 
+                      {language === "id" ? "Tentang Kami" : "About Us"}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => openLandingLegalModal("contact")} 
+                      className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> 
+                      {language === "id" ? "Hubungi Kami" : "Contact Us"}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => openLandingLegalModal("disclaimer")} 
+                      className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-yellow-500" /> 
+                      {language === "id" ? "AdSense Disclaimer" : "AdSense Disclaimer"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-500 text-center sm:text-left">
+                  <span>
+                    {language === "id" 
+                      ? "© 2026 Nekomon Online. All rights reserved. Game Kartu Berburu Foto Kucing Real-time & AR Forge." 
+                      : "© 2026 Nekomon Online. All rights reserved. Real-time Cat Photo Hunting & AR Forge Card Game."}
+                  </span>
+                  <span className="text-amber-500/70 font-mono">Instagram Developer: @astronian22</span>
+                </div>
+              </div>
+            </footer>
+
+            {/* Render Landing Legal Pages Modal */}
+            <LegalPagesModal
+              isOpen={showLandingLegalModal}
+              initialTab={landingLegalTab}
+              onClose={() => setShowLandingLegalModal(false)}
+            />
 
             {/* Lightbox Fullscreen Modal for Official Game Card System Image */}
             {isBottomBannerZoomed && (
@@ -1622,17 +1875,19 @@ export default function App() {
                     { id: "missions", label: t("nav.missions"), icon: Gamepad2 },
                     { id: "trading", label: t("nav.trading"), icon: ArrowLeftRight },
                     { id: "leaderboard", label: t("nav.leaderboard"), icon: Trophy },
+                    { id: "mail", label: language === "id" ? "SURAT & PESAN 📬" : "MAILBOX 📬", icon: Mail, badge: mailUnreadCount },
                     { id: "shop", label: t("nav.shop"), icon: ShoppingBag },
                     { id: "guide", label: t("nav.guide"), icon: HelpCircle },
                     { id: "profile", label: t("nav.profile"), icon: UserIcon }
                   ] as const
                 ).map((tab) => {
                   const Icon = tab.icon;
+                  const badgeCount = (tab as any).badge;
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => handleTabChange(tab.id)}
-                      className={`flex items-center gap-1.5 py-2 px-3.5 rounded-lg font-black text-[10px] tracking-wider transition-all cursor-pointer ${
+                      onClick={() => handleTabChange(tab.id as any)}
+                      className={`relative flex items-center gap-1.5 py-2 px-3.5 rounded-lg font-black text-[10px] tracking-wider transition-all cursor-pointer ${
                         mobileTab === tab.id
                           ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-md shadow-yellow-500/10"
                           : "text-slate-400 hover:text-slate-200"
@@ -1640,6 +1895,11 @@ export default function App() {
                     >
                       <Icon className="w-3.5 h-3.5" />
                       <span>{tab.label}</span>
+                      {badgeCount && badgeCount > 0 ? (
+                        <span className="w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse">
+                          {badgeCount}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -1957,6 +2217,10 @@ export default function App() {
                     <LeaderboardView
                       currentUser={user}
                       token={token || ""}
+                      onMessagePlayer={(partnerId) => {
+                        setMailPartnerId(partnerId);
+                        handleTabChange("mail");
+                      }}
                     />
                   </motion.div>
                 )}
@@ -2257,6 +2521,26 @@ export default function App() {
                           type: "success"
                         });
                       }} 
+                    />
+                  </motion.div>
+                )}
+
+                {mobileTab === "mail" && (
+                  <motion.div
+                    key="mail-view"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    className="w-full"
+                  >
+                    <MailboxView
+                      user={user}
+                      token={token || ""}
+                      onUpdateUser={(updated) => {
+                        setUser((prev) => (prev ? { ...prev, ...updated } : null));
+                      }}
+                      initialPartnerId={mailPartnerId}
+                      onClearInitialPartner={() => setMailPartnerId(null)}
                     />
                   </motion.div>
                 )}

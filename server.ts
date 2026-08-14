@@ -97,6 +97,25 @@ async function bootSyncFirestore() {
           }
         });
       }
+      if (Array.isArray(remoteData.officialMails)) {
+        if (!current.officialMails) current.officialMails = [];
+        remoteData.officialMails.forEach((m: any) => {
+          const mIdx = current.officialMails.findIndex((x: any) => x.id === m.id);
+          if (mIdx === -1) {
+            current.officialMails.push(m);
+          } else {
+            current.officialMails[mIdx] = { ...current.officialMails[mIdx], ...m };
+          }
+        });
+      }
+      if (Array.isArray(remoteData.directMessages)) {
+        if (!current.directMessages) current.directMessages = [];
+        remoteData.directMessages.forEach((dm: any) => {
+          if (!current.directMessages.some((x: any) => x.id === dm.id)) {
+            current.directMessages.push(dm);
+          }
+        });
+      }
       fs.writeFileSync(DB_PATH, JSON.stringify(current, null, 2));
       console.log("Database initialized & restored from Firestore successfully.");
     }
@@ -127,11 +146,66 @@ app.use("/api", async (req, res, next) => {
   next();
 });
 
+// Default official mail broadcasts
+const DEFAULT_OFFICIAL_MAILS = [
+  {
+    id: "mail_welcome_2026",
+    title: "🎉 Selamat Datang di Nekomon Online (Welcome Trainer!)",
+    category: "welcome",
+    sender: "Nekomon Studio (support@nekomon.online)",
+    senderEmail: "support@nekomon.online",
+    summary: "Terima kasih telah bergabung dengan komunitas pemburu foto kucing AR Nekomon Online! Klaim hadiah sambutan starter pack Anda.",
+    content: "Halo Trainer Nekomon!\n\nSelamat datang di dunia AR Cat Trading Card Game Indonesia! Tangkap foto kucing nyata di sekitarmu dengan Kamera AR, kumpulkan poin, dan tempa menjadi kartu anime faksi Sentinel atau Vanguard berkekuatan 5 Elemen (Aqua, Fire, Earth, Wind, Thunder).\n\nSebagai hadiah sambutan resmi dari kami, silakan klaim starter pack 50 Nekomon Points dan 5 Nekomon Cores di bawah ini!\n\nSalam hangat,\nTim Nekomon Studio\nEmail Bantuan: support@nekomon.online\nInstagram: @astronian22",
+    reward: {
+      points: 50,
+      cores: 5
+    },
+    claimedUserIds: [],
+    readUserIds: [],
+    pinned: true,
+    createdAt: new Date("2026-08-01T00:00:00.000Z").toISOString()
+  },
+  {
+    id: "mail_patch_v250",
+    title: "🚀 Patch Update v2.5: Fitur Kotak Surat & Pesan Pribadi Antar Trainer",
+    category: "patch_update",
+    sender: "Nekomon Dev Team (support@nekomon.online)",
+    senderEmail: "support@nekomon.online",
+    summary: "Pembaruan v2.5 menghadirkan Kotak Surat Resmi (Mailbox), Siaran Update Game, dan Direct Messages antar pemain.",
+    content: "Catatan Rilis Patch v2.5.0:\n\n1. 📬 Sistem Kotak Surat (Official Mailbox): Dapatkan informasi resmi langsung mengenai update patch, jadwal maintenance, dan hadiah kompensasi dari support@nekomon.online.\n2. 💬 Pesan Pribadi (Direct Messages): Sekarang Anda dapat berkirim pesan teks secara personal dengan trainer lain di seluruh Indonesia!\n3. ⚡ Optimasi sinkronisasi data kartu & arena PvP.\n4. 🛡️ Pembaruan identitas faksi Vanguard & balancing 5 elemen.\n\nKlaim bonus perayaan rilis patch sebesar +25 Poin & +2 Cores!",
+    reward: {
+      points: 25,
+      cores: 2
+    },
+    claimedUserIds: [],
+    readUserIds: [],
+    pinned: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "mail_maint_schedule",
+    title: "⚙️ Jadwal Pemeliharaan Server Rutin (Scheduled Maintenance)",
+    category: "maintenance",
+    sender: "Nekomon Operations (support@nekomon.online)",
+    senderEmail: "support@nekomon.online",
+    summary: "Informasi jadwal maintenance rutin mingguan untuk peningkatan kapasitas server dan database cloud.",
+    content: "Pemberitahuan Kepada Seluruh Trainer:\n\nServer Nekomon Online dijadwalkan melakukan optimalisasi database cloud setiap hari Senin pukul 03:00 - 04:00 WIB. Selama proses pemeliharaan berlangsung, game tetap dapat diakses dengan mode fallback offline-sync.\n\nApabila Anda mengalami kendala teknis atau akun, silakan hubungi tim kami via email resmi: support@nekomon.online atau DM Instagram @astronian22.\n\nTerima kasih atas pengertian dan kerjasamanya! Silakan ambil hadiah kompensasi perawatan server berikut.",
+    reward: {
+      points: 15,
+      cores: 1
+    },
+    claimedUserIds: [],
+    readUserIds: [],
+    pinned: false,
+    createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
+  }
+];
+
 // Raw sync readDB helper
 function readDBRaw() {
   try {
     if (!fs.existsSync(DB_PATH)) {
-      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [] };
+      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: DEFAULT_OFFICIAL_MAILS, directMessages: [] };
       fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2));
       return initial;
     }
@@ -143,9 +217,11 @@ function readDBRaw() {
     if (!parsed.transactions) parsed.transactions = [];
     if (!parsed.captures) parsed.captures = [];
     if (!parsed.cards) parsed.cards = [];
+    if (!parsed.officialMails) parsed.officialMails = [];
+    if (!parsed.directMessages) parsed.directMessages = [];
     return parsed;
   } catch (err) {
-    return { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [] };
+    return { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: [], directMessages: [] };
   }
 }
 
@@ -153,7 +229,7 @@ function readDBRaw() {
 function readDB() {
   try {
     if (!fs.existsSync(DB_PATH)) {
-      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [] };
+      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: DEFAULT_OFFICIAL_MAILS, directMessages: [] };
       fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2));
       return initial;
     }
@@ -165,6 +241,18 @@ function readDB() {
     if (!parsed.transactions) parsed.transactions = [];
     if (!parsed.captures) parsed.captures = [];
     if (!parsed.cards) parsed.cards = [];
+    if (!parsed.officialMails) parsed.officialMails = [];
+    if (!parsed.directMessages) parsed.directMessages = [];
+
+    let modified = false;
+
+    // Seed official mails if missing
+    for (const defaultMail of DEFAULT_OFFICIAL_MAILS) {
+      if (!parsed.officialMails.some((m: any) => m.id === defaultMail.id)) {
+        parsed.officialMails.push(defaultMail);
+        modified = true;
+      }
+    }
 
     // Seed Bot Players with unique names if they don't already exist
     const bots = [
@@ -176,7 +264,6 @@ function readDB() {
       { id: "bot_king_oyen", username: "King_Oyen", email: "king_oyen@bot.com", password: "bot", points: 750, cores: 15, createdAt: new Date().toISOString(), isBot: true }
     ];
 
-    let modified = false;
     if (!parsed.users) {
       parsed.users = [];
     }
@@ -193,7 +280,7 @@ function readDB() {
     return parsed;
   } catch (err) {
     console.error("Error reading database:", err);
-    return { users: [], captures: [], cards: [], trades: [] };
+    return { users: [], captures: [], cards: [], trades: [], officialMails: [], directMessages: [] };
   }
 }
 
@@ -3876,6 +3963,451 @@ app.post("/api/community-spots/:id/vote", (req, res) => {
     success: true,
     message: "Dukungan/vote berhasil ditambahkan!",
     votes: spot.votes
+  });
+});
+
+// ----------------------------------------------------------------
+// OFFICIAL MAIL & MESSAGES API ENDPOINTS
+// ----------------------------------------------------------------
+
+// 1. Get all official mail announcements with read/claimed status for user
+app.get("/api/mail/official", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  const userId = user ? user.id : "";
+
+  const mails = (db.officialMails || []).map((m: any) => {
+    const isRead = userId ? (m.readUserIds || []).includes(userId) : false;
+    const isClaimed = userId ? (m.claimedUserIds || []).includes(userId) : false;
+    return {
+      ...m,
+      isRead,
+      isClaimed
+    };
+  });
+
+  // Sort pinned first, then newest createdAt
+  mails.sort((a: any, b: any) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  res.json({ success: true, mails });
+});
+
+// 2. Mark official mail as read
+app.post("/api/mail/official/:id/read", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Sesi login tidak valid." });
+  }
+
+  const { id } = req.params;
+  const mailIndex = (db.officialMails || []).findIndex((m: any) => m.id === id);
+  if (mailIndex === -1) {
+    return res.status(404).json({ error: "Surat resmi tidak ditemukan." });
+  }
+
+  if (!db.officialMails[mailIndex].readUserIds) {
+    db.officialMails[mailIndex].readUserIds = [];
+  }
+
+  if (!db.officialMails[mailIndex].readUserIds.includes(user.id)) {
+    db.officialMails[mailIndex].readUserIds.push(user.id);
+    writeDB(db);
+  }
+
+  res.json({ success: true, message: "Surat ditandai telah dibaca." });
+});
+
+// 3. Claim attached rewards from official mail
+app.post("/api/mail/official/:id/claim", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Sesi login tidak valid." });
+  }
+
+  const { id } = req.params;
+  const mailIndex = (db.officialMails || []).findIndex((m: any) => m.id === id);
+  if (mailIndex === -1) {
+    return res.status(404).json({ error: "Surat resmi tidak ditemukan." });
+  }
+
+  const mail = db.officialMails[mailIndex];
+  if (!mail.reward || (!mail.reward.points && !mail.reward.cores)) {
+    return res.status(400).json({ error: "Surat ini tidak memiliki hadiah yang dapat diklaim." });
+  }
+
+  if (!mail.claimedUserIds) {
+    mail.claimedUserIds = [];
+  }
+
+  if (mail.claimedUserIds.includes(user.id)) {
+    return res.status(400).json({ error: "Hadiah surat ini sudah pernah Anda klaim sebelumnya." });
+  }
+
+  // Find user index in db
+  const uIdx = db.users.findIndex((u: any) => u.id === user.id);
+  if (uIdx === -1) {
+    return res.status(404).json({ error: "Pengguna tidak ditemukan." });
+  }
+
+  const ptsReward = mail.reward.points || 0;
+  const coresReward = mail.reward.cores || 0;
+
+  db.users[uIdx].points = (db.users[uIdx].points || 0) + ptsReward;
+  db.users[uIdx].cores = (db.users[uIdx].cores || 0) + coresReward;
+  mail.claimedUserIds.push(user.id);
+
+  if (!mail.readUserIds) mail.readUserIds = [];
+  if (!mail.readUserIds.includes(user.id)) mail.readUserIds.push(user.id);
+
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: `Selamat! Berhasil mengklaim +${ptsReward} Poin dan +${coresReward} Cores! 🎉`,
+    claimed: {
+      points: ptsReward,
+      cores: coresReward
+    },
+    user: {
+      id: db.users[uIdx].id,
+      username: db.users[uIdx].username,
+      points: db.users[uIdx].points,
+      cores: db.users[uIdx].cores
+    }
+  });
+});
+
+// 4. Create official broadcast (Admin / Developer tool)
+app.post("/api/mail/official/broadcast", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  const { title, category, content, summary, rewardPoints, rewardCores, pinned, adminPasscode } = req.body;
+
+  // Check authorization (allow if user is admin, verydiaz@gmail.com, astronian22, or passcode matches)
+  const isAuthorized = (user && (user.username === "astronian22" || user.email === "verydiaz@gmail.com" || user.isAdmin)) || adminPasscode === "nekomon2026" || adminPasscode === "astronian22";
+
+  if (!isAuthorized) {
+    return res.status(403).json({ error: "Hanya Administrator / Developer Nekomon yang dapat menyiarkan surat resmi." });
+  }
+
+  if (!title || !content) {
+    return res.status(400).json({ error: "Judul dan isi pengumuman resmi wajib diisi." });
+  }
+
+  if (!db.officialMails) db.officialMails = [];
+
+  const newMail = {
+    id: "mail_broad_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 5),
+    title: title.trim(),
+    category: category || "announcement",
+    sender: "Nekomon Studio (support@nekomon.online)",
+    senderEmail: "support@nekomon.online",
+    summary: summary ? summary.trim() : title.trim(),
+    content: content.trim(),
+    reward: (Number(rewardPoints) > 0 || Number(rewardCores) > 0) ? {
+      points: Number(rewardPoints) || 0,
+      cores: Number(rewardCores) || 0
+    } : undefined,
+    claimedUserIds: [],
+    readUserIds: user ? [user.id] : [],
+    pinned: !!pinned,
+    createdAt: new Date().toISOString()
+  };
+
+  db.officialMails.unshift(newMail);
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Surat pengumuman resmi berhasil disiarkan ke seluruh trainer! 📬",
+    mail: newMail
+  });
+});
+
+// 5. Search other players for starting a conversation
+app.get("/api/players/search", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  const query = (req.query.q as string || "").toLowerCase().trim();
+
+  const players = (db.users || [])
+    .filter((u: any) => {
+      if (user && u.id === user.id) return false;
+      if (!query) return true;
+      return (u.username && u.username.toLowerCase().includes(query)) || (u.id && u.id.toLowerCase().includes(query));
+    })
+    .slice(0, 20)
+    .map((u: any) => {
+      const userCards = (db.cards || []).filter((c: any) => c.userId === u.id);
+      return {
+        id: u.id,
+        username: u.username,
+        points: u.points || 0,
+        cores: u.cores || 0,
+        totalCards: userCards.length,
+        avatar: u.avatar || "",
+        isBot: !!u.isBot
+      };
+    });
+
+  res.json({ success: true, players });
+});
+
+// 6. Get inbox conversation threads
+app.get("/api/messages/conversations", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Sesi login tidak valid." });
+  }
+
+  const allDms = db.directMessages || [];
+  const threadsMap = new Map<string, any>();
+
+  // Find all messages where user is sender or recipient
+  allDms.forEach((dm: any) => {
+    if (dm.senderId === user.id || dm.recipientId === user.id) {
+      const isSender = dm.senderId === user.id;
+      const partnerId = isSender ? dm.recipientId : dm.senderId;
+      const partnerUsername = isSender ? dm.recipientUsername : dm.senderUsername;
+      const partnerAvatar = isSender ? dm.recipientAvatar : dm.senderAvatar;
+
+      if (!threadsMap.has(partnerId)) {
+        const partnerUser = (db.users || []).find((u: any) => u.id === partnerId);
+        threadsMap.set(partnerId, {
+          partnerId,
+          partnerUsername: partnerUser ? partnerUser.username : partnerUsername,
+          partnerAvatar: partnerUser ? partnerUser.avatar : partnerAvatar,
+          isBot: partnerUser ? !!partnerUser.isBot : false,
+          lastMessage: dm.content,
+          lastMessageAt: dm.createdAt,
+          unreadCount: 0
+        });
+      } else {
+        const current = threadsMap.get(partnerId);
+        if (new Date(dm.createdAt).getTime() > new Date(current.lastMessageAt).getTime()) {
+          current.lastMessage = dm.content;
+          current.lastMessageAt = dm.createdAt;
+        }
+      }
+
+      // If this message was sent to the user and is not read
+      if (dm.recipientId === user.id && !dm.read) {
+        const thread = threadsMap.get(partnerId);
+        thread.unreadCount = (thread.unreadCount || 0) + 1;
+      }
+    }
+  });
+
+  const threads = Array.from(threadsMap.values()).sort(
+    (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+  );
+
+  res.json({ success: true, threads });
+});
+
+// 7. Get chat thread messages with a specific partner
+app.get("/api/messages/thread/:partnerId", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Sesi login tidak valid." });
+  }
+
+  const { partnerId } = req.params;
+  const partner = (db.users || []).find((u: any) => u.id === partnerId);
+
+  const allDms = db.directMessages || [];
+  let updated = false;
+
+  const messages = allDms.filter((dm: any) => {
+    const isConv = (dm.senderId === user.id && dm.recipientId === partnerId) ||
+                   (dm.senderId === partnerId && dm.recipientId === user.id);
+    
+    if (isConv && dm.recipientId === user.id && !dm.read) {
+      dm.read = true;
+      updated = true;
+    }
+    return isConv;
+  }).sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  if (updated) {
+    writeDB(db);
+  }
+
+  res.json({
+    success: true,
+    partner: partner ? {
+      id: partner.id,
+      username: partner.username,
+      avatar: partner.avatar,
+      isBot: !!partner.isBot
+    } : { id: partnerId, username: "Trainer", isBot: false },
+    messages
+  });
+});
+
+// 8. Send Direct Message to a player
+app.post("/api/messages/send", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Sesi login tidak valid." });
+  }
+
+  const { recipientId, recipientUsername, content } = req.body;
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: "Pesan tidak boleh kosong." });
+  }
+
+  let recipient = null;
+  if (recipientId) {
+    recipient = (db.users || []).find((u: any) => u.id === recipientId);
+  } else if (recipientUsername) {
+    recipient = (db.users || []).find((u: any) => u.username.toLowerCase() === recipientUsername.toLowerCase());
+  }
+
+  if (!recipient) {
+    return res.status(404).json({ error: "Penerima pesan (Trainer) tidak ditemukan." });
+  }
+
+  if (recipient.id === user.id) {
+    return res.status(400).json({ error: "Anda tidak dapat mengirim pesan pribadi ke diri sendiri." });
+  }
+
+  if (!db.directMessages) db.directMessages = [];
+
+  const newDm = {
+    id: "dm_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 6),
+    senderId: user.id,
+    senderUsername: user.username,
+    senderAvatar: user.avatar || "",
+    recipientId: recipient.id,
+    recipientUsername: recipient.username,
+    recipientAvatar: recipient.avatar || "",
+    content: content.trim(),
+    createdAt: new Date().toISOString(),
+    read: false
+  };
+
+  db.directMessages.push(newDm);
+
+  // If recipient is a bot player, generate an instant friendly bot reply after short delay
+  if (recipient.isBot) {
+    const botReplies = [
+      "Miauw! Salam kenal Trainer! Senang bisa ngobrol 🐱✨",
+      "Kucing-kucing di Peta Spot hari ini aktif banget lho! Mau tanding di Arena?",
+      "Pesanmu sudah diterima! Jangan lupa selesaikan misi harian untuk dapat Poin & Cores ya 🐾",
+      "Halo! Keren banget kartu Nekomon kamu. Terus berburu dan tingkatkan level kartumu! 🚀",
+      "Miauw miauw! Semangat berburu foto kucing hari ini! 😺"
+    ];
+    const randomReply = botReplies[Math.floor(Math.random() * botReplies.length)];
+
+    const botDm = {
+      id: "dm_bot_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 6),
+      senderId: recipient.id,
+      senderUsername: recipient.username,
+      senderAvatar: recipient.avatar || "",
+      recipientId: user.id,
+      recipientUsername: user.username,
+      recipientAvatar: user.avatar || "",
+      content: randomReply,
+      createdAt: new Date(Date.now() + 1000).toISOString(),
+      read: false
+    };
+    db.directMessages.push(botDm);
+  }
+
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Pesan berhasil dikirim! 💬",
+    directMessage: newDm
+  });
+});
+
+// 9. Mark thread as read
+app.post("/api/messages/mark-read/:partnerId", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Sesi login tidak valid." });
+  }
+
+  const { partnerId } = req.params;
+  const allDms = db.directMessages || [];
+  let updated = false;
+
+  allDms.forEach((dm: any) => {
+    if (dm.senderId === partnerId && dm.recipientId === user.id && !dm.read) {
+      dm.read = true;
+      updated = true;
+    }
+  });
+
+  if (updated) {
+    writeDB(db);
+  }
+
+  res.json({ success: true });
+});
+
+// 10. Delete a direct message
+app.delete("/api/messages/:messageId", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Sesi login tidak valid." });
+  }
+
+  const { messageId } = req.params;
+  const dmIdx = (db.directMessages || []).findIndex((dm: any) => dm.id === messageId);
+
+  if (dmIdx === -1) {
+    return res.status(404).json({ error: "Pesan tidak ditemukan." });
+  }
+
+  const dm = db.directMessages[dmIdx];
+  if (dm.senderId !== user.id && dm.recipientId !== user.id) {
+    return res.status(403).json({ error: "Anda tidak memiliki izin menghapus pesan ini." });
+  }
+
+  db.directMessages.splice(dmIdx, 1);
+  writeDB(db);
+
+  res.json({ success: true, message: "Pesan berhasil dihapus." });
+});
+
+// 11. Get total unread counts for badges
+app.get("/api/messages/unread-count", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.json({ success: true, officialUnread: 0, directMessagesUnread: 0, totalUnread: 0 });
+  }
+
+  const userId = user.id;
+
+  // Unread official mails
+  const officialMails = db.officialMails || [];
+  const officialUnread = officialMails.filter((m: any) => !(m.readUserIds || []).includes(userId)).length;
+
+  // Unread direct messages
+  const directMessages = db.directMessages || [];
+  const directMessagesUnread = directMessages.filter((dm: any) => dm.recipientId === userId && !dm.read).length;
+
+  res.json({
+    success: true,
+    officialUnread,
+    directMessagesUnread,
+    totalUnread: officialUnread + directMessagesUnread
   });
 });
 
