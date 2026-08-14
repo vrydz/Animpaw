@@ -4083,17 +4083,20 @@ app.post("/api/mail/official/:id/claim", (req, res) => {
   });
 });
 
-// 4. Create official broadcast (Admin / Developer tool)
+// 4. Create official broadcast (Admin / Developer tool - strictly verydiaz@gmail.com or support@nekomon.online)
 app.post("/api/mail/official/broadcast", (req, res) => {
   const db = readDB();
   const user = getAuthUser(req, db);
-  const { title, category, content, summary, rewardPoints, rewardCores, pinned, adminPasscode } = req.body;
+  const { title, category, content, summary, rewardPoints, rewardCores, pinned } = req.body;
 
-  // Check authorization (allow if user is admin, verydiaz@gmail.com, astronian22, or passcode matches)
-  const isAuthorized = (user && (user.username === "astronian22" || user.email === "verydiaz@gmail.com" || user.isAdmin)) || adminPasscode === "nekomon2026" || adminPasscode === "astronian22";
+  // Strict check: only verified developer accounts with email verydiaz@gmail.com or support@nekomon.online
+  const developerEmails = ["verydiaz@gmail.com", "support@nekomon.online"];
+  const isAuthorized = user && user.email && developerEmails.includes(user.email.toLowerCase().trim());
 
   if (!isAuthorized) {
-    return res.status(403).json({ error: "Hanya Administrator / Developer Nekomon yang dapat menyiarkan surat resmi." });
+    return res.status(403).json({
+      error: "Akses ditolak. Fitur siaran resmi ini hanya dapat dilakukan oleh akun Developer Nekomon (verydiaz@gmail.com / support@nekomon.online)."
+    });
   }
 
   if (!title || !content) {

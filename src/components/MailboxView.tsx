@@ -29,6 +29,13 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
 }) => {
   const { language, t } = useLanguage();
 
+  // Strict check: Only verydiaz@gmail.com or support@nekomon.online can broadcast
+  const isDeveloper = !!(
+    user &&
+    user.email &&
+    ["verydiaz@gmail.com", "support@nekomon.online"].includes(user.email.toLowerCase().trim())
+  );
+
   // Navigation Sub-tab
   const [activeSubTab, setActiveSubTab] = useState<"official" | "direct">(initialTab);
 
@@ -48,7 +55,6 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
   const [broadcastPoints, setBroadcastPoints] = useState<number>(0);
   const [broadcastCores, setBroadcastCores] = useState<number>(0);
   const [broadcastPinned, setBroadcastPinned] = useState<boolean>(false);
-  const [broadcastPasscode, setBroadcastPasscode] = useState("");
   const [broadcastSubmitting, setBroadcastSubmitting] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -319,9 +325,19 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
     } catch (_) {}
   };
 
-  // Send Broadcast Submission
+  // Send Broadcast Submission (Developer Only)
   const handleBroadcastSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isDeveloper) {
+      setBroadcastMsg({
+        type: "error",
+        text: language === "id"
+          ? "Akses ditolak. Hanya akun developer resmi (verydiaz@gmail.com / support@nekomon.online) yang dapat menyiarkan surat."
+          : "Access denied. Only official developer accounts (verydiaz@gmail.com / support@nekomon.online) can broadcast mail."
+      });
+      return;
+    }
+
     setBroadcastSubmitting(true);
     setBroadcastMsg(null);
 
@@ -339,13 +355,17 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
           content: broadcastContent,
           rewardPoints: Number(broadcastPoints) || 0,
           rewardCores: Number(broadcastCores) || 0,
-          pinned: broadcastPinned,
-          adminPasscode: broadcastPasscode
+          pinned: broadcastPinned
         })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setBroadcastMsg({ type: "success", text: "Surat resmi berhasil disiarkan ke seluruh pemain!" });
+        setBroadcastMsg({
+          type: "success",
+          text: language === "id"
+            ? "Surat resmi berhasil disiarkan ke seluruh pemain!"
+            : "Official announcement broadcasted to all players successfully!"
+        });
         try {
           audio.playVictorySound();
         } catch (_) {}
@@ -360,10 +380,16 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
           fetchOfficialMails();
         }, 1200);
       } else {
-        setBroadcastMsg({ type: "error", text: data.error || "Gagal menyiarkan surat resmi." });
+        setBroadcastMsg({
+          type: "error",
+          text: data.error || (language === "id" ? "Gagal menyiarkan surat resmi." : "Failed to broadcast official mail.")
+        });
       }
     } catch (err) {
-      setBroadcastMsg({ type: "error", text: "Kesalahan jaringan saat menyiarkan surat." });
+      setBroadcastMsg({
+        type: "error",
+        text: language === "id" ? "Kesalahan jaringan saat menyiarkan surat." : "Network error while broadcasting mail."
+      });
     } finally {
       setBroadcastSubmitting(false);
     }
@@ -431,19 +457,26 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Only visible to authorized developers */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-          <button
-            onClick={() => {
-              try { audio.playCardSelectSound(); } catch (_) {}
-              setShowBroadcastModal(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-950 hover:bg-slate-900 border border-amber-500/40 hover:border-amber-400 rounded-xl text-amber-400 text-xs font-black transition-all shadow-md cursor-pointer group"
-            title="Kirim pengumuman resmi atau patch notes baru ke seluruh pemain"
-          >
-            <PlusCircle className="w-4 h-4 text-amber-400 group-hover:rotate-90 transition-transform duration-300" />
-            <span>{language === "id" ? "Siarkan Pengumuman" : "Broadcast Mail"}</span>
-          </button>
+          {isDeveloper ? (
+            <button
+              onClick={() => {
+                try { audio.playCardSelectSound(); } catch (_) {}
+                setShowBroadcastModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/50 hover:border-amber-400 rounded-xl text-amber-300 text-xs font-black transition-all shadow-md cursor-pointer group"
+              title={language === "id" ? "Panel Siaran Pengumuman Developer" : "Developer Broadcast Announcement Panel"}
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span>{language === "id" ? "Siarkan Pengumuman (Dev)" : "Broadcast Mail (Dev)"}</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950/60 border border-slate-800 rounded-xl text-[10px] font-mono text-slate-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{language === "id" ? "Kotak Masuk Terverifikasi" : "Verified Inboxes"}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1070,7 +1103,7 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                     {searchingPlayers ? (
                       <div className="p-6 text-center text-slate-500 text-xs">
                         <RefreshCw className="w-4 h-4 animate-spin text-amber-400 mx-auto mb-1" />
-                        <span>Mencari trainer...</span>
+                        <span>{language === "id" ? "Mencari trainer..." : "Searching trainers..."}</span>
                       </div>
                     ) : searchResults.length === 0 ? (
                       <div className="p-6 text-center text-slate-500 text-xs">
@@ -1097,7 +1130,7 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                                 )}
                               </div>
                               <span className="text-[10px] text-slate-400 font-mono">
-                                {p.points} Pts • {p.totalCards} Kartu
+                                {p.points} Pts • {p.totalCards} {language === "id" ? "Kartu" : "Cards"}
                               </span>
                             </div>
                           </div>
@@ -1132,12 +1165,10 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 <div>
                   <h3 className="font-black text-base text-slate-100 flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-amber-400" />
-                    <span>{language === "id" ? "Siarkan Pengumuman Resmi (support@nekomon.online)" : "Broadcast Official Mail"}</span>
+                    <span>{t("mail.broadcast_title")}</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {language === "id"
-                      ? "Surat ini akan dikirim langsung ke seluruh kotak surat (Inbox) pemain Nekomon Online."
-                      : "This mail will be broadcasted to all Nekomon Online players' inboxes."}
+                    {t("mail.broadcast_desc")}
                   </p>
                 </div>
                 <button
@@ -1146,6 +1177,15 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Developer Verified Account Notice */}
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center gap-2.5 text-xs text-amber-300">
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="flex flex-col">
+                  <span className="font-bold">{language === "id" ? "Otorisasi Akun Pengembang Terverifikasi:" : "Verified Developer Account Authorized:"}</span>
+                  <span className="font-mono text-[11px] text-amber-400 font-bold">{user?.email || "verydiaz@gmail.com"}</span>
+                </div>
               </div>
 
               {broadcastMsg && (
@@ -1160,14 +1200,14 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 {/* Title */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-300">
-                    {language === "id" ? "Judul Surat / Pengumuman *" : "Mail Title *"}
+                    {t("mail.broadcast_title_field")}
                   </label>
                   <input
                     type="text"
                     required
                     value={broadcastTitle}
                     onChange={e => setBroadcastTitle(e.target.value)}
-                    placeholder="e.g. 🚀 Patch Update v2.6.0: Fitur Baru & Event Spesial"
+                    placeholder={language === "id" ? "e.g. 🚀 Patch Update v2.6.0: Fitur Baru & Event Spesial" : "e.g. 🚀 Patch Update v2.6.0: New Features & Special Event"}
                     className="bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl px-3.5 py-2 text-xs text-slate-100"
                   />
                 </div>
@@ -1175,10 +1215,10 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 {/* Category Selection */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { id: "patch_update", label: "🚀 Patch Update" },
-                    { id: "maintenance", label: "⚙️ Maintenance" },
-                    { id: "welcome", label: "🎉 Sambutan" },
-                    { id: "system_reward", label: "🎁 Hadiah" }
+                    { id: "patch_update", label: language === "id" ? "🚀 Patch Update" : "🚀 Patch Update" },
+                    { id: "maintenance", label: language === "id" ? "⚙️ Pemeliharaan" : "⚙️ Maintenance" },
+                    { id: "welcome", label: language === "id" ? "🎉 Sambutan" : "🎉 Welcome" },
+                    { id: "system_reward", label: language === "id" ? "🎁 Hadiah" : "🎁 Special Gift" }
                   ].map(cat => (
                     <button
                       key={cat.id}
@@ -1198,13 +1238,13 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 {/* Summary */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-300">
-                    {language === "id" ? "Ringkasan Singkat" : "Short Summary"}
+                    {t("mail.broadcast_summary_field")}
                   </label>
                   <input
                     type="text"
                     value={broadcastSummary}
                     onChange={e => setBroadcastSummary(e.target.value)}
-                    placeholder="Ringkasan 1 kalimat yang tampil pada kartu inbox"
+                    placeholder={language === "id" ? "Ringkasan 1 kalimat yang tampil pada kartu inbox" : "1-sentence summary shown on inbox preview cards"}
                     className="bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl px-3.5 py-2 text-xs text-slate-100"
                   />
                 </div>
@@ -1212,14 +1252,14 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 {/* Full Content */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-300">
-                    {language === "id" ? "Isi Surat Lengkap *" : "Full Mail Content *"}
+                    {t("mail.broadcast_content_field")}
                   </label>
                   <textarea
                     required
                     rows={4}
                     value={broadcastContent}
                     onChange={e => setBroadcastContent(e.target.value)}
-                    placeholder="Tuliskan catatan update, penjelasan maintenance, atau pesan selamat datang secara rinci..."
+                    placeholder={language === "id" ? "Tuliskan catatan update, penjelasan maintenance, atau pesan selamat datang secara rinci..." : "Write detailed update notes, maintenance schedule, or welcome message..."}
                     className="bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-xs text-slate-100 leading-relaxed"
                   />
                 </div>
@@ -1228,11 +1268,11 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex flex-col gap-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
                     <Gift className="w-4 h-4" />
-                    <span>{language === "id" ? "Bonus Hadiah Lampiran (Opsional)" : "Attached Reward (Optional)"}</span>
+                    <span>{t("mail.broadcast_reward_label")}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
-                      <span className="text-[10px] text-slate-400 font-mono">Bonus Poin</span>
+                      <span className="text-[10px] text-slate-400 font-mono">{t("mail.broadcast_points_label")}</span>
                       <input
                         type="number"
                         min="0"
@@ -1242,7 +1282,7 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[10px] text-slate-400 font-mono">Bonus Cores</span>
+                      <span className="text-[10px] text-slate-400 font-mono">{t("mail.broadcast_cores_label")}</span>
                       <input
                         type="number"
                         min="0"
@@ -1254,8 +1294,8 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                   </div>
                 </div>
 
-                {/* Passcode & Pinned */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                {/* Pinned Setting */}
+                <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -1263,16 +1303,8 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                       onChange={e => setBroadcastPinned(e.target.checked)}
                       className="rounded accent-amber-500"
                     />
-                    <span>{language === "id" ? "Sematkan di Atas (Pinned)" : "Pin at top"}</span>
+                    <span>{t("mail.broadcast_pin_label")}</span>
                   </label>
-
-                  <input
-                    type="password"
-                    value={broadcastPasscode}
-                    onChange={e => setBroadcastPasscode(e.target.value)}
-                    placeholder="Admin Passcode (e.g. nekomon2026)"
-                    className="bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-600"
-                  />
                 </div>
 
                 {/* Submit Button */}
@@ -1284,12 +1316,12 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                   {broadcastSubmitting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>{language === "id" ? "MENYIARKAN..." : "BROADCASTING..."}</span>
+                      <span>{t("mail.broadcasting")}</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      <span>{language === "id" ? "SIARKAN SURAT RESMI SEKARANG 📬" : "BROADCAST OFFICIAL MAIL NOW 📬"}</span>
+                      <span>{t("mail.broadcast_submit")}</span>
                     </>
                   )}
                 </button>
