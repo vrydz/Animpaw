@@ -10,6 +10,7 @@ export interface User {
   lastLevel8BonusAt?: string;
   captureStreak?: number;
   lastCaptureDate?: string;
+  lastRewardedAdClaim?: string;
 }
 
 export interface Mission {
@@ -163,6 +164,55 @@ export interface ConversationThread {
   lastMessageAt: string;
   unreadCount: number;
   isBot?: boolean;
+}
+
+export interface BeaconNode {
+  id: string;
+  name: string;
+  nameEn?: string;
+  element: "Api" | "Air" | "Tanah" | "Angin" | "Petir";
+  x: number; // visual percentage (0-100)
+  y: number; // visual percentage (0-100)
+  lat: number;
+  lng: number;
+  connectedNodeIds: string[];
+  isBase?: boolean;
+  baseFaction?: "Sentinel" | "Vanguard" | null;
+  ownerId: string | null;
+  ownerName: string | null;
+  ownerFaction: "Sentinel" | "Vanguard" | null;
+  ownerAvatar?: string;
+  anchorCard: Card | null;
+  garrisonDeck: Card[];
+  capturedAt: string | null;
+  lastClaimedAt: string | null;
+  accumulatedCores: number;
+  isActive: boolean; // supply line check: connected back to base/root
+  defenseHp: number;
+  maxDefenseHp: number;
+  tier: 1 | 2 | 3;
+  reinforcementsCount?: number;
+  descriptionId?: string;
+  descriptionEn?: string;
+}
+
+export interface TerritoryBattleLog {
+  turn: number;
+  attackerCardName: string;
+  defenderCardName: string;
+  damageDealt: number;
+  elementalBonus: boolean;
+  messageId: string;
+  messageEn: string;
+}
+
+export interface TerritoryBattleResult {
+  won: boolean;
+  turns: TerritoryBattleLog[];
+  damageToGarrison: number;
+  nodeCaptured: boolean;
+  coresRewarded: number;
+  pointsRewarded: number;
 }
 
 

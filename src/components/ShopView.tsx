@@ -58,6 +58,22 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
   const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   
+  // Format 4-hour cooldown time cleanly
+  const formatCooldownTime = (seconds: number) => {
+    if (seconds <= 0) return "";
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return language === "id" ? `${hours}j ${minutes}m ${secs}s` : `${hours}h ${minutes}m ${secs}s`;
+    }
+    if (minutes > 0) {
+      return language === "id" ? `${minutes}m ${secs}s` : `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
+  
   // Customization for Booster Packs
   const [targetElement, setTargetElement] = useState<string>("Random");
   const [targetStyle, setTargetStyle] = useState<string>("Random");
@@ -450,10 +466,15 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
         </button>
         <button
           onClick={() => setActiveTab("ads")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-2 ${activeTab === "ads" ? "bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]" : "bg-slate-900 text-slate-400 border border-slate-800/80 hover:bg-slate-800"}`}
+          className={`relative px-4 py-2 rounded-xl text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-2 ${activeTab === "ads" ? "bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]" : "bg-slate-900 text-slate-400 border border-slate-800/80 hover:bg-slate-800"}`}
         >
           <Award className="w-4 h-4 text-pink-400" />
-          {language === "id" ? "IKLAN BERHADIAH 🎁" : "REWARDED ADS 🎁"}
+          <span>{language === "id" ? "IKLAN BERHADIAH 🎁" : "REWARDED ADS 🎁"}</span>
+          {rewardedAdCooldown > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-[9px] font-mono text-amber-300">
+              {formatCooldownTime(rewardedAdCooldown)}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab("history")}
@@ -891,18 +912,47 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
               <Award className="w-64 h-64 text-pink-400" />
             </div>
             <div className="relative z-10 max-w-xl">
-              <span className="inline-flex items-center gap-1.5 bg-pink-500/20 text-pink-300 border border-pink-500/40 text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-                ADMOB & UNITY ADS REWARDED SDK
-              </span>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="inline-flex items-center gap-1.5 bg-pink-500/20 text-pink-300 border border-pink-500/40 text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+                  ADMOB & UNITY ADS REWARDED SDK
+                </span>
+                <span className="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold font-mono px-2.5 py-1 rounded-full">
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  {language === "id" ? "Klaim 1x Setiap 4 Jam" : "Claim 1x Every 4 Hours"}
+                </span>
+              </div>
               <h3 className="text-xl font-black text-white uppercase tracking-wide">
-                Tonton Video, Dapatkan Poin & Core Gratis!
+                {language === "id" ? "Tonton Video, Dapatkan Poin & Core Gratis!" : "Watch Video, Earn Free Points & Cores!"}
               </h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Dukung game Nekomon dengan menonton iklan sponsor singkat selama 5-6 detik. Setelah video selesai, kamu akan mendapatkan hadiah instan tanpa batas harian!
+                {language === "id"
+                  ? "Dukung game Nekomon dengan menonton video sponsor singkat selama 5-6 detik. Fitur rewarded ads ini dapat diklaim setiap 4 jam sekali untuk menjaga keseimbangan ekonomi game."
+                  : "Support Nekomon game by watching short sponsor videos for 5-6 seconds. This rewarded ads feature can be claimed once every 4 hours to maintain game economy balance."}
               </p>
             </div>
           </div>
+
+          {rewardedAdCooldown > 0 && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-3 text-amber-300">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-amber-400 animate-spin shrink-0" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold">
+                    {language === "id" ? "Iklan Sedang Cooldown (4 Jam Sekali)" : "Ad on Cooldown (Once Every 4 Hours)"}
+                  </span>
+                  <span className="text-[11px] text-amber-300/80">
+                    {language === "id"
+                      ? "Kamu dapat menonton dan mengklaim hadiah video berikutnya setelah waktu cooldown berakhir."
+                      : "You can watch and claim the next video reward once the cooldown timer expires."}
+                  </span>
+                </div>
+              </div>
+              <div className="px-3.5 py-1.5 bg-slate-950 border border-amber-500/40 rounded-xl font-mono text-xs font-black text-amber-300 shrink-0">
+                {formatCooldownTime(rewardedAdCooldown)}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Ad Option 1 */}
@@ -914,9 +964,15 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                 <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 mb-4 group-hover:scale-110 transition-transform">
                   <Award className="w-6 h-6" />
                 </div>
-                <h4 className="text-base font-bold text-slate-100 font-mono">Paket Hadiah Kombinasi</h4>
+                <h4 className="text-base font-bold text-slate-100 font-mono">
+                  {language === "id" ? "Paket Hadiah Kombinasi" : "Balanced Combo Pack"}
+                </h4>
                 <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                  Tonton video 6s untuk mendapatkan bonus seimbang berupa <span className="text-amber-400 font-bold">+30 Poin</span> & <span className="text-cyan-400 font-bold">+2 Nekomon Cores</span>.
+                  {language === "id" ? (
+                    <>Tonton video 6s untuk mendapatkan bonus seimbang berupa <span className="text-amber-400 font-bold">+30 Poin</span> & <span className="text-cyan-400 font-bold">+2 Nekomon Cores</span>.</>
+                  ) : (
+                    <>Watch a 6s video to receive a balanced bonus of <span className="text-amber-400 font-bold">+30 Points</span> & <span className="text-cyan-400 font-bold">+2 Nekomon Cores</span>.</>
+                  )}
                 </p>
               </div>
               <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
@@ -933,12 +989,12 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                   {rewardedAdCooldown > 0 ? (
                     <>
                       <Clock className="w-4 h-4 text-amber-400 animate-spin" />
-                      <span className="font-mono text-amber-300">Siap Dalam {rewardedAdCooldown}s</span>
+                      <span className="font-mono text-amber-300">{formatCooldownTime(rewardedAdCooldown)}</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 fill-current" />
-                      <span>Tonton Video</span>
+                      <span>{language === "id" ? "Tonton Video" : "Watch Video"}</span>
                     </>
                   )}
                 </button>
@@ -954,9 +1010,15 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                 <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-400 mb-4 group-hover:scale-110 transition-transform">
                   <Coins className="w-6 h-6" />
                 </div>
-                <h4 className="text-base font-bold text-slate-100 font-mono">Paket Poin Melimpah</h4>
+                <h4 className="text-base font-bold text-slate-100 font-mono">
+                  {language === "id" ? "Paket Poin Melimpah" : "Extra Points Boost"}
+                </h4>
                 <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                  Fokus menambah tabungan poin untuk gacha booster pack. Dapatkan <span className="text-yellow-400 font-bold">+50 Poin Ekstra</span> langsung setelah video!
+                  {language === "id" ? (
+                    <>Fokus menambah tabungan poin untuk gacha booster pack. Dapatkan <span className="text-yellow-400 font-bold">+50 Poin Ekstra</span> langsung setelah video!</>
+                  ) : (
+                    <>Focus on stacking points for booster pack summons. Get <span className="text-yellow-400 font-bold">+50 Extra Points</span> right after the video!</>
+                  )}
                 </p>
               </div>
               <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
@@ -973,12 +1035,12 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                   {rewardedAdCooldown > 0 ? (
                     <>
                       <Clock className="w-4 h-4 text-amber-400 animate-spin" />
-                      <span className="font-mono text-amber-300">Siap Dalam {rewardedAdCooldown}s</span>
+                      <span className="font-mono text-amber-300">{formatCooldownTime(rewardedAdCooldown)}</span>
                     </>
                   ) : (
                     <>
                       <Coins className="w-4 h-4 fill-current" />
-                      <span>Tonton Video</span>
+                      <span>{language === "id" ? "Tonton Video" : "Watch Video"}</span>
                     </>
                   )}
                 </button>
@@ -994,9 +1056,15 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                 <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-4 group-hover:scale-110 transition-transform">
                   <Layers className="w-6 h-6" />
                 </div>
-                <h4 className="text-base font-bold text-slate-100 font-mono">Paket Core Forging</h4>
+                <h4 className="text-base font-bold text-slate-100 font-mono">
+                  {language === "id" ? "Paket Core Forging" : "Core Forging Special"}
+                </h4>
                 <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                  Membutuhkan Nekomon Core untuk upgrade level kartu? Dapatkan <span className="text-cyan-400 font-bold">+5 Nekomon Cores</span> per video iklan yang ditonton!
+                  {language === "id" ? (
+                    <>Membutuhkan Nekomon Core untuk upgrade level kartu? Dapatkan <span className="text-cyan-400 font-bold">+5 Nekomon Cores</span> per video iklan yang ditonton!</>
+                  ) : (
+                    <>Need Nekomon Cores to power up card levels? Get <span className="text-cyan-400 font-bold">+5 Nekomon Cores</span> per watched video ad!</>
+                  )}
                 </p>
               </div>
               <div className="border-t border-slate-800/80 pt-4 flex items-center justify-between">
@@ -1013,12 +1081,12 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                   {rewardedAdCooldown > 0 ? (
                     <>
                       <Clock className="w-4 h-4 text-amber-400 animate-spin" />
-                      <span className="font-mono text-amber-300">Siap Dalam {rewardedAdCooldown}s</span>
+                      <span className="font-mono text-amber-300">{formatCooldownTime(rewardedAdCooldown)}</span>
                     </>
                   ) : (
                     <>
                       <Layers className="w-4 h-4 fill-current" />
-                      <span>Tonton Video</span>
+                      <span>{language === "id" ? "Tonton Video" : "Watch Video"}</span>
                     </>
                   )}
                 </button>

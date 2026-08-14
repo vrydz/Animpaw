@@ -138,6 +138,24 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-amber-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <Target className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">6. Mode Dominasi Wilayah & Beacon War (5 Cores/Hari) 🏰</h4>
+                    <p className="leading-relaxed">
+                      Kuasai area strategis pada peta dengan memasang kartu bertingkat kelangkaan <span className="text-amber-400 font-bold font-mono">MYTHIC</span> sebagai <span className="text-amber-300 font-bold font-mono">BEACON ANCHOR</span>! Setiap Beacon yang aktif menghasilkan <span className="text-cyan-400 font-bold font-mono">5 Nekomon Core points per hari</span>.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Aturan Koneksi:</span> Beacon baru harus terhubung langsung dengan wilayah milikmu atau Markas Faksimu (Sentinel / Vanguard).
+                      <br/>
+                      <span className="text-red-400 font-bold font-mono">• Supply Line Cut-off:</span> Jika jalur koneksi ke markas terputus, Beacon hilir berhenti menghasilkan Cores sampai jalur tersambung kembali!
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Peran Semua Pemain:</span> Pemain tanpa kartu Mythic tetap dapat berpartisipasi dengan memperkuat pertahanan garnisun faksi (+HP & +Poin) atau menyerang garnisun musuh!
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -199,6 +217,24 @@ export const GameGuide: React.FC = () => {
                     <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-1">5. Battle & Trade Cards Online 🏆</h4>
                     <p className="leading-relaxed">
                       Test your deck strength on the <span className="text-rose-400 font-bold font-mono">PVP ARENA</span> against players live or against AI bots. Use the <span className="text-amber-500 font-bold font-mono">TRADING</span> floor to swap duplicate cards fairly with online Trainers to complete your collection!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-amber-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <Target className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">6. Territory Control & Beacon War (5 Cores/Day) 🏰</h4>
+                    <p className="leading-relaxed">
+                      Dominate map areas by anchoring <span className="text-amber-400 font-bold font-mono">MYTHIC</span> rarity cards as <span className="text-amber-300 font-bold font-mono">BEACON ANCHORS</span>! Each active Beacon node generates <span className="text-cyan-400 font-bold font-mono">5 Nekomon Core points per day</span>.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Connection Rule:</span> New captures must be directly connected to an existing owned node or your Faction Base (Sentinel / Vanguard).
+                      <br/>
+                      <span className="text-red-400 font-bold font-mono">• Supply Line Cut-off:</span> Severed supply lines disable downstream beacons and halt core generation until reconnected!
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Accessibility:</span> Non-mythic players can reinforce friendly garrisons (+HP & +Points) or assault enemy defenses!
                     </p>
                   </div>
                 </div>

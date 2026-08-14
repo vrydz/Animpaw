@@ -22,6 +22,7 @@ import { NekomonCard } from "./components/NekomonCard";
 import { AdSenseBanner } from "./components/AdSenseBanner";
 import { LegalPagesModal, LegalTabType } from "./components/LegalPagesModal";
 import { MailboxView } from "./components/MailboxView";
+import { TerritoryControlView } from "./components/TerritoryControlView";
 import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
 
@@ -70,7 +71,9 @@ import {
   Lock,
   FileText,
   Info,
-  Mail
+  Mail,
+  Shield,
+  Target
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
@@ -232,7 +235,7 @@ export default function App() {
   }, [user]);
   
   // App navigation & layout toggles
-  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop">("spot_map");
+  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "territory" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop">("spot_map");
   const [desktopView, setDesktopView] = useState<"album" | "trading">("album");
   const [showForgeModal, setShowForgeModal] = useState<boolean>(false);
   const [showDailyBonusModal, setShowDailyBonusModal] = useState<boolean>(false);
@@ -265,14 +268,31 @@ export default function App() {
 
   // Ads Simulation State (AdMob & Unity Ads)
   const [showInterstitialAd, setShowInterstitialAd] = useState<boolean>(false);
-  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop" | null>(null);
+  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "territory" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop" | null>(null);
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
   const [interstitialFreq, setInterstitialFreq] = useState<"random" | "always" | "off">("random");
 
   const [showRewardedAdModal, setShowRewardedAdModal] = useState<boolean>(false);
   const [rewardedAdType, setRewardedAdType] = useState<"points_50" | "cores_5" | "standard">("standard");
 
-  // Rewarded Ad Cooldown State (Prevents spamming)
+  // Rewarded Ad Cooldown State (4 Hours Cooldown = 14400 seconds)
+  const FOUR_HOURS_SECONDS = 4 * 60 * 60; // 14,400 seconds
+
+  const formatCooldownTime = (seconds: number, lang: "id" | "en" = "id") => {
+    if (seconds <= 0) return "";
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return lang === "id" ? `${hours}j ${minutes}m ${secs}s` : `${hours}h ${minutes}m ${secs}s`;
+    }
+    if (minutes > 0) {
+      return lang === "id" ? `${minutes}m ${secs}s` : `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
+
   const [rewardedAdCooldown, setRewardedAdCooldown] = useState<number>(() => {
     const saved = localStorage.getItem("nekomon_rewarded_ad_cooldown_end");
     if (saved) {
@@ -282,6 +302,20 @@ export default function App() {
     }
     return 0;
   });
+
+  // Sync with user's lastRewardedAdClaim timestamp from server
+  useEffect(() => {
+    if (user && user.lastRewardedAdClaim) {
+      const lastClaimTime = new Date(user.lastRewardedAdClaim).getTime();
+      const endTime = lastClaimTime + (FOUR_HOURS_SECONDS * 1000);
+      const now = Date.now();
+      if (endTime > now) {
+        const remaining = Math.ceil((endTime - now) / 1000);
+        setRewardedAdCooldown(remaining);
+        localStorage.setItem("nekomon_rewarded_ad_cooldown_end", endTime.toString());
+      }
+    }
+  }, [user?.lastRewardedAdClaim]);
 
   useEffect(() => {
     if (rewardedAdCooldown <= 0) return;
@@ -297,7 +331,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, [rewardedAdCooldown]);
 
-  const startAdCooldown = (seconds = 30) => {
+  const startAdCooldown = (seconds = FOUR_HOURS_SECONDS) => {
     const endTime = Date.now() + seconds * 1000;
     localStorage.setItem("nekomon_rewarded_ad_cooldown_end", endTime.toString());
     setRewardedAdCooldown(seconds);
@@ -367,7 +401,7 @@ export default function App() {
     }
   }, [user, currentTrainerLv, language]);
 
-  const handleTabChange = (targetTab: "camera" | "spot_map" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop") => {
+  const handleTabChange = (targetTab: "camera" | "spot_map" | "territory" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop") => {
     if (targetTab === mobileTab) return;
     setShowForgeModal(false);
 
@@ -402,10 +436,11 @@ export default function App() {
 
   const handleOpenRewardedAd = (type: "points_50" | "cores_5" | "standard" = "standard") => {
     if (rewardedAdCooldown > 0) {
+      const cooldownStr = formatCooldownTime(rewardedAdCooldown, language);
       setNotification({
         message: language === "id"
-          ? `Iklan video belum siap! Mohon tunggu ${rewardedAdCooldown} detik lagi.`
-          : `Video ad is cooling down! Please wait ${rewardedAdCooldown} seconds.`,
+          ? `Fitur rewarded ads di Shop hanya bisa diklaim setiap 4 jam sekali! Mohon tunggu ${cooldownStr} lagi.`
+          : `Shop rewarded ad can only be claimed once every 4 hours! Please wait ${cooldownStr}.`,
         type: "warning"
       });
       return;
@@ -415,9 +450,14 @@ export default function App() {
   };
 
   const handleRewardClaimed = (updatedUser: any, rewardMsg: string) => {
-    startAdCooldown(30); // 30 seconds cooldown timer
+    startAdCooldown(FOUR_HOURS_SECONDS); // 4 hours cooldown (14,400 seconds)
     if (updatedUser) {
-      setUser(prev => prev ? { ...prev, points: updatedUser.points, cores: updatedUser.cores } : updatedUser);
+      setUser(prev => prev ? {
+        ...prev,
+        points: updatedUser.points,
+        cores: updatedUser.cores,
+        lastRewardedAdClaim: updatedUser.lastRewardedAdClaim || new Date().toISOString()
+      } : updatedUser);
     }
     setNotification({
       message: rewardMsg,
@@ -604,16 +644,16 @@ export default function App() {
     }
   };
 
-  // Fetch Profile & Gallery data
-  const fetchProfile = async (sessionToken: string) => {
+  // Fetch Profile & Gallery data with auto-retry and offline fallback
+  const fetchProfile = async (sessionToken: string, retryCount = 0) => {
     try {
-      let response = await fetch("/api/user/profile", {
+      let response: Response | null = await fetch("/api/user/profile", {
         headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      }).catch(() => null);
 
-      if (!response.ok) {
+      if (!response || !response.ok) {
         // Ephemeral Server Reset Fallback Check:
-        // If profile returned 401, check if we have a matching local backup to restore.
+        // If profile returned 401 or null, check if we have a matching local backup to restore.
         try {
           const activeUsername = localStorage.getItem("nekomon_active_username");
           if (activeUsername) {
@@ -639,7 +679,7 @@ export default function App() {
                 // Retry profile fetch now that user is restored!
                 response = await fetch("/api/user/profile", {
                   headers: { Authorization: `Bearer ${sessionToken}` },
-                }).catch(() => response);
+                }).catch(() => null);
               }
             }
           }
@@ -648,7 +688,7 @@ export default function App() {
         }
       }
 
-      if (response.ok) {
+      if (response && response.ok) {
         const data = await response.json();
         setUser(data.user);
         if (data.mission) {
@@ -656,11 +696,38 @@ export default function App() {
         }
         updateLocalBackup(data.user);
         fetchGallery(sessionToken, data.user);
-      } else {
+      } else if (response && response.status === 401) {
         handleLogout();
+      } else {
+        // Network error or server transient state: retry up to 2 times
+        if (retryCount < 2) {
+          setTimeout(() => {
+            fetchProfile(sessionToken, retryCount + 1);
+          }, 1200);
+          return;
+        }
+        // Fallback to local storage if offline
+        const activeUsername = localStorage.getItem("nekomon_active_username");
+        if (activeUsername) {
+          const key = "nekomon_backup_users";
+          const existingStr = localStorage.getItem(key);
+          const backups = existingStr ? JSON.parse(existingStr) : {};
+          const backup = backups[activeUsername.toLowerCase()];
+          if (backup && backup.user) {
+            setUser(backup.user);
+            if (backup.cards) setCards(backup.cards);
+            if (backup.captures) setCaptures(backup.captures);
+          }
+        }
       }
     } catch (e) {
-      console.error("Gagal memuat profil:", e);
+      if (retryCount < 2) {
+        setTimeout(() => {
+          fetchProfile(sessionToken, retryCount + 1);
+        }, 1200);
+        return;
+      }
+      console.warn("Profile sync notice:", e);
     } finally {
       setLoading(false);
     }
@@ -670,8 +737,9 @@ export default function App() {
     try {
       const response = await fetch("/api/user/gallery", {
         headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-      if (response.ok) {
+      }).catch(() => null);
+
+      if (response && response.ok) {
         const data = await response.json();
         const capturesList = data.captures || [];
         const rawCards = data.cards || [];
@@ -701,7 +769,7 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.error("Gagal memuat galeri:", e);
+      console.warn("Gallery sync notice:", e);
     }
   };
 
@@ -1822,15 +1890,19 @@ export default function App() {
                     }`}
                     title={
                       rewardedAdCooldown > 0
-                        ? `Video iklan berikutnya siap dalam ${rewardedAdCooldown} detik. Mohon tunggu...`
-                        : "Tonton video iklan berhadiah 5s untuk klaim Poin & Cores gratis"
+                        ? (language === "id"
+                            ? `Iklan rewarded Shop siap dalam ${formatCooldownTime(rewardedAdCooldown, "id")}. (Klaim setiap 4 jam)`
+                            : `Shop rewarded ad ready in ${formatCooldownTime(rewardedAdCooldown, "en")}. (Claim every 4h)`)
+                        : (language === "id"
+                            ? "Tonton video iklan berhadiah untuk klaim Poin & Cores gratis (1x setiap 4 jam)"
+                            : "Watch rewarded video ad to claim free Points & Cores (1x every 4 hours)")
                     }
                   >
                     {/* Animated Progress Overlay */}
                     {rewardedAdCooldown > 0 && (
                       <div
                         className="absolute inset-y-0 left-0 bg-pink-500/20 border-r border-pink-400/40 transition-all duration-1000 ease-linear pointer-events-none"
-                        style={{ width: `${(rewardedAdCooldown / 30) * 100}%` }}
+                        style={{ width: `${(rewardedAdCooldown / FOUR_HOURS_SECONDS) * 100}%` }}
                       />
                     )}
 
@@ -1838,13 +1910,13 @@ export default function App() {
                       <>
                         <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin relative z-10" />
                         <span className="relative z-10 font-mono text-amber-300">
-                          Siap {rewardedAdCooldown}s
+                          {formatCooldownTime(rewardedAdCooldown, language)}
                         </span>
                       </>
                     ) : (
                       <>
                         <Gift className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-                        <span>Tonton Iklan (+Poin & Core)</span>
+                        <span>{language === "id" ? "Tonton Iklan (+Poin & Core)" : "Watch Ad (+Points & Core)"}</span>
                       </>
                     )}
                   </button>
@@ -1868,6 +1940,7 @@ export default function App() {
                 {(
                   [
                     { id: "spot_map", label: language === "id" ? "PETA SPOT 📍" : "SPOT MAP 📍", icon: MapPin },
+                    { id: "territory", label: language === "id" ? "DOMINASI WILAYAH 🏰" : "TERRITORY 🏰", icon: Shield },
                     { id: "camera", label: t("nav.camera"), icon: Camera },
                     { id: "gallery", label: t("nav.gallery"), icon: FolderHeart },
                     { id: "dex", label: t("nav.dex"), icon: BookOpen },
@@ -1924,6 +1997,28 @@ export default function App() {
                       }}
                       userPoints={user.points}
                       token={token || ""}
+                    />
+                  </motion.div>
+                )}
+
+                {mobileTab === "territory" && (
+                  <motion.div
+                    key="territory-view"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    className="w-full"
+                  >
+                    <TerritoryControlView
+                      user={user}
+                      cards={cards}
+                      token={token || ""}
+                      onRefreshUser={() => {
+                        if (token) {
+                          fetchProfile(token);
+                          fetchGallery(token);
+                        }
+                      }}
                     />
                   </motion.div>
                 )}
