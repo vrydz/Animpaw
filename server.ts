@@ -6,6 +6,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initWebSocket } from "./server/websocket";
 import { syncToFirestore, loadFromFirestore } from "./server/firestoreDb";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./server/mailer";
 
 dotenv.config();
 
@@ -579,9 +580,9 @@ app.post("/api/auth/register", (req, res) => {
   });
 });
 
-// Auth: Send Email Verification Link
-app.post("/api/auth/send-verification", (req, res) => {
-  const { email, password } = req.body;
+// Auth: Send Email Verification Link & Code via Real Hostinger SMTP (support@nekomon.online)
+app.post("/api/auth/send-verification", async (req, res) => {
+  const { email, password, isEn } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: "Email dan password wajib diisi." });
   }
@@ -594,7 +595,7 @@ app.post("/api/auth/send-verification", (req, res) => {
   }
 
   const db = readDB();
-  const existingUser = db.users.find((u: any) => u.email.toLowerCase() === cleanEmail.toLowerCase());
+  const existingUser = db.users.find((u: any) => u.email && u.email.toLowerCase() === cleanEmail.toLowerCase());
   
   if (existingUser) {
     return res.status(400).json({ error: "Alamat email ini sudah terdaftar." });
@@ -607,23 +608,118 @@ app.post("/api/auth/send-verification", (req, res) => {
   // Remove existing pending verifications for this email
   db.pendingVerifications = db.pendingVerifications.filter((v: any) => v.email.toLowerCase() !== cleanEmail.toLowerCase());
 
-  const token = "vt_" + Math.random().toString(36).substr(2, 9);
+  const token = "vt_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
   const newVerification = {
     token,
+    code,
     email: cleanEmail,
     password: cleanPassword,
     verified: false,
+    expiresAt,
     createdAt: new Date().toISOString()
   };
 
   db.pendingVerifications.push(newVerification);
   writeDB(db);
 
+  // Construct absolute Verification URL
+  const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
+  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "ais-dev-iuova2al3sc3knpj6hb7ml-261769556031.asia-east1.run.app";
+  const baseUrl = `${protocol}://${host}`;
+  const verificationUrl = `${baseUrl}/api/auth/verify?token=${token}`;
+
+  // Send real email via Hostinger SMTP (support@nekomon.online)
+  const mailResult = await sendVerificationEmail({
+    to: cleanEmail,
+    verificationUrl,
+    otpCode: code,
+    isEn: isEn || false
+  });
+
   res.json({
     success: true,
-    message: `Link verifikasi email telah dikirim ke ${cleanEmail}!`,
-    token
+    message: isEn 
+      ? `Verification email has been sent to ${cleanEmail} via support@nekomon.online!` 
+      : `Email verifikasi telah dikirim langsung ke ${cleanEmail} via support@nekomon.online!`,
+    token,
+    emailSent: mailResult.success,
+    mailError: mailResult.error || null
   });
+});
+
+// Auth: Resend Verification Email
+app.post("/api/auth/resend-verification", async (req, res) => {
+  const { email, isEn } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email wajib diisi." });
+  }
+
+  const cleanEmail = email.trim();
+  const db = readDB();
+  if (!db.pendingVerifications) db.pendingVerifications = [];
+  const verification = db.pendingVerifications.find((v: any) => v.email.toLowerCase() === cleanEmail.toLowerCase());
+
+  if (!verification) {
+    return res.status(400).json({ error: "Data pendaftaran tidak ditemukan. Silakan daftar ulang." });
+  }
+
+  // Refresh code & token
+  verification.code = Math.floor(100000 + Math.random() * 900000).toString();
+  verification.token = "vt_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  verification.expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  writeDB(db);
+
+  const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
+  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "ais-dev-iuova2al3sc3knpj6hb7ml-261769556031.asia-east1.run.app";
+  const baseUrl = `${protocol}://${host}`;
+  const verificationUrl = `${baseUrl}/api/auth/verify?token=${verification.token}`;
+
+  const mailResult = await sendVerificationEmail({
+    to: cleanEmail,
+    verificationUrl,
+    otpCode: verification.code,
+    isEn: isEn || false
+  });
+
+  res.json({
+    success: true,
+    message: isEn 
+      ? `A new verification email has been sent to ${cleanEmail}!` 
+      : `Email verifikasi baru telah dikirimkan ke ${cleanEmail}!`,
+    token: verification.token,
+    emailSent: mailResult.success
+  });
+});
+
+// Auth: Verify Email via Code (OTP)
+app.post("/api/auth/verify-code", (req, res) => {
+  const { token, code, email } = req.body;
+  if (!code) {
+    return res.status(400).json({ error: "Kode verifikasi 6 digit wajib diisi." });
+  }
+
+  const cleanCode = code.trim();
+  const db = readDB();
+  if (!db.pendingVerifications) db.pendingVerifications = [];
+
+  const verification = db.pendingVerifications.find((v: any) => 
+    (token && v.token === token) || (email && v.email.toLowerCase() === email.trim().toLowerCase())
+  );
+
+  if (!verification) {
+    return res.status(400).json({ error: "Sesi verifikasi tidak ditemukan atau telah kadaluarsa." });
+  }
+
+  if (verification.code && verification.code === cleanCode) {
+    verification.verified = true;
+    writeDB(db);
+    return res.json({ success: true, verified: true, token: verification.token });
+  }
+
+  return res.status(400).json({ error: "Kode verifikasi 6-digit salah atau tidak sesuai." });
 });
 
 // Auth: Verify Email Link
@@ -645,14 +741,31 @@ app.get("/api/auth/verify", (req, res) => {
   writeDB(db);
 
   res.send(`
-    <div style="font-family: sans-serif; text-align: center; padding: 50px; background: #0b1329; color: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
-      <div style="max-width: 500px; margin: 0 auto; background: #0f172a; border: 2px solid #eab308; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-        <div style="font-size: 50px; margin-bottom: 20px;">✅</div>
-        <h2 style="color: #eab308; margin-bottom: 10px;">Email Berhasil Diverifikasi!</h2>
-        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">Email Anda telah diverifikasi dengan sukses. Silakan kembali ke aplikasi Nekomon Anda untuk melanjutkan pembuatan username dan menyelesaikan pendaftaran akun.</p>
-        <div style="margin-top: 30px; font-size: 12px; color: #64748b;">Nekomon Arena &bull; Real Cat-Based Card Game</div>
-      </div>
-    </div>
+    <!DOCTYPE html>
+    <html lang="id">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Email Terverifikasi - Nekomon TCG</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; padding: 40px 15px; background: #060b14; color: #f8fafc; min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+        <div style="max-width: 480px; width: 100%; margin: 0 auto; background: #0f172a; border: 2px solid #eab308; padding: 40px 30px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
+          <div style="font-size: 56px; margin-bottom: 16px;">⚔️</div>
+          <h2 style="color: #eab308; margin: 0 0 12px 0; font-size: 24px; font-weight: 900;">Email Berhasil Diverifikasi!</h2>
+          <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+            Alamat email <strong>${verification.email}</strong> telah berhasil diverifikasi oleh sistem <strong>Nekomon Online</strong>.
+          </p>
+          <div style="padding: 16px; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0; color: #facc15; font-size: 13px; font-weight: bold;">
+              ✨ Silakan kembali ke tab permainan Nekomon untuk melanjutkan pembuatan Username dan memulai pertarungan!
+            </p>
+          </div>
+          <div style="font-size: 11px; color: #64748b;">
+            Nekomon Arena &bull; support@nekomon.online
+          </div>
+        </div>
+      </body>
+    </html>
   `);
 });
 
@@ -673,7 +786,7 @@ app.get("/api/auth/check-verification", (req, res) => {
 
 // Auth: Complete Registration with Username
 app.post("/api/auth/complete-register", (req, res) => {
-  const { token, username } = req.body;
+  const { token, username, code } = req.body;
   if (!token || !username) {
     return res.status(400).json({ error: "Token verifikasi dan username wajib diisi." });
   }
@@ -698,8 +811,13 @@ app.post("/api/auth/complete-register", (req, res) => {
     return res.status(400).json({ error: "Sesi registrasi tidak valid atau kadaluarsa." });
   }
 
+  // If user provided code directly during complete register
+  if (code && verification.code && code.trim() === verification.code) {
+    verification.verified = true;
+  }
+
   if (!verification.verified) {
-    return res.status(400).json({ error: "Email Anda belum diverifikasi. Silakan klik link verifikasi terlebih dahulu." });
+    return res.status(400).json({ error: "Email Anda belum diverifikasi. Silakan klik link verifikasi di email Anda atau masukkan kode OTP." });
   }
 
   const newUser = {
@@ -707,8 +825,17 @@ app.post("/api/auth/complete-register", (req, res) => {
     email: verification.email,
     username: cleanUsername,
     password: verification.password,
+    role: (verification.email === "verydiaz@gmail.com" || verification.email === "support@nekomon.online") ? "developer" : "user",
     points: 100,
     cores: 0,
+    coins: 500,
+    gems: 10,
+    elementalDust: 50,
+    rank: "Novice",
+    rp: 0,
+    stats: { wins: 0, losses: 0, winStreak: 0, bestStreak: 0, totalMatches: 0 },
+    profileLevel: 1,
+    profileExp: 0,
     createdAt: new Date().toISOString()
   };
 
@@ -720,21 +847,21 @@ app.post("/api/auth/complete-register", (req, res) => {
 
   res.json({
     success: true,
-    user: { id: newUser.id, username: newUser.username, email: newUser.email, points: newUser.points, cores: 0 },
+    user: { id: newUser.id, username: newUser.username, email: newUser.email, points: newUser.points, role: newUser.role, cores: 0 },
     token: Buffer.from(`${newUser.id}:${newUser.username}`).toString("base64")
   });
 });
 
 // Auth: Request Forgot Password Link
-app.post("/api/auth/forgot-password", (req, res) => {
-  const { email } = req.body;
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email, isEn } = req.body;
   if (!email) {
     return res.status(400).json({ error: "Email wajib diisi." });
   }
 
   const cleanEmail = email.trim();
   const db = readDB();
-  const user = db.users.find((u: any) => u.email.toLowerCase() === cleanEmail.toLowerCase());
+  const user = db.users.find((u: any) => u.email && u.email.toLowerCase() === cleanEmail.toLowerCase());
 
   if (!user) {
     return res.status(404).json({ error: "Alamat email tidak terdaftar di sistem kami." });
@@ -754,9 +881,20 @@ app.post("/api/auth/forgot-password", (req, res) => {
   });
   writeDB(db);
 
+  const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
+  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "ais-dev-iuova2al3sc3knpj6hb7ml-261769556031.asia-east1.run.app";
+  const baseUrl = `${protocol}://${host}`;
+  const resetUrl = `${baseUrl}/api/auth/reset-password-page?token=${token}`;
+
+  await sendPasswordResetEmail({
+    to: cleanEmail,
+    resetUrl,
+    isEn: isEn || false
+  });
+
   res.json({
     success: true,
-    message: `Link reset sandi telah dikirim ke ${cleanEmail}!`,
+    message: isEn ? `Password reset link sent to ${cleanEmail}!` : `Link reset sandi telah dikirim ke ${cleanEmail}!`,
     token
   });
 });

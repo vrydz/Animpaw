@@ -41,10 +41,109 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   const [password, setPassword] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
   const [token, setToken] = useState<string>("");
+  const [otpCode, setOtpCode] = useState<string>("");
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Background polling for email link clicks in another tab / phone
+  React.useEffect(() => {
+    if (mode !== "register_verifying" || !token) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/auth/check-verification?token=${token}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.verified) {
+            setSuccess(isEn ? "Email verified successfully! 🎉" : "Email Anda berhasil diverifikasi! 🎉");
+            setTimeout(() => {
+              setMode("register_username");
+              setSuccess(null);
+            }, 1000);
+          }
+        }
+      } catch (e) {
+        // Ignore polling errors
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [mode, token, isEn]);
+
+  // Resend cooldown timer
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.trim().length !== 6) {
+      setError(isEn ? "Please enter valid 6-digit OTP code." : "Masukkan 6 digit kode OTP yang valid.");
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, code: otpCode.trim(), email: email.trim() }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || (isEn ? "Verification code is invalid or expired." : "Kode verifikasi salah atau telah kadaluarsa."));
+      }
+
+      setSuccess(isEn ? "OTP Code Verified! 🎉" : "Kode OTP Berhasil Diverifikasi! 🎉");
+      setTimeout(() => {
+        setMode("register_username");
+        setSuccess(null);
+      }, 1000);
+    } catch (err: any) {
+      setError(err.message || (isEn ? "Verification failed." : "Gagal memverifikasi kode."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (resendCooldown > 0 || loading) return;
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), isEn }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || (isEn ? "Failed to resend email." : "Gagal mengirim ulang email."));
+      }
+
+      if (data.token) setToken(data.token);
+      setSuccess(isEn ? `Verification email resent to ${email}!` : `Email verifikasi telah dikirim ulang ke ${email}!`);
+      setResendCooldown(60);
+    } catch (err: any) {
+      setError(err.message || (isEn ? "Failed to resend email." : "Gagal mengirim ulang email."));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Legal Modal State
   const [showLegalModal, setShowLegalModal] = useState<boolean>(false);
@@ -539,52 +638,74 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
             )}
           </form>
         ) : (
-          /* Register Verifying Mode - interactive and beautiful simulation portal */
-          <div className="flex flex-col gap-5 p-5 bg-slate-950/60 rounded-2xl border border-yellow-500/20 text-center">
+          /* Register Verifying Mode - Real Email Verification via Hostinger SMTP */
+          <div className="flex flex-col gap-4 p-5 bg-slate-950/80 rounded-2xl border border-yellow-500/30 text-center">
             <div className="relative mx-auto">
-              <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500">
-                <Mail className="w-8 h-8 animate-pulse" />
+              <div className="w-14 h-14 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400 shadow-lg shadow-yellow-500/10">
+                <Mail className="w-7 h-7 animate-pulse" />
               </div>
             </div>
+
             <div>
-              <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wide">
-                {isEn ? "Waiting for Verification" : "Menunggu Verifikasi"}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-400 font-bold mb-1.5">
+                <ShieldCheck className="w-3 h-3" />
+                <span>support@nekomon.online</span>
+              </div>
+              <h3 className="font-extrabold text-sm text-slate-100 uppercase tracking-wide">
+                {isEn ? "Verification Email Sent!" : "Email Verifikasi Terkirim!"}
               </h3>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                 {isEn ? (
-                  <>Verification link has been sent to <strong className="text-yellow-400">{email}</strong>. Use the simulator button below to simulate clicking the email link.</>
+                  <>We've dispatched a verification link and 6-digit OTP code to <strong className="text-yellow-400 font-bold">{email}</strong>.</>
                 ) : (
-                  <>Tautan verifikasi telah terkirim secara virtual ke <strong className="text-yellow-400">{email}</strong>. Gunakan simulator di bawah untuk menyimulasikan konfirmasi link email.</>
+                  <>Kami telah mengirimkan tautan verifikasi dan 6-digit kode OTP ke <strong className="text-yellow-400 font-bold">{email}</strong>.</>
                 )}
               </p>
             </div>
 
-            <div className="flex flex-col gap-2.5 pt-2">
+            {/* OTP Input Form */}
+            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-2.5 pt-1">
+              <label className="text-[11px] font-bold text-slate-300 font-mono text-left flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                {isEn ? "ENTER 6-DIGIT OTP CODE FROM EMAIL" : "MASUKKAN 6-DIGIT KODE OTP DARI EMAIL"}
+              </label>
+              
+              <div className="relative">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="------"
+                  className="w-full bg-slate-900 border-2 border-yellow-500/40 focus:border-yellow-400 rounded-xl px-4 py-2.5 text-center text-xl font-mono tracking-[0.5em] text-yellow-300 font-black focus:outline-none transition-all placeholder:text-slate-700"
+                  autoFocus
+                />
+              </div>
+
               <button
-                type="button"
-                onClick={async () => {
-                  setError(null);
-                  setSuccess(null);
-                  try {
-                    const res = await fetch(`/api/auth/verify?token=${token}`);
-                    if (res.ok) {
-                      setSuccess(isEn ? "Email verified successfully! 🎉" : "Email Anda berhasil diverifikasi! 🎉");
-                      setTimeout(() => {
-                        setMode("register_username");
-                        setSuccess(null);
-                      }, 1500);
-                    } else {
-                      throw new Error(isEn ? "Verification failed." : "Gagal melakukan verifikasi.");
-                    }
-                  } catch (err: any) {
-                    setError(err.message || (isEn ? "Failed to verify email." : "Gagal memverifikasi email."));
-                  }
-                }}
-                className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-md shadow-yellow-500/10 cursor-pointer flex items-center justify-center gap-1.5"
+                type="submit"
+                disabled={loading || otpCode.length !== 6}
+                className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-black py-2.5 rounded-xl transition-all shadow-md shadow-yellow-500/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs"
               >
                 <CheckCircle className="w-4 h-4" />
-                {isEn ? "SIMULATE EMAIL LINK CLICK ✉️" : "SIMULASIKAN KLIK LINK VERIFIKASI ✉️"}
+                <span>{isEn ? "VERIFY OTP CODE & PROCEED" : "VERIFIKASI KODE OTP & LANJUTKAN"}</span>
               </button>
+            </form>
+
+            <div className="border-t border-slate-800/80 pt-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>{isEn ? "Didn't receive email?" : "Belum menerima email?"}</span>
+                <button
+                  type="button"
+                  onClick={handleResendEmail}
+                  disabled={loading || resendCooldown > 0}
+                  className="text-yellow-400 hover:text-yellow-300 font-bold underline cursor-pointer disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+                >
+                  {resendCooldown > 0 
+                    ? (isEn ? `Resend in ${resendCooldown}s` : `Kirim Ulang (${resendCooldown}d)`)
+                    : (isEn ? "Resend Email" : "Kirim Ulang Email")}
+                </button>
+              </div>
 
               <button
                 type="button"
@@ -595,22 +716,22 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                     const res = await fetch(`/api/auth/check-verification?token=${token}`);
                     const data = await res.json();
                     if (data.verified) {
-                      setSuccess(isEn ? "Verification detected!" : "Verifikasi sukses dideteksi!");
+                      setSuccess(isEn ? "Email verification confirmed! 🎉" : "Verifikasi email terkonfirmasi! 🎉");
                       setTimeout(() => {
                         setMode("register_username");
                         setSuccess(null);
-                      }, 1200);
+                      }, 1000);
                     } else {
-                      setError(isEn ? "Email not verified yet. Please click the simulation button above." : "Email belum diverifikasi. Silakan klik tombol simulasi di atas.");
+                      setError(isEn ? "Email not yet verified. Please click the link in your email or enter the OTP." : "Email belum diverifikasi. Buka email Anda & klik link atau masukkan kode OTP di atas.");
                     }
                   } catch (err) {
                     setError(isEn ? "Failed to check verification status." : "Gagal memeriksa status verifikasi.");
                   }
                 }}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-bold py-2 rounded-xl text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                {isEn ? "CHECK VERIFICATION STATUS" : "CEK STATUS VERIFIKASI"}
+                <RefreshCw className="w-3 h-3" />
+                {isEn ? "REFRESH VERIFICATION STATUS" : "CEK STATUS VERIFIKASI"}
               </button>
             </div>
           </div>

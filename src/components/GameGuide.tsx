@@ -173,6 +173,20 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-cyan-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-cyan-300 font-mono text-xs uppercase mb-1">8. Registrasi & Verifikasi Email Otentik 🔐</h4>
+                    <p className="leading-relaxed">
+                      Pendaftaran akun baru Nekomon dilindungi oleh verifikasi email resmi via SMTP Server <span className="text-cyan-400 font-mono font-bold">support@nekomon.online</span>.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Link & Kode OTP 6-Digit:</span> Saat mendaftar, sistem otomatis mengirim email berisi tombol verifikasi langsung dan kode OTP 6-digit. Anda dapat mengklik tombol di email atau mengetikkan kode OTP di layar untuk menyelesaikan pendaftaran akun Anda secara instan dan aman.
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -271,8 +285,23 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-cyan-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-cyan-300 font-mono text-xs uppercase mb-1">8. Authentic Email Verification 🔐</h4>
+                    <p className="leading-relaxed">
+                      New Nekomon account registrations are protected by official email verification via SMTP Server <span className="text-cyan-400 font-mono font-bold">support@nekomon.online</span>.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Link & 6-Digit OTP:</span> Upon registration, the system sends an email with a direct verification link and a 6-digit OTP code. You can click the email link or enter the OTP code on screen to complete your registration quickly and securely.
+                    </p>
+                  </div>
+                </div>
               </>
-            )}
+            )
+}
           </motion.div>
         )}
 
