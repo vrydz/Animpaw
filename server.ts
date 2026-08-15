@@ -4204,6 +4204,157 @@ app.post("/api/mail/official/broadcast", (req, res) => {
   });
 });
 
+// 4b. Developer Gift to Specific User (Developer Only: verydiaz@gmail.com & support@nekomon.online)
+app.post("/api/developer/gift-user", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  const { targetUserId, targetUsername, points, cores, note } = req.body;
+
+  // Strict check: only verified developer accounts with email verydiaz@gmail.com or support@nekomon.online
+  const developerEmails = ["verydiaz@gmail.com", "support@nekomon.online"];
+  const isAuthorized = user && user.email && developerEmails.includes(user.email.toLowerCase().trim());
+
+  if (!isAuthorized) {
+    return res.status(403).json({
+      error: "Akses ditolak. Fitur pemberian hadiah ini khusus akun Developer Nekomon (verydiaz@gmail.com / support@nekomon.online)."
+    });
+  }
+
+  const pts = Math.max(0, Math.floor(Number(points) || 0));
+  const crs = Math.max(0, Math.floor(Number(cores) || 0));
+
+  if (pts === 0 && crs === 0) {
+    return res.status(400).json({ error: "Jumlah Poin atau Nekomon Cores harus lebih dari 0." });
+  }
+
+  // Find target user
+  let targetIdx = -1;
+  if (targetUserId) {
+    targetIdx = (db.users || []).findIndex((u: any) => u.id === targetUserId);
+  }
+  if (targetIdx === -1 && targetUsername) {
+    targetIdx = (db.users || []).findIndex(
+      (u: any) => u.username && u.username.toLowerCase().trim() === targetUsername.toLowerCase().trim()
+    );
+  }
+
+  if (targetIdx === -1) {
+    return res.status(404).json({ error: "Akun Trainer tujuan tidak ditemukan." });
+  }
+
+  const targetUser = db.users[targetIdx];
+  targetUser.points = (targetUser.points || 0) + pts;
+  targetUser.cores = (targetUser.cores || 0) + crs;
+
+  // Create an automatic Direct Message from Developer to notify the recipient
+  if (!db.directMessages) db.directMessages = [];
+  const giftDmText = `🎁 [HADIAH SPESIAL DARI DEVELOPER NEKOMON]\n` +
+    `Selamat! Akunmu baru saja menerima hadiah resmi:\n` +
+    `• +${pts.toLocaleString()} Poin Trainer\n` +
+    `• +${crs.toLocaleString()} Nekomon Cores\n` +
+    (note ? `\nCatatan Pengembang: "${note.trim()}"\n` : "") +
+    `\nTerima kasih telah berpetualang di dunia Nekomon! 🐾✨`;
+
+  const newDm = {
+    id: "dm_devgift_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 6),
+    senderId: user.id,
+    senderUsername: user.username + " (Developer)",
+    senderAvatar: "👑",
+    recipientId: targetUser.id,
+    recipientUsername: targetUser.username,
+    recipientAvatar: targetUser.avatar || "",
+    content: giftDmText,
+    createdAt: new Date().toISOString(),
+    read: false
+  };
+  db.directMessages.push(newDm);
+
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: `Berhasil memberikan hadiah +${pts} Poin & +${crs} Cores kepada @${targetUser.username}! 🎉`,
+    recipient: {
+      id: targetUser.id,
+      username: targetUser.username,
+      points: targetUser.points,
+      cores: targetUser.cores
+    }
+  });
+});
+
+// 4c. Developer Gift Broadcast with Instant Credit or Claimable Mail
+app.post("/api/developer/gift-broadcast", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  const { title, content, summary, category, rewardPoints, rewardCores, distributionMode, pinned } = req.body;
+
+  const developerEmails = ["verydiaz@gmail.com", "support@nekomon.online"];
+  const isAuthorized = user && user.email && developerEmails.includes(user.email.toLowerCase().trim());
+
+  if (!isAuthorized) {
+    return res.status(403).json({
+      error: "Akses ditolak. Fitur siaran hadiah ini khusus akun Developer Nekomon."
+    });
+  }
+
+  const pts = Math.max(0, Math.floor(Number(rewardPoints) || 0));
+  const crs = Math.max(0, Math.floor(Number(rewardCores) || 0));
+
+  if (!title || !content) {
+    return res.status(400).json({ error: "Judul dan isi surat siaran wajib diisi." });
+  }
+
+  if (pts === 0 && crs === 0) {
+    return res.status(400).json({ error: "Tentukan jumlah Poin atau Cores untuk hadiah siaran." });
+  }
+
+  const mode = distributionMode === "instant_all" ? "instant_all" : "claimable_mail";
+  let affectedUserCount = 0;
+
+  if (mode === "instant_all") {
+    // Directly deposit to every registered user
+    (db.users || []).forEach((u: any) => {
+      u.points = (u.points || 0) + pts;
+      u.cores = (u.cores || 0) + crs;
+      affectedUserCount++;
+    });
+  }
+
+  if (!db.officialMails) db.officialMails = [];
+
+  const newMail = {
+    id: "mail_devgift_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 5),
+    title: title.trim(),
+    category: category || "system_reward",
+    sender: "Nekomon Studio (support@nekomon.online)",
+    senderEmail: "support@nekomon.online",
+    summary: summary ? summary.trim() : title.trim(),
+    content: content.trim() + (mode === "instant_all" ? `\n\n[INFO SISTEM]: Hadiah +${pts} Poin dan +${crs} Cores telah otomatis dikreditkan langsung ke saldo akun seluruh Trainer!` : ""),
+    reward: {
+      points: pts,
+      cores: crs
+    },
+    instantCredited: mode === "instant_all",
+    claimedUserIds: mode === "instant_all" ? (db.users || []).map((u: any) => u.id) : [],
+    readUserIds: user ? [user.id] : [],
+    pinned: !!pinned,
+    createdAt: new Date().toISOString()
+  };
+
+  db.officialMails.unshift(newMail);
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: mode === "instant_all"
+      ? `Hadiah broadcast berhasil dikreditkan instan ke ${affectedUserCount} pemain (+${pts} Pts, +${crs} Cores)! 🎁`
+      : `Surat hadiah resmi berhasil disiarkan ke seluruh pemain dengan tombol klaim! 📬`,
+    mail: newMail,
+    affectedUserCount
+  });
+});
+
 // 5. Search other players for starting a conversation
 app.get("/api/players/search", (req, res) => {
   const db = readDB();
@@ -4979,6 +5130,9 @@ function evaluateSupplyLinesAndCores(nodes: any[]) {
   });
 }
 
+// Territory Node Capture Cooldown: 2 hours to prevent rapid expansion
+const TERRITORY_CAPTURE_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+
 // 1. Get all territory nodes
 app.get("/api/territory/nodes", (req, res) => {
   const db = readDB();
@@ -4991,6 +5145,23 @@ app.get("/api/territory/nodes", (req, res) => {
   let playerUnclaimedCores = 0;
   let playerNodesCount = 0;
 
+  const now = Date.now();
+
+  // Populate cooldown fields on each node
+  nodes.forEach(node => {
+    if (node.capturedAt) {
+      const cooldownEnd = node.cooldownUntil
+        ? new Date(node.cooldownUntil).getTime()
+        : new Date(node.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+      const remainingSec = Math.max(0, Math.ceil((cooldownEnd - now) / 1000));
+      node.cooldownRemainingSeconds = remainingSec;
+      node.cooldownUntil = new Date(cooldownEnd).toISOString();
+    } else {
+      node.cooldownRemainingSeconds = 0;
+      node.cooldownUntil = null;
+    }
+  });
+
   if (user) {
     // Derive faction from user style or dominant cards
     const userCards = (db.cards || []).filter((c: any) => c.userId === user.id);
@@ -4998,13 +5169,27 @@ app.get("/api/territory/nodes", (req, res) => {
     const vanguardCount = userCards.filter((c: any) => c.style === "Vanguard").length;
     playerFaction = vanguardCount > sentinelCount ? "Vanguard" : "Sentinel";
 
-    // Calculate total unclaimed cores owned by this user
+    // Calculate total unclaimed cores owned by this user & check adjacent cooldown lock
     nodes.forEach(n => {
       if (n.ownerId === user.id) {
         playerNodesCount++;
         if (n.isActive) {
           playerUnclaimedCores += n.accumulatedCores || 0;
         }
+      }
+
+      // Check if target node is adjacent to any node owned by user with active capture cooldown
+      const connectedNeighbors = nodes.filter(neighbor => (n.connectedNodeIds || []).includes(neighbor.id));
+      const activeCooldownNeighbor = connectedNeighbors.find(neighbor =>
+        neighbor.ownerId === user.id && (neighbor.cooldownRemainingSeconds || 0) > 0
+      );
+
+      if (activeCooldownNeighbor) {
+        n.isAdjacentLocked = true;
+        n.adjacentCooldownSeconds = activeCooldownNeighbor.cooldownRemainingSeconds || 0;
+      } else {
+        n.isAdjacentLocked = false;
+        n.adjacentCooldownSeconds = 0;
       }
     });
   }
@@ -5079,6 +5264,31 @@ app.post("/api/territory/capture", (req, res) => {
     });
   }
 
+  // Check if any adjacent node owned by player is currently under capture cooldown
+  const now = Date.now();
+  const activeCooldownAdjacent = connectedNodes.find(adj => {
+    if (adj.ownerId !== user.id) return false;
+    if (!adj.capturedAt && !adj.cooldownUntil) return false;
+    const cooldownEnd = adj.cooldownUntil
+      ? new Date(adj.cooldownUntil).getTime()
+      : new Date(adj.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    return cooldownEnd > now;
+  });
+
+  if (activeCooldownAdjacent) {
+    const cooldownEnd = activeCooldownAdjacent.cooldownUntil
+      ? new Date(activeCooldownAdjacent.cooldownUntil).getTime()
+      : new Date(activeCooldownAdjacent.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    const remainingSec = Math.ceil((cooldownEnd - now) / 1000);
+    const hours = Math.floor(remainingSec / 3600);
+    const mins = Math.floor((remainingSec % 3600) / 60);
+    const secs = remainingSec % 60;
+    const timeStr = `${hours > 0 ? `${hours} jam ` : ""}${mins} menit ${secs} detik`;
+    return res.status(400).json({
+      error: `Jeda Penaklukan Teritori Aktif (2 Jam): Node terhubung "${activeCooldownAdjacent.name}" baru saja direbut. Harap tunggu ${timeStr} sebelum merebut node sekitar.`
+    });
+  }
+
   // Node Cap per player (Prevent monopoly): Max 1 + (Number of Mythic cards owned * 2)
   const mythicCardsOwned = userCards.filter((c: any) => c.rarity === "Mythic").length;
   const maxAllowedNodes = Math.max(2, 1 + (mythicCardsOwned * 2));
@@ -5101,7 +5311,7 @@ app.post("/api/territory/capture", (req, res) => {
     });
   }
 
-  // Assign ownership
+  // Assign ownership & set 2-hour capture cooldown
   targetNode.ownerId = user.id;
   targetNode.ownerName = user.username;
   targetNode.ownerFaction = playerFaction;
@@ -5109,6 +5319,7 @@ app.post("/api/territory/capture", (req, res) => {
   targetNode.anchorCard = mythicCard;
   targetNode.garrisonDeck = garrisonDeck;
   targetNode.capturedAt = new Date().toISOString();
+  targetNode.cooldownUntil = new Date(Date.now() + TERRITORY_CAPTURE_COOLDOWN_MS).toISOString();
   targetNode.lastClaimedAt = new Date().toISOString();
   targetNode.accumulatedCores = 0; // Starts fresh
   targetNode.defenseHp = targetNode.maxDefenseHp || 120;
@@ -5147,6 +5358,37 @@ app.post("/api/territory/battle", (req, res) => {
 
   if (targetNode.ownerId === user.id) {
     return res.status(400).json({ error: "Beacon ini sudah berada di bawah kekuasaanmu!" });
+  }
+
+  // Check 2-Hour Territory Capture Cooldown: Prevent attacking adjacent nodes if recently captured an adjacent node
+  const now = Date.now();
+  const connectedNodes = nodes.filter(n => (targetNode.connectedNodeIds || []).includes(n.id));
+  const activeCooldownAdjacent = connectedNodes.find(adj => {
+    if (adj.ownerId !== user.id) return false;
+    if (!adj.capturedAt && !adj.cooldownUntil) return false;
+    const cooldownEnd = adj.cooldownUntil
+      ? new Date(adj.cooldownUntil).getTime()
+      : new Date(adj.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    return cooldownEnd > now;
+  });
+
+  if (activeCooldownAdjacent) {
+    const cooldownEnd = activeCooldownAdjacent.cooldownUntil
+      ? new Date(activeCooldownAdjacent.cooldownUntil).getTime()
+      : new Date(activeCooldownAdjacent.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    const remainingSec = Math.ceil((cooldownEnd - now) / 1000);
+    const hours = Math.floor(remainingSec / 3600);
+    const mins = Math.floor((remainingSec % 3600) / 60);
+    const secs = remainingSec % 60;
+    const timeStr = `${hours > 0 ? `${hours} jam ` : ""}${mins} menit ${secs} detik`;
+    const timeStrEn = `${hours > 0 ? `${hours}h ` : ""}${mins}m ${secs}s`;
+
+    return res.status(400).json({
+      error: `Jeda Penaklukan Teritori Aktif (2 Jam): Kamu baru saja merebut node terhubung "${activeCooldownAdjacent.name}". Untuk menjaga keseimbangan dan mencegah ekspansi kilat, serangan ke node di sekitarnya dijeda selama 2 jam (Sisa jeda: ${timeStr}).`,
+      errorEn: `Territory Capture Cooldown Active (2 Hours): You recently captured adjacent node "${activeCooldownAdjacent.nameEn || activeCooldownAdjacent.name}". Attacks on adjacent nodes are paused for 2 hours to prevent rapid expansion (Remaining: ${timeStrEn}).`,
+      cooldownRemainingSeconds: remainingSec,
+      cooldownUntil: new Date(cooldownEnd).toISOString()
+    });
   }
 
   const userCards = (db.cards || []).filter((c: any) => c.userId === user.id);

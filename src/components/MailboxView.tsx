@@ -58,6 +58,31 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
   const [broadcastSubmitting, setBroadcastSubmitting] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // --- DEVELOPER GIFT STATES (Developer accounts: verydiaz@gmail.com / support@nekomon.online) ---
+  const [showDevGiftModal, setShowDevGiftModal] = useState<boolean>(false);
+  const [devGiftTab, setDevGiftTab] = useState<"private" | "broadcast">("private");
+
+  // Private Gift Form
+  const [devGiftTargetUsername, setDevGiftTargetUsername] = useState<string>("");
+  const [devGiftTargetUser, setDevGiftTargetUser] = useState<any | null>(null);
+  const [devGiftPoints, setDevGiftPoints] = useState<number>(500);
+  const [devGiftCores, setDevGiftCores] = useState<number>(10);
+  const [devGiftNote, setDevGiftNote] = useState<string>("");
+  const [devGiftSubmitting, setDevGiftSubmitting] = useState<boolean>(false);
+  const [devGiftMsg, setDevGiftMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Broadcast Gift Form
+  const [devBroadTitle, setDevBroadTitle] = useState<string>("");
+  const [devBroadContent, setDevBroadContent] = useState<string>("");
+  const [devBroadSummary, setDevBroadSummary] = useState<string>("");
+  const [devBroadPoints, setDevBroadPoints] = useState<number>(1000);
+  const [devBroadCores, setDevBroadCores] = useState<number>(20);
+  const [devBroadCategory, setDevBroadCategory] = useState<OfficialMailCategory>("system_reward");
+  const [devBroadDistMode, setDevBroadDistMode] = useState<"instant_all" | "claimable_mail">("instant_all");
+  const [devBroadPinned, setDevBroadPinned] = useState<boolean>(true);
+  const [devBroadSubmitting, setDevBroadSubmitting] = useState<boolean>(false);
+  const [devBroadMsg, setDevBroadMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   // --- DIRECT MESSAGES STATES ---
   const [conversations, setConversations] = useState<ConversationThread[]>([]);
   const [loadingConversations, setLoadingConversations] = useState<boolean>(true);
@@ -395,6 +420,198 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
     }
   };
 
+  // Helper to trigger Quick Gift Modal for a specific trainer
+  const openGiftForTrainer = (trainer: { id: string; username: string; avatar?: string; points?: number; cores?: number }) => {
+    setDevGiftTargetUser(trainer);
+    setDevGiftTargetUsername(trainer.username);
+    setDevGiftTab("private");
+    setDevGiftMsg(null);
+    setShowDevGiftModal(true);
+    try {
+      audio.playCardSelectSound();
+    } catch (_) {}
+  };
+
+  // Send Private Gift Submission (Developer Only)
+  const handleSendPrivateDevGift = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isDeveloper) {
+      setDevGiftMsg({
+        type: "error",
+        text: language === "id"
+          ? "Akses ditolak. Fitur ini khusus akun Developer (verydiaz@gmail.com / support@nekomon.online)."
+          : "Access denied. Feature restricted to Developer accounts."
+      });
+      return;
+    }
+
+    const usernameToSend = devGiftTargetUser ? devGiftTargetUser.username : devGiftTargetUsername.trim();
+    if (!usernameToSend) {
+      setDevGiftMsg({
+        type: "error",
+        text: language === "id" ? "Pilih atau masukkan username trainer tujuan." : "Please specify target trainer username."
+      });
+      return;
+    }
+
+    if (devGiftPoints <= 0 && devGiftCores <= 0) {
+      setDevGiftMsg({
+        type: "error",
+        text: language === "id" ? "Tentukan jumlah Poin atau Cores (> 0)." : "Specify Points or Cores (> 0)."
+      });
+      return;
+    }
+
+    setDevGiftSubmitting(true);
+    setDevGiftMsg(null);
+
+    try {
+      const res = await fetch("/api/developer/gift-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          targetUserId: devGiftTargetUser ? devGiftTargetUser.id : undefined,
+          targetUsername: usernameToSend,
+          points: devGiftPoints,
+          cores: devGiftCores,
+          note: devGiftNote
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDevGiftMsg({
+          type: "success",
+          text: data.message || (language === "id" ? "Hadiah berhasil dikirim!" : "Gift sent successfully!")
+        });
+        try {
+          audio.playVictorySound();
+        } catch (_) {}
+
+        // If target was current user, update state
+        if (data.recipient && data.recipient.id === user.id) {
+          onUpdateUser({ points: data.recipient.points, cores: data.recipient.cores });
+        }
+
+        // If active chat is with target, refresh thread
+        if (activePartnerId && data.recipient && activePartnerId === data.recipient.id) {
+          fetchThreadMessages(data.recipient.id);
+        }
+
+        // Refresh conversation list to show new DM
+        fetchConversations();
+
+        setTimeout(() => {
+          setDevGiftNote("");
+        }, 2000);
+      } else {
+        setDevGiftMsg({
+          type: "error",
+          text: data.error || (language === "id" ? "Gagal mengirim hadiah." : "Failed to send gift.")
+        });
+      }
+    } catch (err) {
+      setDevGiftMsg({
+        type: "error",
+        text: language === "id" ? "Kesalahan koneksi saat mengirim hadiah." : "Connection error while sending gift."
+      });
+    } finally {
+      setDevGiftSubmitting(false);
+    }
+  };
+
+  // Send Broadcast Gift Submission (Developer Only)
+  const handleSendBroadcastDevGift = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isDeveloper) {
+      setDevBroadMsg({
+        type: "error",
+        text: language === "id" ? "Akses ditolak. Khusus akun Developer." : "Access denied. Developer only."
+      });
+      return;
+    }
+
+    if (!devBroadTitle.trim() || !devBroadContent.trim()) {
+      setDevBroadMsg({
+        type: "error",
+        text: language === "id" ? "Judul dan isi pengumuman surat wajib diisi." : "Title and content are required."
+      });
+      return;
+    }
+
+    if (devBroadPoints <= 0 && devBroadCores <= 0) {
+      setDevBroadMsg({
+        type: "error",
+        text: language === "id" ? "Tentukan bonus Poin atau Cores (> 0)." : "Specify Points or Cores (> 0)."
+      });
+      return;
+    }
+
+    setDevBroadSubmitting(true);
+    setDevBroadMsg(null);
+
+    try {
+      const res = await fetch("/api/developer/gift-broadcast", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: devBroadTitle,
+          content: devBroadContent,
+          summary: devBroadSummary,
+          rewardPoints: devBroadPoints,
+          rewardCores: devBroadCores,
+          category: devBroadCategory,
+          distributionMode: devBroadDistMode,
+          pinned: devBroadPinned
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDevBroadMsg({
+          type: "success",
+          text: data.message || (language === "id" ? "Hadiah broadcast berhasil disiarkan!" : "Broadcast gift sent!")
+        });
+        try {
+          audio.playVictorySound();
+        } catch (_) {}
+
+        if (devBroadDistMode === "instant_all") {
+          // Add to current user if instant
+          onUpdateUser({
+            points: (user.points || 0) + Number(devBroadPoints),
+            cores: (user.cores || 0) + Number(devBroadCores)
+          });
+        }
+
+        fetchOfficialMails();
+        setTimeout(() => {
+          setDevBroadTitle("");
+          setDevBroadContent("");
+          setDevBroadSummary("");
+          setDevBroadMsg(null);
+          setShowDevGiftModal(false);
+        }, 2000);
+      } else {
+        setDevBroadMsg({
+          type: "error",
+          text: data.error || (language === "id" ? "Gagal menyiarkan hadiah." : "Failed to broadcast gift.")
+        });
+      }
+    } catch (err) {
+      setDevBroadMsg({
+        type: "error",
+        text: language === "id" ? "Kesalahan koneksi saat menyiarkan hadiah." : "Connection error while broadcasting gift."
+      });
+    } finally {
+      setDevBroadSubmitting(false);
+    }
+  };
+
   // Helper for Category Badges
   const getCategoryBadge = (category: OfficialMailCategory) => {
     switch (category) {
@@ -458,19 +675,34 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
         </div>
 
         {/* Action Buttons - Only visible to authorized developers */}
-        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
           {isDeveloper ? (
-            <button
-              onClick={() => {
-                try { audio.playCardSelectSound(); } catch (_) {}
-                setShowBroadcastModal(true);
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/50 hover:border-amber-400 rounded-xl text-amber-300 text-xs font-black transition-all shadow-md cursor-pointer group"
-              title={language === "id" ? "Panel Siaran Pengumuman Developer" : "Developer Broadcast Announcement Panel"}
-            >
-              <ShieldCheck className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span>{language === "id" ? "Siarkan Pengumuman (Dev)" : "Broadcast Mail (Dev)"}</span>
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  try { audio.playCardSelectSound(); } catch (_) {}
+                  setDevGiftTab("private");
+                  setShowDevGiftModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 border border-purple-500/50 hover:border-purple-400 rounded-xl text-purple-200 text-xs font-black transition-all shadow-md cursor-pointer group"
+                title={language === "id" ? "Panel Kirim Hadiah Poin & Cores (Khusus Dev)" : "Developer Gift Panel (Points & Cores)"}
+              >
+                <Gift className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                <span>{t("mail.dev_gift_btn")}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  try { audio.playCardSelectSound(); } catch (_) {}
+                  setShowBroadcastModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/50 hover:border-amber-400 rounded-xl text-amber-300 text-xs font-black transition-all shadow-md cursor-pointer group"
+                title={language === "id" ? "Panel Siaran Pengumuman Developer" : "Developer Broadcast Announcement Panel"}
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span>{language === "id" ? "Siarkan Pengumuman (Dev)" : "Broadcast Mail (Dev)"}</span>
+              </button>
+            </>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950/60 border border-slate-800 rounded-xl text-[10px] font-mono text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -943,6 +1175,18 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {isDeveloper && activePartnerData && (
+                      <button
+                        type="button"
+                        onClick={() => openGiftForTrainer(activePartnerData)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 border border-purple-500/50 hover:border-purple-400 rounded-xl text-purple-200 text-xs font-black transition-all shadow-md cursor-pointer"
+                        title={language === "id" ? `Kirim Hadiah Developer ke @${activePartnerData.username}` : `Send Developer Gift to @${activePartnerData.username}`}
+                      >
+                        <Gift className="w-3.5 h-3.5 text-pink-400" />
+                        <span className="hidden sm:inline">{t("mail.quick_gift_dm")}</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => fetchThreadMessages(activePartnerId)}
                       className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all cursor-pointer"
@@ -1135,9 +1379,26 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                             </div>
                           </div>
 
-                          <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-xl border border-amber-500/30">
-                            Chat 💬
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {isDeveloper && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowNewChatModal(false);
+                                  openGiftForTrainer(p);
+                                }}
+                                className="text-xs font-bold text-purple-300 hover:text-purple-100 bg-purple-950/60 hover:bg-purple-900/80 px-2.5 py-1 rounded-xl border border-purple-700/50 transition-all flex items-center gap-1 cursor-pointer"
+                                title="Beri Hadiah Developer"
+                              >
+                                <Gift className="w-3.5 h-3.5 text-pink-400" />
+                                <span>Gift</span>
+                              </button>
+                            )}
+                            <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-xl border border-amber-500/30">
+                              Chat 💬
+                            </span>
+                          </div>
                         </div>
                       ))
                     )}
@@ -1326,6 +1587,441 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                   )}
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================================= */}
+      {/* DEVELOPER GIFT CENTER MODAL (PRIVATE & BROADCAST GIFTS)                  */}
+      {/* Restricted to verydiaz@gmail.com & support@nekomon.online               */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {showDevGiftModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-slate-900 border border-purple-500/40 rounded-3xl p-5 sm:p-6 max-w-xl w-full shadow-2xl shadow-purple-950/50 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 p-0.5 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/20">
+                    <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                      <Gift className="w-5 h-5 text-pink-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-slate-100 flex items-center gap-2">
+                      <span>{t("mail.dev_gift_title")}</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5 max-w-md">
+                      {t("mail.dev_gift_desc")}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDevGiftModal(false)}
+                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Developer Verified Notice */}
+              <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-2xl flex items-center justify-between text-xs text-purple-200">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-pink-400 shrink-0" />
+                  <span className="font-bold">{language === "id" ? "Otorisasi Akun Pengembang:" : "Authorized Developer Account:"}</span>
+                </div>
+                <span className="font-mono text-[11px] bg-purple-900/60 text-pink-300 font-bold px-2 py-0.5 rounded-lg border border-purple-700/50">
+                  {user?.email || "verydiaz@gmail.com"}
+                </span>
+              </div>
+
+              {/* Mode Tabs (Private vs Broadcast) */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-2xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDevGiftTab("private");
+                    setDevGiftMsg(null);
+                  }}
+                  className={`py-2.5 px-3 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    devGiftTab === "private"
+                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-600/20"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span>{t("mail.dev_gift_tab_private")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDevGiftTab("broadcast");
+                    setDevBroadMsg(null);
+                  }}
+                  className={`py-2.5 px-3 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    devGiftTab === "broadcast"
+                      ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/20"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span>{t("mail.dev_gift_tab_broadcast")}</span>
+                </button>
+              </div>
+
+              {/* TAB 1: PRIVATE GIFT FORM */}
+              {devGiftTab === "private" && (
+                <form onSubmit={handleSendPrivateDevGift} className="flex flex-col gap-4">
+                  {devGiftMsg && (
+                    <div className={`p-3 rounded-2xl text-xs font-bold ${
+                      devGiftMsg.type === "success"
+                        ? "bg-emerald-950/80 text-emerald-300 border border-emerald-700"
+                        : "bg-red-950/80 text-red-300 border border-red-700"
+                    }`}>
+                      {devGiftMsg.text}
+                    </div>
+                  )}
+
+                  {/* Target Trainer Field */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-300">
+                      {t("mail.dev_target_user")}
+                    </label>
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={devGiftTargetUsername}
+                        onChange={e => {
+                          setDevGiftTargetUsername(e.target.value);
+                          setDevGiftTargetUser(null);
+                        }}
+                        placeholder={t("mail.dev_target_placeholder")}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 font-mono"
+                      />
+                    </div>
+
+                    {devGiftTargetUser && (
+                      <div className="p-2.5 bg-purple-950/30 border border-purple-500/30 rounded-xl flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{devGiftTargetUser.avatar || "🐱"}</span>
+                          <span className="font-bold text-purple-200">@{devGiftTargetUser.username}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDevGiftTargetUser(null);
+                            setDevGiftTargetUsername("");
+                          }}
+                          className="text-[10px] text-slate-400 hover:text-red-400"
+                        >
+                          Ganti Trainer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Gift Rewards Input (Points & Cores) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    {/* Points Input */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-yellow-400 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{t("mail.dev_points_grant")}</span>
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        value={devGiftPoints}
+                        onChange={e => setDevGiftPoints(Number(e.target.value))}
+                        className="bg-slate-900 border border-slate-700 focus:border-yellow-500 focus:outline-none rounded-xl px-3 py-2 text-sm text-yellow-400 font-mono font-bold"
+                      />
+                      {/* Quick Presets for Points */}
+                      <div className="flex flex-wrap gap-1">
+                        {[100, 500, 1000, 5000].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setDevGiftPoints(amt)}
+                            className="px-2 py-0.5 bg-slate-900 hover:bg-yellow-500/20 text-yellow-400/90 text-[10px] font-mono rounded-lg border border-slate-700 hover:border-yellow-500/50 cursor-pointer"
+                          >
+                            +{amt >= 1000 ? `${amt / 1000}k` : amt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Cores Input */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>{t("mail.dev_cores_grant")}</span>
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        value={devGiftCores}
+                        onChange={e => setDevGiftCores(Number(e.target.value))}
+                        className="bg-slate-900 border border-slate-700 focus:border-teal-500 focus:outline-none rounded-xl px-3 py-2 text-sm text-teal-400 font-mono font-bold"
+                      />
+                      {/* Quick Presets for Cores */}
+                      <div className="flex flex-wrap gap-1">
+                        {[5, 10, 25, 50, 100].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setDevGiftCores(amt)}
+                            className="px-2 py-0.5 bg-slate-900 hover:bg-teal-500/20 text-teal-400/90 text-[10px] font-mono rounded-lg border border-slate-700 hover:border-teal-500/50 cursor-pointer"
+                          >
+                            +{amt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Note / Reason Field */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-slate-300">
+                      {t("mail.dev_note_label")}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={devGiftNote}
+                      onChange={e => setDevGiftNote(e.target.value)}
+                      placeholder={t("mail.dev_note_placeholder")}
+                      className="bg-slate-950 border border-slate-800 focus:border-purple-500 focus:outline-none rounded-xl p-3 text-xs text-slate-100 leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Info Notice */}
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-[11px] text-slate-400 leading-relaxed">
+                    💡 <span className="text-slate-300 font-bold">{language === "id" ? "Catatan Sistem:" : "System Note:"}</span>{" "}
+                    {language === "id"
+                      ? "Poin dan Cores akan langsung ditambahkan ke saldo akun pemain. Pesan konfirmasi resmi dari Developer akan otomatis masuk ke Kotak Pesan (DM) penerima."
+                      : "Points and Cores are directly added to the player's account balance. An official notification will be sent to the recipient's Direct Message inbox."}
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={devGiftSubmitting}
+                    className="w-full py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 hover:brightness-110 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-lg shadow-purple-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 mt-1"
+                  >
+                    {devGiftSubmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>{t("mail.dev_sending")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Gift className="w-4 h-4" />
+                        <span>{t("mail.dev_send_gift_btn")}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* TAB 2: BROADCAST GIFT FORM */}
+              {devGiftTab === "broadcast" && (
+                <form onSubmit={handleSendBroadcastDevGift} className="flex flex-col gap-4">
+                  {devBroadMsg && (
+                    <div className={`p-3 rounded-2xl text-xs font-bold ${
+                      devBroadMsg.type === "success"
+                        ? "bg-emerald-950/80 text-emerald-300 border border-emerald-700"
+                        : "bg-red-950/80 text-red-300 border border-red-700"
+                    }`}>
+                      {devBroadMsg.text}
+                    </div>
+                  )}
+
+                  {/* Distribution Mode Toggle */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-300">
+                      {t("mail.dev_dist_mode")}
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDevBroadDistMode("instant_all")}
+                        className={`p-3 rounded-xl border text-xs text-left font-bold transition-all cursor-pointer flex flex-col gap-1 ${
+                          devBroadDistMode === "instant_all"
+                            ? "bg-amber-500/20 border-amber-500 text-amber-300"
+                            : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 text-amber-400">
+                          <Zap className="w-4 h-4" />
+                          <span>{language === "id" ? "⚡ Kredit Instan Semua Akun" : "⚡ Instant Direct Credit"}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {language === "id" ? "Saldo Poin & Cores langsung bertambah ke seluruh trainer saat ini." : "Points & Cores credited immediately to all trainers."}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDevBroadDistMode("claimable_mail")}
+                        className={`p-3 rounded-xl border text-xs text-left font-bold transition-all cursor-pointer flex flex-col gap-1 ${
+                          devBroadDistMode === "claimable_mail"
+                            ? "bg-purple-500/20 border-purple-500 text-purple-300"
+                            : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 text-purple-400">
+                          <Mail className="w-4 h-4" />
+                          <span>{language === "id" ? "📬 Surat Hadiah (Klaim Inbox)" : "📬 Claimable Mail Gift"}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {language === "id" ? "Pemain harus membuka kotak surat lalu menekan tombol Klaim Hadiah." : "Players open mailbox and tap Claim Reward button."}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-slate-300">
+                      {t("mail.broadcast_title_field")}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={devBroadTitle}
+                      onChange={e => setDevBroadTitle(e.target.value)}
+                      placeholder={language === "id" ? "e.g. 🎁 Hadiah Spesial Kompensasi & Bonus Akhir Pekan!" : "e.g. 🎁 Special Weekend Bonus & Appreciation Gift!"}
+                      className="bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl px-3.5 py-2 text-xs text-slate-100"
+                    />
+                  </div>
+
+                  {/* Summary */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-slate-300">
+                      {t("mail.broadcast_summary_field")}
+                    </label>
+                    <input
+                      type="text"
+                      value={devBroadSummary}
+                      onChange={e => setDevBroadSummary(e.target.value)}
+                      placeholder={language === "id" ? "Ringkasan 1 kalimat yang tampil di kartu inbox" : "1-sentence summary shown on inbox preview"}
+                      className="bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl px-3.5 py-2 text-xs text-slate-100"
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-slate-300">
+                      {t("mail.broadcast_content_field")}
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={devBroadContent}
+                      onChange={e => setDevBroadContent(e.target.value)}
+                      placeholder={language === "id" ? "Tulis isi pengumuman surat resmi hadiah..." : "Write official broadcast reward announcement notes..."}
+                      className="bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-xl p-3 text-xs text-slate-100 leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Broadcast Rewards (Points & Cores) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-bold text-yellow-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{t("mail.broadcast_points_label")}</span>
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={devBroadPoints}
+                        onChange={e => setDevBroadPoints(Number(e.target.value))}
+                        className="bg-slate-900 border border-slate-700 focus:border-yellow-500 focus:outline-none rounded-xl px-3 py-2 text-sm text-yellow-400 font-mono font-bold"
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {[500, 1000, 2500, 5000].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setDevBroadPoints(amt)}
+                            className="px-2 py-0.5 bg-slate-900 hover:bg-yellow-500/20 text-yellow-400/90 text-[10px] font-mono rounded-lg border border-slate-700 cursor-pointer"
+                          >
+                            +{amt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>{t("mail.broadcast_cores_label")}</span>
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={devBroadCores}
+                        onChange={e => setDevBroadCores(Number(e.target.value))}
+                        className="bg-slate-900 border border-slate-700 focus:border-teal-500 focus:outline-none rounded-xl px-3 py-2 text-sm text-teal-400 font-mono font-bold"
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {[10, 20, 50, 100].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setDevBroadCores(amt)}
+                            className="px-2 py-0.5 bg-slate-900 hover:bg-teal-500/20 text-teal-400/90 text-[10px] font-mono rounded-lg border border-slate-700 cursor-pointer"
+                          >
+                            +{amt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pinned Checkbox */}
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={devBroadPinned}
+                        onChange={e => setDevBroadPinned(e.target.checked)}
+                        className="rounded accent-amber-500"
+                      />
+                      <span>{t("mail.broadcast_pin_label")}</span>
+                    </label>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={devBroadSubmitting}
+                    className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:brightness-110 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 mt-1"
+                  >
+                    {devBroadSubmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>{t("mail.broadcasting")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>{language === "id" ? "SIARKAN HADIAH KE SELURUH TRAINER 📬" : "BROADCAST GIFT TO ALL TRAINERS 📬"}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
             </motion.div>
           </div>
         )}

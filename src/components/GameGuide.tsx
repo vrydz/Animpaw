@@ -18,7 +18,8 @@ import {
   Scan,
   Users,
   Target,
-  ZoomIn
+  ZoomIn,
+  Mail
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -152,7 +153,23 @@ export const GameGuide: React.FC = () => {
                       <br/>
                       <span className="text-red-400 font-bold font-mono">• Supply Line Cut-off:</span> Jika jalur koneksi ke markas terputus, Beacon hilir berhenti menghasilkan Cores sampai jalur tersambung kembali!
                       <br/>
+                      <span className="text-orange-400 font-bold font-mono">• Jeda Penaklukan (Cooldown 2 Jam):</span> Setelah berhasil merebut sebuah Beacon, penyerangan ke node di sekitarnya dijeda selama 2 jam dengan timer visual langsung untuk menyeimbangkan taktik permainan dan mencegah ekspansi kilat!
+                      <br/>
                       <span className="text-emerald-400 font-bold font-mono">• Peran Semua Pemain:</span> Pemain tanpa kartu Mythic tetap dapat berpartisipasi dengan memperkuat pertahanan garnisun faksi (+HP & +Poin) atau menyerang garnisun musuh!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-purple-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-purple-300 font-mono text-xs uppercase mb-1">7. Kotak Surat & Sistem Hadiah Pengembang 📬</h4>
+                    <p className="leading-relaxed">
+                      Akses menu <span className="text-purple-400 font-bold font-mono">KOTAK SURAT (MAILBOX)</span> untuk menerima pengumuman resmi dan pesan pribadi antar Trainer.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Hadiah Broadcast & Privat:</span> Pengembang resmi (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span> & <span className="text-amber-300 font-mono">support@nekomon.online</span>) dapat menyiarkan surat resmi berisi bonus Poin & Nekomon Cores ke seluruh pemain atau memberikan hadiah apresiasi khusus langsung ke akun trainer pilihanmu!
                     </p>
                   </div>
                 </div>
@@ -234,7 +251,23 @@ export const GameGuide: React.FC = () => {
                       <br/>
                       <span className="text-red-400 font-bold font-mono">• Supply Line Cut-off:</span> Severed supply lines disable downstream beacons and halt core generation until reconnected!
                       <br/>
+                      <span className="text-orange-400 font-bold font-mono">• Capture Cooldown (2 Hours):</span> After capturing a Beacon, attacks on adjacent nodes are paused for 2 hours with a live visual timer to balance territorial gameplay and prevent rapid expansion!
+                      <br/>
                       <span className="text-emerald-400 font-bold font-mono">• Accessibility:</span> Non-mythic players can reinforce friendly garrisons (+HP & +Points) or assault enemy defenses!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-purple-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-purple-300 font-mono text-xs uppercase mb-1">7. Mailbox & Developer Gift System 📬</h4>
+                    <p className="leading-relaxed">
+                      Open the <span className="text-purple-400 font-bold font-mono">MAILBOX</span> tab for official announcements and player-to-player direct messages.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Broadcast & Private Gifts:</span> Official developers (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span> & <span className="text-amber-300 font-mono">support@nekomon.online</span>) can broadcast system-wide reward letters or send direct Point & Nekomon Core gifts to chosen trainer accounts!
                     </p>
                   </div>
                 </div>

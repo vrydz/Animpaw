@@ -192,6 +192,10 @@ export interface BeaconNode {
   maxDefenseHp: number;
   tier: 1 | 2 | 3;
   reinforcementsCount?: number;
+  cooldownUntil?: string | null;
+  cooldownRemainingSeconds?: number;
+  isAdjacentLocked?: boolean;
+  adjacentCooldownSeconds?: number;
   descriptionId?: string;
   descriptionEn?: string;
 }

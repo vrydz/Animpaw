@@ -26,7 +26,10 @@ import {
   Radio,
   Clock,
   Target,
-  Sparkle
+  Sparkle,
+  Lock,
+  Hourglass,
+  Timer
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
@@ -59,6 +62,15 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   const [playerNodesCount, setPlayerNodesCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isClaimingCores, setIsClaimingCores] = useState<boolean>(false);
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+
+  // 1-second live ticker for smooth real-time visual cooldowns
+  useEffect(() => {
+    const timerInterval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timerInterval);
+  }, []);
 
   // Modals & Action States
   const [showCaptureModal, setShowCaptureModal] = useState<boolean>(false);
@@ -146,6 +158,62 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
       default:
         return { icon: Sparkles, color: "text-slate-300", bg: "bg-slate-800", border: "border-slate-700", glow: "" };
     }
+  };
+
+  // Territory 2-Hour Capture Cooldown Helpers
+  const getNodeCooldownRemaining = (node: BeaconNode | null | undefined): number => {
+    if (!node || (!node.capturedAt && !node.cooldownUntil)) return 0;
+    const cooldownEnd = node.cooldownUntil
+      ? new Date(node.cooldownUntil).getTime()
+      : new Date(node.capturedAt!).getTime() + 2 * 60 * 60 * 1000;
+    return Math.max(0, Math.ceil((cooldownEnd - currentTime) / 1000));
+  };
+
+  const formatCooldownDigital = (seconds: number): string => {
+    if (seconds <= 0) return "00:00:00";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const formatCooldownHuman = (seconds: number, lang: string): string => {
+    if (seconds <= 0) return "";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (lang === "id") {
+      return `${h > 0 ? `${h}j ` : ""}${m}m ${s}d`;
+    }
+    return `${h > 0 ? `${h}h ` : ""}${m}m ${s}s`;
+  };
+
+  // Check if an adjacent node owned by the current player was recently captured (blocks offensive moves for 2 hours)
+  const getAdjacentCooldownForPlayer = (targetNode: BeaconNode | null | undefined): {
+    isLocked: boolean;
+    remainingSeconds: number;
+    sourceNode?: BeaconNode;
+  } => {
+    if (!targetNode) return { isLocked: false, remainingSeconds: 0 };
+    const connectedNeighbors = nodes.filter(n => (targetNode.connectedNodeIds || []).includes(n.id));
+    let maxRemaining = 0;
+    let sourceNode: BeaconNode | undefined;
+
+    for (const neighbor of connectedNeighbors) {
+      if (neighbor.ownerId === user.id) {
+        const rem = getNodeCooldownRemaining(neighbor);
+        if (rem > maxRemaining) {
+          maxRemaining = rem;
+          sourceNode = neighbor;
+        }
+      }
+    }
+
+    return {
+      isLocked: maxRemaining > 0,
+      remainingSeconds: maxRemaining,
+      sourceNode
+    };
   };
 
   // Claim all accumulated cores
@@ -249,6 +317,17 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   const handleStartBattle = async () => {
     if (!selectedNode || selectedAttackerCardIds.length === 0) {
       showToast(language === "id" ? "Pilih minimal 1 kartu penyerang!" : "Select at least 1 attacking card!", "error");
+      return;
+    }
+
+    const adjCool = getAdjacentCooldownForPlayer(selectedNode);
+    if (adjCool.isLocked) {
+      showToast(
+        language === "id"
+          ? `Jeda Penaklukan Aktif: Serangan ke node sekitar ditangguhkan (${formatCooldownDigital(adjCool.remainingSeconds)}).`
+          : `Capture Cooldown Active: Assault on adjacent sector is paused (${formatCooldownDigital(adjCool.remainingSeconds)}).`,
+        "error"
+      );
       return;
     }
 
@@ -553,6 +632,8 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
               const isPlayerOwned = node.ownerId === user.id;
               const elem = getElementBadge(node.element);
               const ElemIcon = elem.icon;
+              const nodeCooldownSec = getNodeCooldownRemaining(node);
+              const adjacentCooldown = getAdjacentCooldownForPlayer(node);
 
               return (
                 <motion.div
@@ -566,6 +647,32 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                   style={{ left: `${node.x}%`, top: `${node.y}%` }}
                   className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 flex flex-col items-center group`}
                 >
+                  {/* Visual 2-Hour Cooldown Timer Badge on Map */}
+                  {nodeCooldownSec > 0 && (
+                    <motion.span 
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="absolute -top-4 px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[8px] font-mono font-black tracking-tighter flex items-center gap-1 shadow-lg border border-amber-300 animate-pulse z-30"
+                      title={language === "id" ? `Jeda Penaklukan: ${formatCooldownHuman(nodeCooldownSec, "id")}` : `Capture Cooldown: ${formatCooldownHuman(nodeCooldownSec, "en")}`}
+                    >
+                      <Clock className="w-2.5 h-2.5 text-slate-950 shrink-0" />
+                      <span>{formatCooldownDigital(nodeCooldownSec)}</span>
+                    </motion.span>
+                  )}
+
+                  {/* Visual Adjacent Attack Lock Badge */}
+                  {nodeCooldownSec <= 0 && adjacentCooldown.isLocked && !isPlayerOwned && !node.isBase && (
+                    <motion.span 
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="absolute -top-4 px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[8px] font-mono font-black tracking-tighter flex items-center gap-0.5 shadow-lg border border-rose-400 z-30"
+                      title={language === "id" ? `Terkunci jeda penaklukan terhubung: ${formatCooldownHuman(adjacentCooldown.remainingSeconds, "id")}` : `Locked by adjacent capture cooldown: ${formatCooldownHuman(adjacentCooldown.remainingSeconds, "en")}`}
+                    >
+                      <Lock className="w-2.5 h-2.5 text-white shrink-0" />
+                      <span>{formatCooldownDigital(adjacentCooldown.remainingSeconds)}</span>
+                    </motion.span>
+                  )}
+
                   {/* Node Anchor Icon */}
                   <div className={`relative w-11 h-11 rounded-2xl flex items-center justify-center transition-all shadow-xl ${
                     node.isBase
@@ -627,7 +734,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
           {/* Map Legend */}
           <div className="relative z-10 pt-2 border-t border-slate-900 flex flex-wrap items-center justify-between gap-3 text-[10px] text-slate-400">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center flex-wrap gap-3">
               <span className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block" /> Sentinel
               </span>
@@ -640,6 +747,10 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
               <span className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block" /> Netral
               </span>
+              <span className="flex items-center gap-1 text-amber-400 font-bold">
+                <Clock className="w-3 h-3 text-amber-400 animate-pulse" />
+                <span>{language === "id" ? "Jeda 2 Jam" : "2h Cooldown"}</span>
+              </span>
             </div>
             <div className="flex items-center gap-1 text-amber-400 font-bold">
               <Radio className="w-3 h-3 text-amber-400 animate-pulse" />
@@ -650,186 +761,280 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
         {/* Right Side: Selected Beacon Inspector & Action Hub */}
         <div className="lg:col-span-4 flex flex-col gap-4">
-          {selectedNode ? (
-            <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col gap-4">
-              
-              {/* Header Info */}
-              <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className={`px-2 py-0.5 text-[9px] font-black rounded-full border ${getElementBadge(selectedNode.element).bg} ${getElementBadge(selectedNode.element).color} ${getElementBadge(selectedNode.element).border}`}>
-                      {selectedNode.element.toUpperCase()}
+          {selectedNode ? (() => {
+            const selectedNodeCooldown = getNodeCooldownRemaining(selectedNode);
+            const selectedAdjacentCooldown = getAdjacentCooldownForPlayer(selectedNode);
+
+            return (
+              <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col gap-4">
+                
+                {/* Header Info */}
+                <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      <span className={`px-2 py-0.5 text-[9px] font-black rounded-full border ${getElementBadge(selectedNode.element).bg} ${getElementBadge(selectedNode.element).color} ${getElementBadge(selectedNode.element).border}`}>
+                        {selectedNode.element.toUpperCase()}
+                      </span>
+                      <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        TIER {selectedNode.tier} (5 Cores/Hari)
+                      </span>
+                      {selectedNodeCooldown > 0 && (
+                        <span className="px-2 py-0.5 text-[9px] font-mono font-black rounded-full bg-amber-500 text-slate-950 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-950" />
+                          {formatCooldownDigital(selectedNodeCooldown)}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-black text-white">
+                      {language === "id" ? selectedNode.name : (selectedNode.nameEn || selectedNode.name)}
+                    </h3>
+                  </div>
+
+                  {selectedNode.isBase && (
+                    <span className="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black rounded-lg uppercase shrink-0">
+                      MARKAS HQ
                     </span>
-                    <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      TIER {selectedNode.tier} (5 Cores/Hari)
+                  )}
+                </div>
+
+                {/* VISUAL COOLDOWN BANNER 1: NODE CAPTURE STABILIZATION (2 HOURS) */}
+                {selectedNodeCooldown > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3.5 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-slate-950 border border-amber-500/40 rounded-xl flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-amber-400 uppercase flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin-slow" />
+                        {language === "id" ? "JEDA PENAKLUKAN (2 JAM)" : "CAPTURE COOLDOWN (2 HOURS)"}
+                      </span>
+                      <span className="font-mono font-black text-xs text-amber-300 bg-slate-950 px-2.5 py-0.5 rounded-md border border-amber-500/40 shadow-inner">
+                        {formatCooldownDigital(selectedNodeCooldown)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-300 leading-relaxed">
+                      {language === "id" 
+                        ? "Beacon ini baru saja direbut. Sesuai aturan game balance, serangan ke node sekitar dijeda selama 2 jam." 
+                        : "This Beacon was recently captured. Per 2-hour game balance rules, attacks on adjacent nodes are paused."}
+                    </p>
+                    <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                      <div 
+                        className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-1000"
+                        style={{ width: `${Math.min(100, Math.max(0, (selectedNodeCooldown / 7200) * 100))}%` }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* VISUAL COOLDOWN BANNER 2: ADJACENT ATTACK LOCK (2 HOURS) */}
+                {selectedNodeCooldown <= 0 && selectedAdjacentCooldown.isLocked && !selectedNode.isBase && selectedNode.ownerId !== user.id && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3.5 bg-gradient-to-br from-rose-500/20 via-red-500/10 to-slate-950 border border-rose-500/40 rounded-xl flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-rose-400 uppercase flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-rose-400" />
+                        {language === "id" ? "SERANGAN TERKUNCI SEMENTARA" : "ATTACK TEMPORARILY LOCKED"}
+                      </span>
+                      <span className="font-mono font-black text-xs text-rose-300 bg-slate-950 px-2.5 py-0.5 rounded-md border border-rose-500/40 shadow-inner">
+                        {formatCooldownDigital(selectedAdjacentCooldown.remainingSeconds)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-300 leading-relaxed">
+                      {language === "id"
+                        ? `Kamu baru saja merebut node terhubung "${selectedAdjacentCooldown.sourceNode?.name || "Sekitar"}". Serangan ke node ini dijeda untuk mencegah ekspansi kilat.`
+                        : `You recently captured connected node "${selectedAdjacentCooldown.sourceNode?.nameEn || selectedAdjacentCooldown.sourceNode?.name || "Neighbor"}". Attacks paused to prevent rapid expansion.`}
+                    </p>
+                    <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                      <div 
+                        className="h-full bg-gradient-to-r from-rose-500 to-red-500 transition-all duration-1000"
+                        style={{ width: `${Math.min(100, Math.max(0, (selectedAdjacentCooldown.remainingSeconds / 7200) * 100))}%` }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Description */}
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {language === "id" ? selectedNode.descriptionId : (selectedNode.descriptionEn || selectedNode.descriptionId)}
+                </p>
+
+                {/* Status Indicators (Supply Line & Owner) */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col">
+                    <span className="text-[9px] text-slate-400 uppercase font-black">
+                      {language === "id" ? "STATUS JALUR (SUPPLY)" : "SUPPLY LINE"}
+                    </span>
+                    <span className={`font-black mt-0.5 flex items-center gap-1 ${
+                      selectedNode.isActive ? "text-emerald-400" : "text-rose-400"
+                    }`}>
+                      {selectedNode.isActive ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {language === "id" ? "Aktif (+5 Cores/h)" : "Active (+5 Cores/d)"}
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 animate-bounce" />
+                          {language === "id" ? "Terputus (0 Cores)" : "Severed (0 Cores)"}
+                        </>
+                      )}
                     </span>
                   </div>
-                  <h3 className="text-base font-black text-white">
-                    {language === "id" ? selectedNode.name : (selectedNode.nameEn || selectedNode.name)}
-                  </h3>
+
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col">
+                    <span className="text-[9px] text-slate-400 uppercase font-black">
+                      {language === "id" ? "PENGUASA AREA" : "CURRENT OWNER"}
+                    </span>
+                    <span className="font-black text-white mt-0.5 truncate">
+                      {selectedNode.ownerName || (language === "id" ? "Belum Dikuasai (Netral)" : "Neutral Territory")}
+                    </span>
+                  </div>
                 </div>
 
-                {selectedNode.isBase && (
-                  <span className="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black rounded-lg uppercase shrink-0">
-                    MARKAS HQ
-                  </span>
-                )}
-              </div>
-
-              {/* Description */}
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {language === "id" ? selectedNode.descriptionId : (selectedNode.descriptionEn || selectedNode.descriptionId)}
-              </p>
-
-              {/* Status Indicators (Supply Line & Owner) */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col">
-                  <span className="text-[9px] text-slate-400 uppercase font-black">
-                    {language === "id" ? "STATUS JALUR (SUPPLY)" : "SUPPLY LINE"}
-                  </span>
-                  <span className={`font-black mt-0.5 flex items-center gap-1 ${
-                    selectedNode.isActive ? "text-emerald-400" : "text-rose-400"
-                  }`}>
-                    {selectedNode.isActive ? (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        {language === "id" ? "Aktif (+5 Cores/h)" : "Active (+5 Cores/d)"}
-                      </>
-                    ) : (
-                      <>
-                        <AlertTriangle className="w-3.5 h-3.5 animate-bounce" />
-                        {language === "id" ? "Terputus (0 Cores)" : "Severed (0 Cores)"}
-                      </>
-                    )}
-                  </span>
-                </div>
-
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col">
-                  <span className="text-[9px] text-slate-400 uppercase font-black">
-                    {language === "id" ? "PENGUASA AREA" : "CURRENT OWNER"}
-                  </span>
-                  <span className="font-black text-white mt-0.5 truncate">
-                    {selectedNode.ownerName || (language === "id" ? "Belum Dikuasai (Netral)" : "Neutral Territory")}
-                  </span>
-                </div>
-              </div>
-
-              {/* Defense Garrison HP Bar */}
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                    {language === "id" ? "Ketahanan Garnisun" : "Garrison HP"}
-                  </span>
-                  <span className="font-mono font-black text-cyan-300">
-                    {selectedNode.defenseHp} / {selectedNode.maxDefenseHp} HP
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                  <div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(0, (selectedNode.defenseHp / selectedNode.maxDefenseHp) * 100))}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Assigned Mythic Beacon Anchor Card Preview */}
-              {selectedNode.anchorCard ? (
-                <div className="p-3 bg-gradient-to-br from-amber-500/10 via-purple-500/10 to-slate-950 border border-amber-500/30 rounded-xl flex items-center gap-3">
-                  <div className="w-14 h-16 rounded-lg overflow-hidden border border-amber-500/50 bg-slate-950 shrink-0">
-                    <img 
-                      src={selectedNode.anchorCard.imageUrl} 
-                      alt={selectedNode.anchorCard.name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
+                {/* Defense Garrison HP Bar */}
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                      {language === "id" ? "Ketahanan Garnisun" : "Garrison HP"}
+                    </span>
+                    <span className="font-mono font-black text-cyan-300">
+                      {selectedNode.defenseHp} / {selectedNode.maxDefenseHp} HP
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.max(0, (selectedNode.defenseHp / selectedNode.maxDefenseHp) * 100))}%` }}
                     />
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[9px] text-amber-400 font-black tracking-wider uppercase flex items-center gap-1">
-                      <Crown className="w-3 h-3 text-amber-400" />
-                      MYTHIC BEACON ANCHOR
-                    </span>
-                    <h4 className="text-xs font-bold text-white truncate">{selectedNode.anchorCard.name}</h4>
-                    <span className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                      ATK {selectedNode.anchorCard.atk} • DEF {selectedNode.anchorCard.def} • Lv.{selectedNode.anchorCard.level || 20}
+                </div>
+
+                {/* Assigned Mythic Beacon Anchor Card Preview */}
+                {selectedNode.anchorCard ? (
+                  <div className="p-3 bg-gradient-to-br from-amber-500/10 via-purple-500/10 to-slate-950 border border-amber-500/30 rounded-xl flex items-center gap-3">
+                    <div className="w-14 h-16 rounded-lg overflow-hidden border border-amber-500/50 bg-slate-950 shrink-0">
+                      <img 
+                        src={selectedNode.anchorCard.imageUrl} 
+                        alt={selectedNode.anchorCard.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] text-amber-400 font-black tracking-wider uppercase flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-amber-400" />
+                        MYTHIC BEACON ANCHOR
+                      </span>
+                      <h4 className="text-xs font-bold text-white truncate">{selectedNode.anchorCard.name}</h4>
+                      <span className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                        ATK {selectedNode.anchorCard.atk} • DEF {selectedNode.anchorCard.def} • Lv.{selectedNode.anchorCard.level || 20}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-950/80 border border-dashed border-slate-800 rounded-xl text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-1">
+                    <Crown className="w-5 h-5 text-amber-400/50" />
+                    <span>
+                      {language === "id" 
+                        ? "Belum ada kartu Mythic Anchor yang dipasang di Beacon ini." 
+                        : "No Mythic Anchor card assigned to this Beacon."}
                     </span>
                   </div>
+                )}
+
+                {/* ACTION BUTTONS */}
+                <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                  {/* 1. If Neutral or Breached -> Capture (Requires Mythic Card) */}
+                  {(!selectedNode.ownerId || selectedNode.defenseHp <= 0) && !selectedNode.isBase && (
+                    <button
+                      onClick={() => {
+                        if (selectedAdjacentCooldown.isLocked) {
+                          showToast(
+                            language === "id"
+                              ? `Jeda Penaklukan: Tunggu ${formatCooldownHuman(selectedAdjacentCooldown.remainingSeconds, "id")} sebelum merebut node sekitar.`
+                              : `Capture Cooldown: Wait ${formatCooldownHuman(selectedAdjacentCooldown.remainingSeconds, "en")} before capturing adjacent nodes.`,
+                            "error"
+                          );
+                          return;
+                        }
+                        if (!isNodeConnectedToPlayer(selectedNode)) {
+                          showToast(
+                            language === "id"
+                              ? "Beacon harus terkoneksi langsung dengan wilayah milikmu atau Markas Faksimu!"
+                              : "Beacon must directly connect to your owned area or Faction Base!",
+                            "error"
+                          );
+                          return;
+                        }
+                        setShowCaptureModal(true);
+                        haptics.tap();
+                      }}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
+                    >
+                      <Crown className="w-4 h-4" />
+                      <span>{language === "id" ? "Pasang Mythic Anchor & Klaim Area" : "Deploy Mythic Anchor & Capture"}</span>
+                    </button>
+                  )}
+
+                  {/* 2. If Owned by Enemy -> Attack / Battle Garrison */}
+                  {selectedNode.ownerId && selectedNode.ownerId !== user.id && !selectedNode.isBase && (
+                    selectedAdjacentCooldown.isLocked ? (
+                      <div className="w-full py-3 px-4 rounded-xl bg-slate-950 border border-rose-500/40 text-rose-300 font-bold text-xs uppercase tracking-wider flex items-center justify-between shadow-inner">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-rose-400 shrink-0" />
+                          <span className="text-[11px]">
+                            {language === "id" ? "Jeda Penaklukan:" : "Attack Cooldown:"}
+                          </span>
+                        </div>
+                        <span className="font-mono font-black text-rose-300 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-500/30">
+                          {formatCooldownDigital(selectedAdjacentCooldown.remainingSeconds)}
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (!isNodeConnectedToPlayer(selectedNode)) {
+                            showToast(
+                              language === "id"
+                                ? "Jalur Serangan: Kamu harus memiliki wilayah yang terhubung untuk menyerang Beacon ini!"
+                                : "Attack Path: You must have an interconnected node to attack this Beacon!",
+                              "error"
+                            );
+                            return;
+                          }
+                          setShowBattleModal(true);
+                          haptics.tap();
+                        }}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 active:scale-95 cursor-pointer"
+                      >
+                        <Swords className="w-4 h-4" />
+                        <span>{language === "id" ? "Serang Garnisun Musuh (TCG Duel)" : "Assault Garrison (TCG Battle)"}</span>
+                      </button>
+                    )
+                  )}
+
+                  {/* 3. If Owned by Player or Friendly Faction -> Reinforce Support */}
+                  {(selectedNode.ownerId === user.id || (selectedNode.ownerFaction === playerFaction && !selectedNode.isBase)) && (
+                    <button
+                      onClick={() => {
+                        setShowReinforceModal(true);
+                        haptics.tap();
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                      <span>{language === "id" ? "Perkuat Garnisun Pertahanan (+HP)" : "Reinforce Garrison (+HP)"}</span>
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <div className="p-3 bg-slate-950/80 border border-dashed border-slate-800 rounded-xl text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-1">
-                  <Crown className="w-5 h-5 text-amber-400/50" />
-                  <span>
-                    {language === "id" 
-                      ? "Belum ada kartu Mythic Anchor yang dipasang di Beacon ini." 
-                      : "No Mythic Anchor card assigned to this Beacon."}
-                  </span>
-                </div>
-              )}
-
-              {/* ACTION BUTTONS */}
-              <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
-                {/* 1. If Neutral or Breached -> Capture (Requires Mythic Card) */}
-                {(!selectedNode.ownerId || selectedNode.defenseHp <= 0) && !selectedNode.isBase && (
-                  <button
-                    onClick={() => {
-                      if (!isNodeConnectedToPlayer(selectedNode)) {
-                        showToast(
-                          language === "id"
-                            ? "Beacon harus terkoneksi langsung dengan wilayah milikmu atau Markas Faksimu!"
-                            : "Beacon must directly connect to your owned area or Faction Base!",
-                          "error"
-                        );
-                        return;
-                      }
-                      setShowCaptureModal(true);
-                      haptics.tap();
-                    }}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
-                  >
-                    <Crown className="w-4 h-4" />
-                    <span>{language === "id" ? "Pasang Mythic Anchor & Klaim Area" : "Deploy Mythic Anchor & Capture"}</span>
-                  </button>
-                )}
-
-                {/* 2. If Owned by Enemy -> Attack / Battle Garrison */}
-                {selectedNode.ownerId && selectedNode.ownerId !== user.id && !selectedNode.isBase && (
-                  <button
-                    onClick={() => {
-                      if (!isNodeConnectedToPlayer(selectedNode)) {
-                        showToast(
-                          language === "id"
-                            ? "Jalur Serangan: Kamu harus memiliki wilayah yang terhubung untuk menyerang Beacon ini!"
-                            : "Attack Path: You must have an interconnected node to attack this Beacon!",
-                          "error"
-                        );
-                        return;
-                      }
-                      setShowBattleModal(true);
-                      haptics.tap();
-                    }}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 active:scale-95 cursor-pointer"
-                  >
-                    <Swords className="w-4 h-4" />
-                    <span>{language === "id" ? "Serang Garnisun Musuh (TCG Duel)" : "Assault Garrison (TCG Battle)"}</span>
-                  </button>
-                )}
-
-                {/* 3. If Owned by Player or Friendly Faction -> Reinforce Support */}
-                {(selectedNode.ownerId === user.id || (selectedNode.ownerFaction === playerFaction && !selectedNode.isBase)) && (
-                  <button
-                    onClick={() => {
-                      setShowReinforceModal(true);
-                      haptics.tap();
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                    <span>{language === "id" ? "Perkuat Garnisun Pertahanan (+HP)" : "Reinforce Garrison (+HP)"}</span>
-                  </button>
-                )}
               </div>
-            </div>
-          ) : (
+            );
+          })() : (
             <div className="bg-slate-900/60 border border-slate-800 p-8 rounded-2xl text-center text-slate-400 text-xs flex flex-col items-center justify-center min-h-[300px]">
               <Radio className="w-8 h-8 text-amber-500/40 mb-2 animate-pulse" />
               <span>{language === "id" ? "Pilih salah satu Node Beacon pada peta untuk melihat data dan aksi." : "Select a Beacon Node on the map to inspect data & actions."}</span>
