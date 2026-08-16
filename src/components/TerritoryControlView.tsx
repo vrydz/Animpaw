@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { BeaconNode, Card, User, TerritoryBattleLog } from "../types";
+import { BeaconNode, Card, User, TerritoryBattleLog, WarResetCountdown } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { haptics } from "../lib/vibration";
 import { audio } from "../lib/audio";
@@ -57,12 +57,13 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   // State
   const [nodes, setNodes] = useState<BeaconNode[]>([]);
   const [selectedNode, setSelectedNode] = useState<BeaconNode | null>(null);
-  const [playerFaction, setPlayerFaction] = useState<"Sentinel" | "Vanguard">("Sentinel");
+  const [playerFaction, setPlayerFaction] = useState<"Sentinel" | "Vanguard">(user?.faction || "Sentinel");
   const [playerUnclaimedCores, setPlayerUnclaimedCores] = useState<number>(0);
   const [playerNodesCount, setPlayerNodesCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isClaimingCores, setIsClaimingCores] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
+  const [warResetCountdown, setWarResetCountdown] = useState<WarResetCountdown | null>(null);
 
   // 1-second live ticker for smooth real-time visual cooldowns
   useEffect(() => {
@@ -73,6 +74,8 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   }, []);
 
   // Modals & Action States
+  const [showFactionModal, setShowFactionModal] = useState<boolean>(!user?.faction);
+  const [isSubmittingFaction, setIsSubmittingFaction] = useState<boolean>(false);
   const [showCaptureModal, setShowCaptureModal] = useState<boolean>(false);
   const [showBattleModal, setShowBattleModal] = useState<boolean>(false);
   const [showReinforceModal, setShowReinforceModal] = useState<boolean>(false);
@@ -102,6 +105,25 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  // Helper: Format War Reset Countdown (Days, Hours, Mins, Secs)
+  const formatWarResetTimer = (countdownEndIso: string) => {
+    const endMs = new Date(countdownEndIso).getTime();
+    const remainingMs = Math.max(0, endMs - currentTime);
+    const totalSecs = Math.floor(remainingMs / 1000);
+    const days = Math.floor(totalSecs / 86400);
+    const hours = Math.floor((totalSecs % 86400) / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    return {
+      days,
+      hours,
+      mins,
+      secs,
+      formatted: `${days}h ${String(hours).padStart(2, "0")}j ${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`,
+      isExpired: totalSecs <= 0
+    };
+  };
+
   // Fetch territory state from server
   const fetchTerritoryNodes = async () => {
     try {
@@ -117,6 +139,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
         if (data.playerFaction) setPlayerFaction(data.playerFaction);
         setPlayerUnclaimedCores(data.playerUnclaimedCores || 0);
         setPlayerNodesCount(data.playerNodesCount || 0);
+        setWarResetCountdown(data.warResetCountdown || null);
         
         if (selectedNode) {
           const updated = (data.nodes || []).find((n: BeaconNode) => n.id === selectedNode.id);
@@ -252,16 +275,76 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
     }
   };
 
+  // Choose / Change Faction Handler
+  const handleChooseFaction = async (faction: "Sentinel" | "Vanguard") => {
+    try {
+      setIsSubmittingFaction(true);
+      const res = await fetch("/api/territory/choose-faction", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify({ faction })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPlayerFaction(faction);
+        showToast(
+          language === "id"
+            ? `Berhasil bergabung dengan Faksi ${faction}! Semua kartu Nekomon milikmu dapat bergabung memperjuangkan faksi ini.`
+            : `Joined the ${faction} Faction! All your Nekomon cards can join the battle for this faction.`,
+          "success"
+        );
+        try {
+          audio.playVictorySound();
+          confetti({ particleCount: 70, spread: 60 });
+        } catch (_) {}
+        setShowFactionModal(false);
+        onRefreshUser();
+        fetchTerritoryNodes();
+      } else {
+        showToast(data.error || "Gagal memilih faksi.", "error");
+      }
+    } catch (_) {
+      showToast("Kesalahan server.", "error");
+    } finally {
+      setIsSubmittingFaction(false);
+    }
+  };
+
   // Check if node is connected to player's territory or faction base
+  // Rule 1: Markas Komando HQ (Sentinel/Vanguard) berstatus netral di awal dan harus segera di-capture
+  // Rule 6: Capture beacon lain hanya bisa dilakukan jika terhubung dengan HQ yang sudah dikuasai atau wilayah sekutu
   const isNodeConnectedToPlayer = (target: BeaconNode) => {
     if (!target) return false;
+
+    // Direct access to player's own starting HQ base
+    if (target.isBase && target.baseFaction === playerFaction) {
+      return true;
+    }
+
+    // For any other beacon, player's faction must have captured their own HQ first
+    const ownFactionHQ = nodes.find(n => n.isBase && n.baseFaction === playerFaction);
+    const isOwnHQCaptured = ownFactionHQ && ownFactionHQ.ownerFaction === playerFaction && ownFactionHQ.ownerId;
+    if (!isOwnHQCaptured) {
+      return false;
+    }
+
     const connectedNeighbors = nodes.filter(n => (target.connectedNodeIds || []).includes(n.id));
     return connectedNeighbors.some(n => {
       if (n.ownerId === user.id) return true;
-      if (n.isBase && n.baseFaction === playerFaction) return true;
-      if (n.ownerFaction === playerFaction && n.isActive) return true;
+      if (n.isBase && n.baseFaction === playerFaction && n.ownerFaction === playerFaction && n.ownerId) return true;
+      if (n.ownerFaction === playerFaction && n.isActive && n.ownerId) return true;
       return false;
     });
+  };
+
+  // Tier Benefit Helper
+  const getNodeTierCores = (tier: number) => {
+    if (tier === 3) return 10;
+    if (tier === 2) return 7;
+    return 5;
   };
 
   // Capture Beacon Node Handler
@@ -290,12 +373,18 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
       const data = await res.json();
       if (res.ok && data.success) {
+        const tierCores = getNodeTierCores(selectedNode.tier);
         showToast(
-          language === "id"
-            ? `Beacon ${selectedNode.name} berhasil dikuasai! Menghasilkan 5 Cores/hari.`
-            : `Beacon ${selectedNode.nameEn || selectedNode.name} captured! Yields 5 Cores/day.`,
+          data.message || (
+            language === "id"
+              ? `Beacon ${selectedNode.name} (Tier ${selectedNode.tier}: ${tierCores} Cores/hari) berhasil dikuasai!`
+              : `Beacon ${selectedNode.nameEn || selectedNode.name} (Tier ${selectedNode.tier}: ${tierCores} Cores/day) captured!`
+          ),
           "success"
         );
+        if (data.warResetCountdown) {
+          setWarResetCountdown(data.warResetCountdown);
+        }
         try {
           audio.playVictorySound();
           confetti({ particleCount: 70, spread: 70, origin: { y: 0.5 } });
@@ -476,28 +565,35 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               {language === "id"
-                ? "Tautkan kartu Mythic sebagai Anchor untuk kuasai Beacon (5 Cores/hari per area aktif)."
-                : "Anchor Mythic cards to capture Beacons (5 Cores/day per active connected area)."}
+                ? "Kuasai Beacon berjenjang (T1: 5 Core, T2: 7 Core, T3: 10 Core/hari) dengan kartu Mythic Anchor!"
+                : "Control tiered Beacons (T1: 5, T2: 7, T3: 10 Cores/day) with Mythic Anchor cards!"}
             </p>
           </div>
         </div>
 
         {/* Cores Claiming Panel & Player Status */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Faction Badge */}
-          <div className={`px-3 py-2 rounded-xl border flex items-center gap-2 ${
-            playerFaction === "Sentinel"
-              ? "bg-cyan-950/60 border-cyan-500/40 text-cyan-300"
-              : "bg-red-950/60 border-red-500/40 text-red-300"
-          }`}>
-            <Shield className="w-4 h-4" />
-            <div className="flex flex-col">
+          {/* Faction Badge & Switcher Button */}
+          <button
+            onClick={() => setShowFactionModal(true)}
+            className={`px-3 py-2 rounded-xl border flex items-center gap-2 transition-all cursor-pointer hover:scale-105 ${
+              playerFaction === "Sentinel"
+                ? "bg-cyan-950/60 border-cyan-500/40 text-cyan-300 hover:border-cyan-400 shadow-cyan-950/40"
+                : "bg-red-950/60 border-red-500/40 text-red-300 hover:border-red-400 shadow-red-950/40"
+            }`}
+            title={language === "id" ? "Klik untuk ganti Faksi / Guild" : "Click to switch Faction / Guild"}
+          >
+            <Shield className="w-4 h-4 shrink-0" />
+            <div className="flex flex-col text-left">
               <span className="text-[9px] text-slate-400 uppercase tracking-widest font-black">
-                {language === "id" ? "FAKSI UTAMA" : "CORE FACTION"}
+                {language === "id" ? "FAKSI (GANTI)" : "FACTION (SWITCH)"}
               </span>
-              <span className="text-xs font-black">{playerFaction}</span>
+              <span className="text-xs font-black flex items-center gap-1">
+                <span>{playerFaction}</span>
+                <span className="text-[9px] text-amber-400">✎</span>
+              </span>
             </div>
-          </div>
+          </button>
 
           {/* Owned Nodes Counter */}
           <div className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-2">
@@ -532,6 +628,81 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* WAR VICTORY RESET 3-DAY COUNTDOWN BANNER */}
+      {warResetCountdown && warResetCountdown.isActive && (() => {
+        const timer = formatWarResetTimer(warResetCountdown.resetAt);
+        if (timer.isExpired) return null;
+        const isSentinelWinner = warResetCountdown.winnerFaction === "Sentinel";
+
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl ${
+              isSentinelWinner
+                ? "bg-gradient-to-r from-blue-950/90 via-cyan-950/70 to-slate-950 border-cyan-500/50 shadow-cyan-950/50"
+                : "bg-gradient-to-r from-red-950/90 via-amber-950/70 to-slate-950 border-red-500/50 shadow-red-950/50"
+            }`}
+          >
+            <div className="flex items-center gap-3.5">
+              <div className={`p-3 rounded-2xl shrink-0 ${
+                isSentinelWinner ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/40" : "bg-red-500/20 text-red-400 border border-red-500/40"
+              }`}>
+                <Crown className="w-7 h-7 animate-bounce" />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                    {language === "id" ? "FASE AKHIR PERANG" : "WAR FINAL PHASE"}
+                  </span>
+                  <span className={`text-xs font-black uppercase ${isSentinelWinner ? "text-cyan-300" : "text-red-300"}`}>
+                    HQ {warResetCountdown.targetHQ === "Sentinel" ? "Sentinel Prime" : "Vanguard Prime"} {language === "id" ? "DITAKLUKKAN" : "CAPTURED"}!
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-white mt-0.5">
+                  {language === "id"
+                    ? `Markas musuh berhasil direbut oleh ${warResetCountdown.capturedByUsername || "Pemain"} (${warResetCountdown.winnerFaction})!`
+                    : `Enemy HQ captured by ${warResetCountdown.capturedByUsername || "Player"} (${warResetCountdown.winnerFaction})!`}
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  {language === "id"
+                    ? "Seluruh wilayah Beacon akan kembali Netral saat hitung mundur berakhir untuk memulai ronde perang berikutnya."
+                    : "All Beacon territories will reset to Neutral when the countdown expires to begin the next season."}
+                </p>
+              </div>
+            </div>
+
+            {/* Countdown Box */}
+            <div className="flex flex-col items-center sm:items-end shrink-0">
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold mb-1">
+                {language === "id" ? "WAKTU TERSISA SEBELUM RESET" : "TIME UNTIL WAR RESET"}
+              </span>
+              <div className="flex items-center gap-1.5 font-mono font-black">
+                <div className="px-2.5 py-1.5 rounded-xl bg-slate-950/90 border border-slate-750 text-amber-300 text-center min-w-[42px]">
+                  <span className="text-sm">{timer.days}</span>
+                  <span className="block text-[8px] text-slate-500 uppercase">{language === "id" ? "HARI" : "DAYS"}</span>
+                </div>
+                <span className="text-slate-500 font-bold">:</span>
+                <div className="px-2.5 py-1.5 rounded-xl bg-slate-950/90 border border-slate-750 text-amber-300 text-center min-w-[42px]">
+                  <span className="text-sm">{String(timer.hours).padStart(2, "0")}</span>
+                  <span className="block text-[8px] text-slate-500 uppercase">{language === "id" ? "JAM" : "HRS"}</span>
+                </div>
+                <span className="text-slate-500 font-bold">:</span>
+                <div className="px-2.5 py-1.5 rounded-xl bg-slate-950/90 border border-slate-750 text-amber-300 text-center min-w-[42px]">
+                  <span className="text-sm">{String(timer.mins).padStart(2, "0")}</span>
+                  <span className="block text-[8px] text-slate-500 uppercase">{language === "id" ? "MENIT" : "MIN"}</span>
+                </div>
+                <span className="text-slate-500 font-bold">:</span>
+                <div className="px-2.5 py-1.5 rounded-xl bg-slate-950/90 border border-slate-750 text-amber-300 text-center min-w-[42px]">
+                  <span className="text-sm">{String(timer.secs).padStart(2, "0")}</span>
+                  <span className="block text-[8px] text-slate-500 uppercase">{language === "id" ? "DETIK" : "SEC"}</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* FACTION INFLUENCE METER */}
       <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
@@ -754,7 +925,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
             </div>
             <div className="flex items-center gap-1 text-amber-400 font-bold">
               <Radio className="w-3 h-3 text-amber-400 animate-pulse" />
-              <span>5 Cores / Hari per Area</span>
+              <span>{language === "id" ? "T1: 5 | T2: 7 | T3: 10 Cores/Hari" : "T1: 5 | T2: 7 | T3: 10 Cores/Day"}</span>
             </div>
           </div>
         </div>
@@ -776,7 +947,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                         {selectedNode.element.toUpperCase()}
                       </span>
                       <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        TIER {selectedNode.tier} (5 Cores/Hari)
+                        TIER {selectedNode.tier} ({getNodeTierCores(selectedNode.tier)} Cores/Hari)
                       </span>
                       {selectedNodeCooldown > 0 && (
                         <span className="px-2 py-0.5 text-[9px] font-mono font-black rounded-full bg-amber-500 text-slate-950 flex items-center gap-1">
@@ -790,11 +961,17 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                     </h3>
                   </div>
 
-                  {selectedNode.isBase && (
-                    <span className="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black rounded-lg uppercase shrink-0">
-                      MARKAS HQ
-                    </span>
-                  )}
+                  {selectedNode.isBase ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black rounded-lg uppercase shrink-0 flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-amber-400" />
+                        <span>MARKAS HQ</span>
+                      </span>
+                      <span className="text-[9px] font-bold text-amber-400/90 font-mono">
+                        Syarat: Mythic Lv.3+
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* VISUAL COOLDOWN BANNER 1: NODE CAPTURE STABILIZATION (2 HOURS) */}
@@ -874,7 +1051,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                       {selectedNode.isActive ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          {language === "id" ? "Aktif (+5 Cores/h)" : "Active (+5 Cores/d)"}
+                          {language === "id" ? `Aktif (+${getNodeTierCores(selectedNode.tier)} Cores/h)` : `Active (+${getNodeTierCores(selectedNode.tier)} Cores/d)`}
                         </>
                       ) : (
                         <>
@@ -950,7 +1127,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                 {/* ACTION BUTTONS */}
                 <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
                   {/* 1. If Neutral or Breached -> Capture (Requires Mythic Card) */}
-                  {(!selectedNode.ownerId || selectedNode.defenseHp <= 0) && !selectedNode.isBase && (
+                  {(!selectedNode.ownerId || selectedNode.defenseHp <= 0) && (
                     <button
                       onClick={() => {
                         if (selectedAdjacentCooldown.isLocked) {
@@ -977,12 +1154,16 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                       className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
                     >
                       <Crown className="w-4 h-4" />
-                      <span>{language === "id" ? "Pasang Mythic Anchor & Klaim Area" : "Deploy Mythic Anchor & Capture"}</span>
+                      <span>
+                        {selectedNode.isBase 
+                          ? (language === "id" ? "Kuasai Markas Komando HQ (Lv.3+ & 5/5 Energy)" : "Capture Command HQ Base (Lv.3+ & 5/5 Energy)")
+                          : (language === "id" ? "Pasang Mythic Anchor & Klaim Area" : "Deploy Mythic Anchor & Capture")}
+                      </span>
                     </button>
                   )}
 
                   {/* 2. If Owned by Enemy -> Attack / Battle Garrison */}
-                  {selectedNode.ownerId && selectedNode.ownerId !== user.id && !selectedNode.isBase && (
+                  {selectedNode.ownerId && selectedNode.ownerId !== user.id && selectedNode.defenseHp > 0 && (
                     selectedAdjacentCooldown.isLocked ? (
                       <div className="w-full py-3 px-4 rounded-xl bg-slate-950 border border-rose-500/40 text-rose-300 font-bold text-xs uppercase tracking-wider flex items-center justify-between shadow-inner">
                         <div className="flex items-center gap-2">
@@ -1019,7 +1200,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                   )}
 
                   {/* 3. If Owned by Player or Friendly Faction -> Reinforce Support */}
-                  {(selectedNode.ownerId === user.id || (selectedNode.ownerFaction === playerFaction && !selectedNode.isBase)) && (
+                  {(selectedNode.ownerId === user.id || selectedNode.ownerFaction === playerFaction) && (
                     <button
                       onClick={() => {
                         setShowReinforceModal(true);
@@ -1045,112 +1226,255 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
       {/* MODAL 1: CAPTURE BEACON WITH MYTHIC ANCHOR */}
       <AnimatePresence>
-        {showCaptureModal && selectedNode && (
-          <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-amber-500/40 p-6 rounded-2xl shadow-2xl max-w-lg w-full flex flex-col gap-4 text-xs font-mono"
-            >
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-sm font-black text-white uppercase">
-                    {language === "id" ? "Aktifkan Mythic Beacon Anchor" : "Activate Mythic Beacon Anchor"}
-                  </h3>
-                </div>
-                <button 
-                  onClick={() => setShowCaptureModal(false)}
-                  className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+        {showCaptureModal && selectedNode && (() => {
+          const selectedMythicCard = userMythicCards.find(c => c.id === selectedAnchorCardId);
+          const cardLevel = selectedMythicCard?.level || 1;
+          const cardEnergy = selectedMythicCard?.energy ?? 5;
+          const isHQ = selectedNode.isBase;
+          const isHQLevelValid = !isHQ || cardLevel >= 3;
+          const isEnergyValid = isHQ ? cardEnergy === 5 : (selectedNode.tier >= 2 ? cardEnergy >= 2 : true);
+          const isEligibleToCapture = isHQLevelValid && isEnergyValid;
 
-              {captureError && (
-                <div className="p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                  <span>{captureError}</span>
-                </div>
-              )}
+          const speedBonusPct = Math.max(0, (cardLevel - 1) * 8);
+          const speedMultiplier = 1 + Math.max(0, (cardLevel - 1)) * 0.08;
+          const cooldownDurationMs = Math.max(15 * 60 * 1000, Math.round(7200000 / speedMultiplier));
+          const cooldownMins = Math.round(cooldownDurationMs / 60000);
+          const cooldownDurationStr = Math.floor(cooldownMins / 60) > 0 
+            ? `${Math.floor(cooldownMins / 60)}j ${cooldownMins % 60}m` 
+            : `${cooldownMins} menit`;
 
-              <p className="text-slate-300 leading-relaxed">
-                {language === "id"
-                  ? `Pilih 1 kartu bertingkat kelangkaan MYTHIC dari koleksimu sebagai Beacon Anchor untuk menguasai ${selectedNode.name}. Area ini akan menghasilkan 5 Nekomon Cores per hari jika supply line aktif.`
-                  : `Select 1 MYTHIC card from your inventory as Beacon Anchor to claim ${selectedNode.nameEn || selectedNode.name}. Generates 5 Cores/day when supply line is active.`}
-              </p>
+          const existingAnchoredNode = nodes.find(n => n.id !== selectedNode.id && n.anchorCard?.id === selectedAnchorCardId);
+          const tierCores = getNodeTierCores(selectedNode.tier);
 
-              {/* Mythic Cards Selection */}
-              <div className="flex flex-col gap-2">
-                <label className="font-bold text-amber-300 uppercase text-[11px]">
-                  {language === "id" ? "Pilih Kartu Mythic Anchor (*Wajib):" : "Select Mythic Anchor Card (*Required):"}
-                </label>
-
-                {userMythicCards.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1">
-                    {userMythicCards.map(c => {
-                      const isChosen = selectedAnchorCardId === c.id;
-                      return (
-                        <div
-                          key={c.id}
-                          onClick={() => setSelectedAnchorCardId(c.id)}
-                          className={`p-2 rounded-xl border cursor-pointer transition-all flex flex-col items-center text-center ${
-                            isChosen
-                              ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400"
-                              : "bg-slate-950 border-slate-800 hover:border-amber-500/40"
-                          }`}
-                        >
-                          <div className="w-full h-20 rounded-lg overflow-hidden mb-1.5 bg-slate-900">
-                            <img 
-                              src={c.imageUrl} 
-                              alt={c.name} 
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover" 
-                            />
-                          </div>
-                          <span className="font-bold text-[11px] text-white truncate w-full">{c.name}</span>
-                          <span className="text-[9px] text-amber-400 font-bold uppercase">{c.element} • Lv.{c.level || 20}</span>
-                        </div>
-                      );
-                    })}
+          return (
+            <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-slate-900 border border-amber-500/40 p-6 rounded-2xl shadow-2xl max-w-lg w-full flex flex-col gap-4 text-xs font-mono max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-sm font-black text-white uppercase">
+                      {isHQ 
+                        ? (language === "id" ? "Kuasai Markas Komando HQ" : "Claim Command HQ Base")
+                        : (language === "id" ? "Aktifkan Mythic Beacon Anchor" : "Activate Mythic Beacon Anchor")}
+                    </h3>
                   </div>
-                ) : (
-                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-center flex flex-col items-center gap-1.5">
-                    <Crown className="w-6 h-6 text-amber-400 animate-bounce" />
-                    <span className="font-bold">
+                  <button 
+                    onClick={() => setShowCaptureModal(false)}
+                    className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* HQ Badge & Requirement */}
+                {isHQ && (
+                  <div className="p-3 bg-amber-500/15 border border-amber-500/40 rounded-xl flex items-center gap-2.5 text-amber-300">
+                    <Crown className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+                    <div className="flex flex-col">
+                      <span className="font-black text-xs uppercase">MARKAS KOMANDO HQ ({selectedNode.baseFaction})</span>
+                      <span className="text-[10px] text-slate-300 leading-tight">
+                        {language === "id" 
+                          ? "Syarat Khusus HQ: Kartu Mythic minimal Level 3 & Energi Full Bar (5/5 Bar)!" 
+                          : "HQ Requirements: Mythic card Level 3+ & Full Bar Energy (5/5 Bars)!"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tier 2 / 3 Requirement Notice */}
+                {!isHQ && selectedNode.tier >= 2 && (
+                  <div className="p-2.5 bg-cyan-950/60 border border-cyan-500/30 rounded-xl flex items-center gap-2 text-cyan-300">
+                    <Zap className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span className="text-[10px]">
                       {language === "id" 
-                        ? "Kamu belum memiliki Kartu Tingkat MYTHIC!" 
-                        : "You don't own any MYTHIC cards yet!"}
-                    </span>
-                    <span className="text-[11px] text-slate-300">
-                      {language === "id"
-                        ? "Tingkatkan/Forge kartu Legend ke Mythic di Galeri, atau dapatkan dari Booster Pack di Toko. Kamu tetap dapat memperkuat wilayah dengan tombol 'Perkuat Garnisun'!"
-                        : "Forge Legend cards to Mythic in Gallery or unlock from Shop. You can still contribute by reinforcing friendly garrisons!"}
+                        ? `Beacon Tier ${selectedNode.tier} memerlukan kartu Mythic dengan energi minimal 2 Bar.`
+                        : `Tier ${selectedNode.tier} Beacon requires a Mythic card with at least 2 Energy Bars.`}
                     </span>
                   </div>
                 )}
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-                <button
-                  onClick={() => setShowCaptureModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold"
-                >
-                  {language === "id" ? "Batal" : "Cancel"}
-                </button>
-                <button
-                  onClick={handleCaptureBeacon}
-                  disabled={!selectedAnchorCardId || isSubmittingCapture}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 disabled:opacity-50 text-slate-950 font-black cursor-pointer shadow-lg"
-                >
-                  {isSubmittingCapture ? (language === "id" ? "Mengaktifkan..." : "Activating...") : (language === "id" ? "Klaim Area Sekarang" : "Claim Area Now")}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
+                {captureError && (
+                  <div className="p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>{captureError}</span>
+                  </div>
+                )}
+
+                <p className="text-slate-300 leading-relaxed">
+                  {language === "id"
+                    ? `Pilih 1 kartu bertingkat kelangkaan MYTHIC dari koleksimu sebagai Beacon Anchor untuk menguasai ${selectedNode.name}. Area Tier ${selectedNode.tier} ini akan menghasilkan ${tierCores} Nekomon Cores per hari jika supply line aktif.`
+                    : `Select 1 MYTHIC card from your inventory as Beacon Anchor to claim ${selectedNode.nameEn || selectedNode.name}. This Tier ${selectedNode.tier} node generates ${tierCores} Cores/day when supply line is active.`}
+                </p>
+
+                {/* Mythic Cards Selection */}
+                <div className="flex flex-col gap-2">
+                  <label className="font-bold text-amber-300 uppercase text-[11px] flex items-center justify-between">
+                    <span>{language === "id" ? "Pilih Kartu Mythic Anchor (*Wajib):" : "Select Mythic Anchor Card (*Required):"}</span>
+                    {isHQ && <span className="text-[10px] text-amber-400 font-bold">Min Lv.3 & 5/5 Energy</span>}
+                  </label>
+
+                  {userMythicCards.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-52 overflow-y-auto p-1">
+                      {userMythicCards.map(c => {
+                        const isChosen = selectedAnchorCardId === c.id;
+                        const cLvl = c.level || 1;
+                        const cEnergy = c.energy ?? 5;
+                        const cardLevelValid = !isHQ || cLvl >= 3;
+                        const cardEnergyValid = isHQ ? cEnergy === 5 : (selectedNode.tier >= 2 ? cEnergy >= 2 : true);
+                        const cardEligible = cardLevelValid && cardEnergyValid;
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => setSelectedAnchorCardId(c.id)}
+                            className={`p-2 rounded-xl border cursor-pointer transition-all flex flex-col items-center text-center relative ${
+                              isChosen
+                                ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400"
+                                : !cardEligible
+                                ? "bg-slate-950/60 border-slate-800 opacity-60 hover:opacity-100"
+                                : "bg-slate-950 border-slate-800 hover:border-amber-500/40"
+                            }`}
+                          >
+                            <div className="w-full h-20 rounded-lg overflow-hidden mb-1.5 bg-slate-900 relative">
+                              <img 
+                                src={c.imageUrl} 
+                                alt={c.name} 
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover" 
+                              />
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.2 rounded bg-slate-950/80 text-[8px] font-black text-amber-300 border border-amber-500/30">
+                                Lv.{cLvl}
+                              </span>
+                              <span className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-slate-950/80 text-[8px] font-black text-cyan-300 border border-cyan-500/30 flex items-center gap-0.5">
+                                <Zap className="w-2.5 h-2.5 text-cyan-400" />
+                                {cEnergy}/5
+                              </span>
+                            </div>
+                            <span className="font-bold text-[11px] text-white truncate w-full">{c.name}</span>
+                            <span className="text-[9px] text-amber-400 font-bold uppercase">{c.element}</span>
+                            
+                            {!cardEligible && (
+                              <span className="text-[7.5px] text-rose-400 font-bold mt-0.5 leading-none">
+                                {!cardLevelValid ? "Lv.<3" : "Energi Kurang"}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-center flex flex-col items-center gap-1.5">
+                      <Crown className="w-6 h-6 text-amber-400 animate-bounce" />
+                      <span className="font-bold">
+                        {language === "id" 
+                          ? "Kamu belum memiliki Kartu Tingkat MYTHIC!" 
+                          : "You don't own any MYTHIC cards yet!"}
+                      </span>
+                      <span className="text-[11px] text-slate-300">
+                        {language === "id"
+                          ? "Tingkatkan/Forge kartu Legend ke Mythic di Galeri, atau dapatkan dari Booster Pack di Toko. Kamu tetap dapat memperkuat wilayah dengan tombol 'Perkuat Garnisun'!"
+                          : "Forge Legend cards to Mythic in Gallery or unlock from Shop. You can still contribute by reinforcing friendly garrisons!"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Speed & Anchor Migration Feedback */}
+                {selectedMythicCard && (
+                  <div className="flex flex-col gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400 font-bold flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        {language === "id" ? "Kecepatan Penaklukan:" : "Capture Speed Bonus:"}
+                      </span>
+                      <span className="text-amber-300 font-black">
+                        +{speedBonusPct}% (Jeda: {cooldownDurationStr})
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 leading-tight">
+                      {language === "id"
+                        ? `Kartu ${selectedMythicCard.name} (Lv.${cardLevel}) mempercepat stabilisasi penaklukan menjadi ${cooldownDurationStr} (Standar: 2 Jam).`
+                        : `${selectedMythicCard.name} (Lv.${cardLevel}) reduces capture stabilization cooldown to ${cooldownDurationStr} (Standard: 2 Hours).`}
+                    </div>
+
+                    {/* Energy Bar visual preview */}
+                    <div className="flex items-center justify-between text-[10px] pt-1 border-t border-slate-850">
+                      <span className="text-slate-400 font-bold flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-cyan-400" />
+                        {language === "id" ? "Energi Kartu:" : "Card Energy:"}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={`w-3 h-3 rounded-full border text-[8px] flex items-center justify-center ${
+                              i < cardEnergy
+                                ? "bg-cyan-500 border-cyan-400 text-slate-950 font-black"
+                                : "bg-slate-900 border-slate-800 text-slate-600"
+                            }`}
+                          >
+                            ⚡
+                          </span>
+                        ))}
+                        <span className="ml-1 font-mono font-bold text-cyan-300">({cardEnergy}/5)</span>
+                      </div>
+                    </div>
+
+                    {/* Relocation Notice */}
+                    {existingAnchoredNode && (
+                      <div className="mt-1 p-2 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] flex items-start gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                        <span>
+                          {language === "id"
+                            ? `Perhatian: Kartu ini sedang menjadi Anchor di "${existingAnchoredNode.name}". Memasangnya di sini akan mengembalikan "${existingAnchoredNode.name}" ke status Netral!`
+                            : `Warning: This card is anchoring "${existingAnchoredNode.nameEn || existingAnchoredNode.name}". Assigning it here will reset that Beacon to Neutral!`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Validation Warnings */}
+                    {!isEligibleToCapture && (
+                      <div className="mt-1 p-2 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[10px] flex items-start gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                        <span>
+                          {isHQ && !isHQLevelValid
+                            ? (language === "id"
+                                ? `Markas HQ membutuhkan kartu Mythic minimal Level 3 (Kartu saat ini: Lv.${cardLevel}). Latih kartu ini terlebih dahulu!`
+                                : `HQ Base requires a Mythic card of Level 3+ (Selected card: Lv.${cardLevel}). Upgrade it first!`)
+                            : (language === "id"
+                                ? `Energi tidak mencukupi! ${isHQ ? "Markas HQ memerlukan energi Full Bar (5/5 bar)." : `Beacon Tier ${selectedNode.tier} memerlukan minimal 2 bar energi.`} (Energi kartu ini: ${cardEnergy}/5).`
+                                : `Insufficient energy! ${isHQ ? "HQ requires 5/5 Full Bar energy." : `Tier ${selectedNode.tier} requires at least 2 energy bars.`} (Current: ${cardEnergy}/5).`)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                  <button
+                    onClick={() => setShowCaptureModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold"
+                  >
+                    {language === "id" ? "Batal" : "Cancel"}
+                  </button>
+                  <button
+                    onClick={handleCaptureBeacon}
+                    disabled={!selectedAnchorCardId || isSubmittingCapture || !isEligibleToCapture}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 disabled:opacity-50 text-slate-950 font-black cursor-pointer shadow-lg"
+                  >
+                    {isSubmittingCapture ? (language === "id" ? "Mengaktifkan..." : "Activating...") : (language === "id" ? "Klaim Area Sekarang" : "Claim Area Now")}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* MODAL 2: TCG BATTLE ASSAULT ON GARRISON */}
@@ -1395,7 +1719,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
         )}
       </AnimatePresence>
 
-      {/* MODAL 4: FULL GAME GUIDE / SPECIFICATION MODAL */}
+      {/* MODAL 4: FULL GAME GUIDE / SPECIFICATION MODAL (7 CORE RULES) */}
       <AnimatePresence>
         {showInfoModal && (
           <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
@@ -1403,13 +1727,13 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col gap-4 text-xs font-mono max-h-[85vh] overflow-y-auto"
+              className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col gap-4 text-xs font-mono max-h-[88vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
                   <Info className="w-5 h-5 text-amber-400" />
                   <h3 className="text-sm font-black text-white uppercase">
-                    {language === "id" ? "Panduan Lengkap: Mode Capture Area & Beacon" : "Full Guide: Territory Control & Beacon War"}
+                    {language === "id" ? "Panduan Lengkap: Aturan Beacon War & Wilayah" : "Full Guide: Beacon War & Territory Rules"}
                   </h3>
                 </div>
                 <button 
@@ -1420,48 +1744,81 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                 </button>
               </div>
 
-              <div className="flex flex-col gap-4 text-slate-300 font-sans leading-relaxed">
+              <div className="flex flex-col gap-3 text-slate-300 font-sans leading-relaxed">
                 <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
                   <h4 className="font-bold text-amber-300 font-mono uppercase mb-1">
-                    1. Jaringan Beacon & Hadiah Core (5 Cores/Hari) 💎
+                    1. Pemilihan Faksi (Sentinel / Vanguard) 🛡️
                   </h4>
                   <p className="text-xs">
                     {language === "id"
-                      ? "Setiap area Beacon yang berhasil kamu kuasai akan menghasilkan 5 Nekomon Core points per hari secara pasif. Akumulasi core dapat diklaim kapan saja melalui tombol 'Klaim Core Wilayah'."
-                      : "Each captured Beacon generates 5 Nekomon Core points per day passively. Accumulated cores can be claimed anytime via the 'Claim Territory Cores' button."}
+                      ? "Pemain memilih faksi/guild Sentinel atau Vanguard sebelum berperang. Seluruh kartu Nekomon dalam koleksimu bebas bergabung dan membela faksi yang dipilih."
+                      : "Players select Sentinel or Vanguard before engaging in battle. All Nekomon cards in your collection can join and fight for your chosen faction."}
                   </p>
                 </div>
 
                 <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
                   <h4 className="font-bold text-cyan-300 font-mono uppercase mb-1">
-                    2. Syarat Kartu Mythic Anchor & Aturan Koneksi 👑
+                    2. Persebaran Jaringan Beacon Luas 🗺️
                   </h4>
                   <p className="text-xs">
                     {language === "id"
-                      ? "Hanya kartu berlevel kelangkaan MYTHIC yang dapat dipasang sebagai Beacon Anchor untuk menguasai area baru. Untuk merebut suatu Beacon, area tersebut WAJIB terhubung langsung (garis koneksi) dengan Beacon milikmu atau Markas Faksimu (Sentinel / Vanguard)."
-                      : "Only MYTHIC rarity cards can be deployed as Beacon Anchors to seal territory ownership. To capture a new Beacon, it MUST be directly connected to an existing area you own or your Faction Base (Sentinel / Vanguard)."}
+                      ? "Wilayah terbagi menjadi 22 Beacon strategis yang tersebar merata di 5 zona elemen, mulai dari Markas HQ, Outpost perbatasan, hingga Sanctuary kristal."
+                      : "The map features 22 balanced strategic Beacons spread across 5 elemental zones, spanning from HQ Bases to border outposts and crystal sanctuaries."}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <h4 className="font-bold text-yellow-400 font-mono uppercase mb-1">
+                    3. Syarat Penaklukan Markas HQ (Mythic Level 3+) 🏛️
+                  </h4>
+                  <p className="text-xs">
+                    {language === "id"
+                      ? "Markas Komando HQ Sentinel Prime maupun Vanguard Prime hanya dapat direbut menggunakan kartu tingkat MYTHIC dengan Level minimal 3 (Lv.3+)."
+                      : "Command HQ Bases (Sentinel Prime & Vanguard Prime) can only be captured using a MYTHIC card of Level 3 or higher (Lv.3+)."}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <h4 className="font-bold text-blue-400 font-mono uppercase mb-1">
+                    4. Penaklukan Beacon & Skala Kecepatan Level ⚡
+                  </h4>
+                  <p className="text-xs">
+                    {language === "id"
+                      ? "Beacon reguler dapat direbut oleh kartu Mythic level berapa saja. Semakin tinggi level kartu Mythic yang dipasang, semakin cepat proses stabilisasi dan jeda penaklukan."
+                      : "Standard Beacons can be captured by Mythic cards of any level. Higher card levels grant a speed bonus and reduce stabilization cooldowns."}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <h4 className="font-bold text-purple-400 font-mono uppercase mb-1">
+                    5. Relokasi Anchor Kartu Mythic 🔄
+                  </h4>
+                  <p className="text-xs">
+                    {language === "id"
+                      ? "Kartu Mythic yang sedang menjadi Anchor dapat digunakan untuk merebut Beacon lain. Namun, Beacon sebelumnya akan otomatis kembali ke status Netral."
+                      : "A Mythic card currently serving as an Anchor can capture a new Beacon; doing so will safely reset its previous Beacon back to Neutral."}
                   </p>
                 </div>
 
                 <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
                   <h4 className="font-bold text-red-400 font-mono uppercase mb-1">
-                    3. Mekanisme Jalur Terputus (Supply Line Cut-off) ⚠️
+                    6. Aturan Koneksi Jalur Node (Supply Line Rule) 🔗
                   </h4>
                   <p className="text-xs">
                     {language === "id"
-                      ? "Jika lawan merebut Beacon perantara dan memutuskan jalur koneksimu menuju Markas Pusat/Anchor utama, maka seluruh Beacon di hilir akan berstatus TERPUTUS (Inactive) dan BERHENTI menghasilkan Cores sampai jalur terhubung kembali."
-                      : "If an opponent captures an intermediate Beacon severing your supply line back to your Base/Root Anchor, all downstream nodes become SEVERED (Inactive) and CEASE generating Cores until reconnected."}
+                      ? "Proses merebut Beacon netral atau menyerang Beacon musuh hanya bisa dilakukan jika node tersebut terhubung langsung dengan wilayah milikmu atau Markas Faksimu."
+                      : "Capturing or attacking can only be initiated if the target node is directly connected to a territory you own or your Faction Base."}
                   </p>
                 </div>
 
                 <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
                   <h4 className="font-bold text-emerald-400 font-mono uppercase mb-1">
-                    4. Resonansi 5 Elemen Dasar (Air, Api, Tanah, Angin, Petir) ⚡
+                    7. Benefit Berjenjang (Tier 1, 2, dan 3) 💎
                   </h4>
                   <p className="text-xs">
                     {language === "id"
-                      ? "Setiap Beacon memiliki afinitas elemen khusus. Kartu yang bertanding dengan elemen yang cocok mendapatkan bonus +25% ATK/DEF (Resonansi Medan)."
-                      : "Every Beacon holds a distinct elemental affinity. Cards matching the Beacon's element receive a +25% ATK/DEF Field Resonance bonus."}
+                      ? "Setiap Tier memberikan hasil Core pasif berbeda: Tier 1 (5 Core/hari, cap 20), Tier 2 (7 Core/hari, cap 30), dan Tier 3 (10 Core/hari, cap 40)."
+                      : "Each tier yields distinct passive Cores: Tier 1 (5 Cores/day, cap 20), Tier 2 (7 Cores/day, cap 30), and Tier 3 (10 Cores/day, cap 40)."}
                   </p>
                 </div>
               </div>
@@ -1469,11 +1826,130 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
               <div className="pt-2 border-t border-slate-800 flex justify-end">
                 <button
                   onClick={() => setShowInfoModal(false)}
-                  className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl"
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl cursor-pointer"
                 >
                   {language === "id" ? "Mengerti" : "Got it"}
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 5: FACTION SELECTION MODAL */}
+      <AnimatePresence>
+        {showFactionModal && (
+          <div className="fixed inset-0 z-[3100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-lg">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl max-w-xl w-full flex flex-col gap-5 text-xs font-mono"
+            >
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    {language === "id" ? "Pilih Faksi / Guild Perang Beacon" : "Select Beacon War Faction / Guild"}
+                  </h3>
+                </div>
+                {user?.faction && (
+                  <button 
+                    onClick={() => setShowFactionModal(false)}
+                    className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <p className="text-slate-300 font-sans text-xs leading-relaxed">
+                {language === "id"
+                  ? "Tentukan faksi tempatmu bernaung dalam pertempuran perebutan Beacon. Semua kartu Nekomon dalam koleksimu dapat bergabung dan bertarung untuk faksi ini!"
+                  : "Choose your allegiance in the Beacon War. Any Nekomon card in your deck can fight on behalf of your selected faction!"}
+              </p>
+
+              {/* Faction Cards Selection */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Sentinel */}
+                <div
+                  onClick={() => !isSubmittingFaction && handleChooseFaction("Sentinel")}
+                  className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-4 group ${
+                    playerFaction === "Sentinel"
+                      ? "bg-gradient-to-b from-cyan-950/80 to-slate-950 border-cyan-400 ring-4 ring-cyan-500/20 shadow-xl shadow-cyan-950/50"
+                      : "bg-slate-950 border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900"
+                  }`}
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-black tracking-wider uppercase">
+                        GUILD SENTINEL
+                      </span>
+                      <Crown className="w-5 h-5 text-cyan-400" />
+                    </div>
+                    <h4 className="text-base font-black text-white group-hover:text-cyan-300 transition-colors">
+                      Sentinel Order
+                    </h4>
+                    <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                      {language === "id"
+                        ? "Penjaga keteraturan dan pelindung energi inti pulau. Mengutamakan pertahanan solid dan sinergi resonansi kristal."
+                        : "Guardians of order and the island's core matrix. Focused on resilient defense and crystal resonance."}
+                    </p>
+                  </div>
+                  <button
+                    disabled={isSubmittingFaction}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/20 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{playerFaction === "Sentinel" ? "✓ Faksi Aktif" : "Gabung Sentinel"}</span>
+                  </button>
+                </div>
+
+                {/* Vanguard */}
+                <div
+                  onClick={() => !isSubmittingFaction && handleChooseFaction("Vanguard")}
+                  className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-4 group ${
+                    playerFaction === "Vanguard"
+                      ? "bg-gradient-to-b from-red-950/80 to-slate-950 border-red-500 ring-4 ring-red-500/20 shadow-xl shadow-red-950/50"
+                      : "bg-slate-950 border-slate-800 hover:border-red-500/50 hover:bg-slate-900"
+                  }`}
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-black tracking-wider uppercase">
+                        GUILD VANGUARD
+                      </span>
+                      <Swords className="w-5 h-5 text-red-400" />
+                    </div>
+                    <h4 className="text-base font-black text-white group-hover:text-red-300 transition-colors">
+                      Vanguard Legion
+                    </h4>
+                    <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                      {language === "id"
+                        ? "Pasukan pelopor ekspansi dan penaklukan kilat. Mengutamakan agresi serbuan dan dominasi jalur teritori."
+                        : "Pioneers of rapid expansion and frontline dominance. Focused on aggressive assaults and territory control."}
+                    </p>
+                  </div>
+                  <button
+                    disabled={isSubmittingFaction}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-red-500/20 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{playerFaction === "Vanguard" ? "✓ Faksi Aktif" : "Gabung Vanguard"}</span>
+                  </button>
+                </div>
+
+              </div>
+
+              {user?.faction && (
+                <div className="pt-2 border-t border-slate-800 flex justify-end">
+                  <button
+                    onClick={() => setShowFactionModal(false)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl cursor-pointer"
+                  >
+                    {language === "id" ? "Tutup" : "Close"}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </div>
         )}

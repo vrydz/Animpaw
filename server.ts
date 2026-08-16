@@ -4779,184 +4779,48 @@ app.get("/api/messages/unread-count", (req, res) => {
 // =================================================================
 
 const DEFAULT_TERRITORY_NODES = [
+  // 1. Sentinel Headquarters (West Base) - Tier 3
   {
     id: "beacon-sentinel-hq",
     name: "Benteng Pusat Sentinel Alpha",
     nameEn: "Sentinel Prime Bastion Alpha",
     element: "Air",
-    x: 12,
-    y: 48,
-    lat: -6.1754,
-    lng: 106.8272,
-    connectedNodeIds: ["beacon-monas-core", "beacon-ancol-ocean", "beacon-pik-spire", "beacon-bsd-skyway"],
-    isBase: true,
-    baseFaction: "Sentinel",
-    ownerId: "sentinel-faction-core",
-    ownerName: "Sentinel High Command",
-    ownerFaction: "Sentinel",
-    ownerAvatar: "https://api.dicebear.com/7.x/bottts/svg?seed=sentinel-hq",
-    anchorCard: {
-      id: "anchor-sentinel-mythic",
-      name: "Glacier Leviathan",
-      element: "Air",
-      style: "Sentinel",
-      rarity: "Mythic",
-      hp: 350,
-      atk: 140,
-      def: 180,
-      spd: 110,
-      skillName: "Glacial Shield Sanctuary",
-      skillDesc: "Perisai es abadi yang memulihkan HP dan meningkatkan pertahanan medan +35%.",
-      imageUrl: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=80",
-      level: 25
-    },
-    garrisonDeck: [
-      {
-        id: "garr-sentinel-1",
-        name: "Frostfang Sentinel",
-        element: "Air",
-        style: "Sentinel",
-        rarity: "Legend",
-        hp: 260,
-        atk: 110,
-        def: 140,
-        spd: 95,
-        imageUrl: "https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=600&auto=format&fit=crop&q=80",
-        level: 20
-      }
-    ],
-    capturedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    lastClaimedAt: new Date().toISOString(),
-    accumulatedCores: 5,
-    isActive: true,
-    defenseHp: 200,
-    maxDefenseHp: 200,
-    tier: 3,
-    reinforcementsCount: 4,
-    descriptionId: "Markas Komando Utama faksi Sentinel. Memperkuat pertahanan medan berelemen Air & memberi suaka energi faksi.",
-    descriptionEn: "Supreme Headquarters of the Sentinel Faction. Empowers Water defense fields and faction energetic sanctuary."
-  },
-  {
-    id: "beacon-vanguard-hq",
-    name: "Benteng Pusat Vanguard Prime",
-    nameEn: "Vanguard Stronghold Prime",
-    element: "Api",
-    x: 88,
-    y: 52,
-    lat: -6.2200,
-    lng: 106.8800,
-    connectedNodeIds: ["beacon-monas-core", "beacon-kelapa-gading", "beacon-bekasi-plasma", "beacon-tmii-bastion"],
-    isBase: true,
-    baseFaction: "Vanguard",
-    ownerId: "vanguard-faction-core",
-    ownerName: "Vanguard Strike Council",
-    ownerFaction: "Vanguard",
-    ownerAvatar: "https://api.dicebear.com/7.x/bottts/svg?seed=vanguard-hq",
-    anchorCard: {
-      id: "anchor-vanguard-mythic",
-      name: "Shadowclaw Cyber-Ignis",
-      element: "Api",
-      style: "Vanguard",
-      rarity: "Mythic",
-      hp: 360,
-      atk: 195,
-      def: 125,
-      spd: 155,
-      skillName: "Infernal Overdrive",
-      skillDesc: "Ledakan api plasma dahsyat dengan 200% ATK dan efek pembakaran berkala.",
-      imageUrl: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80",
-      level: 25
-    },
-    garrisonDeck: [
-      {
-        id: "garr-vanguard-1",
-        name: "Pyroclast Vanguard",
-        element: "Api",
-        style: "Vanguard",
-        rarity: "Legend",
-        hp: 240,
-        atk: 145,
-        def: 105,
-        spd: 120,
-        imageUrl: "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=600&auto=format&fit=crop&q=80",
-        level: 20
-      }
-    ],
-    capturedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    lastClaimedAt: new Date().toISOString(),
-    accumulatedCores: 5,
-    isActive: true,
-    defenseHp: 200,
-    maxDefenseHp: 200,
-    tier: 3,
-    reinforcementsCount: 4,
-    descriptionId: "Markas Komando Utama faksi Vanguard. Menghasilkan lonjakan serangan energi Api dan strategi penaklukan agresif.",
-    descriptionEn: "Supreme Stronghold of the Vanguard Faction. Catalyzes Fire energy surges and aggressive blitzkrieg tactics."
-  },
-  {
-    id: "beacon-monas-core",
-    name: "Puncak Nexus Monas",
-    nameEn: "Monas Central Energy Nexus",
-    element: "Petir",
-    x: 50,
+    x: 6,
     y: 50,
     lat: -6.1754,
     lng: 106.8272,
-    connectedNodeIds: ["beacon-sentinel-hq", "beacon-vanguard-hq", "beacon-sudirman-tower", "beacon-senayan-nexus"],
-    isBase: false,
+    connectedNodeIds: ["beacon-pik-spire", "beacon-tangerang-ridge", "beacon-serpong-volt", "beacon-bsd-skyway"],
+    isBase: true,
+    baseFaction: "Sentinel",
     ownerId: null,
     ownerName: null,
     ownerFaction: null,
+    ownerAvatar: undefined,
     anchorCard: null,
     garrisonDeck: [],
     capturedAt: null,
     lastClaimedAt: null,
     accumulatedCores: 0,
     isActive: true,
-    defenseHp: 160,
-    maxDefenseHp: 160,
+    defenseHp: 250,
+    maxDefenseHp: 250,
     tier: 3,
     reinforcementsCount: 0,
-    descriptionId: "Pusat persimpangan petir paling strategis di pulau. Menghubungkan jalur sentral antara kedua kubu faksi besar.",
-    descriptionEn: "Most strategic lightning nexus intersection bridging central routes between both grand factions."
+    descriptionId: "Markas Komando Utama faksi Sentinel. Berstatus netral di awal permainan dan harus segera di-capture oleh kartu Mythic Lv.3+ berenergi penuh (5/5).",
+    descriptionEn: "Supreme Headquarters of the Sentinel Faction. Neutral at start; must be captured first by a Mythic card Lv.3+ with full energy (5/5)."
   },
-  {
-    id: "beacon-ancol-ocean",
-    name: "Menara Samudra Ancol",
-    nameEn: "Ancol Ocean Spire",
-    element: "Air",
-    x: 32,
-    y: 20,
-    lat: -6.1200,
-    lng: 106.8300,
-    connectedNodeIds: ["beacon-sentinel-hq", "beacon-pik-spire", "beacon-sudirman-tower"],
-    isBase: false,
-    ownerId: null,
-    ownerName: null,
-    ownerFaction: null,
-    anchorCard: null,
-    garrisonDeck: [],
-    capturedAt: null,
-    lastClaimedAt: null,
-    accumulatedCores: 0,
-    isActive: true,
-    defenseHp: 120,
-    maxDefenseHp: 120,
-    tier: 2,
-    reinforcementsCount: 0,
-    descriptionId: "Spire pesisir utara berenergi air pasang. Memberikan +20% buff stat untuk Nekomon berelemen Air.",
-    descriptionEn: "Northern coastal spire brimming with oceanic currents. Grants +20% stat buff for Water Nekomon."
-  },
+
+  // 2. PIK Coastal Sanctuary - Tier 1 (Air)
   {
     id: "beacon-pik-spire",
     name: "Suaka Pesisir PIK",
     nameEn: "PIK Coastal Sanctuary",
     element: "Air",
     x: 18,
-    y: 24,
+    y: 16,
     lat: -6.1100,
     lng: 106.7400,
-    connectedNodeIds: ["beacon-sentinel-hq", "beacon-ancol-ocean"],
+    connectedNodeIds: ["beacon-sentinel-hq", "beacon-tangerang-ridge", "beacon-ancol-ocean", "beacon-cengkareng-aero"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -4971,19 +4835,50 @@ const DEFAULT_TERRITORY_NODES = [
     maxDefenseHp: 100,
     tier: 1,
     reinforcementsCount: 0,
-    descriptionId: "Titik dermaga barat dengan gelombang energi air tenang.",
-    descriptionEn: "Western harbor outpost with calm aquatic wave currents."
+    descriptionId: "Titik dermaga pesisir barat dengan ombak tenang pelindung energi Air.",
+    descriptionEn: "Western harbor coastal outpost channeling calm protective Water waves."
   },
+
+  // 3. Tangerang Crystal Ridge - Tier 1 (Tanah)
   {
-    id: "beacon-kelapa-gading",
-    name: "Pilar Bara Kelapa Gading",
-    nameEn: "Kelapa Gading Ember Core",
-    element: "Api",
-    x: 72,
-    y: 22,
-    lat: -6.1550,
-    lng: 106.9050,
-    connectedNodeIds: ["beacon-vanguard-hq", "beacon-sudirman-tower", "beacon-bekasi-plasma"],
+    id: "beacon-tangerang-ridge",
+    name: "Punggungan Kristal Tangerang",
+    nameEn: "Tangerang Crystal Ridge",
+    element: "Tanah",
+    x: 16,
+    y: 36,
+    lat: -6.1700,
+    lng: 106.6300,
+    connectedNodeIds: ["beacon-sentinel-hq", "beacon-pik-spire", "beacon-cengkareng-aero", "beacon-serpong-volt"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 100,
+    maxDefenseHp: 100,
+    tier: 1,
+    reinforcementsCount: 0,
+    descriptionId: "Punggungan batuan geomantik yang memperkokoh jalur barat laut.",
+    descriptionEn: "Geomantic earthen crystal ridge reinforcing northwestern corridors."
+  },
+
+  // 4. Serpong Volt Substation - Tier 2 (Petir)
+  {
+    id: "beacon-serpong-volt",
+    name: "Substasi Kilat Serpong",
+    nameEn: "Serpong Volt Substation",
+    element: "Petir",
+    x: 16,
+    y: 64,
+    lat: -6.2800,
+    lng: 106.6600,
+    connectedNodeIds: ["beacon-sentinel-hq", "beacon-tangerang-ridge", "beacon-bintaro-sanctum", "beacon-bsd-skyway"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -4998,19 +4893,137 @@ const DEFAULT_TERRITORY_NODES = [
     maxDefenseHp: 120,
     tier: 2,
     reinforcementsCount: 0,
-    descriptionId: "Kubah bara vulkanik timur laut. Memperkuat serangan Nekomon berelemen Api hingga +20%.",
-    descriptionEn: "Northeastern volcanic ember dome. Amplifies Fire-element Nekomon attacks by +20%."
+    descriptionId: "Pembangkit kilat dinamis penyokong energi pertahanan barat daya.",
+    descriptionEn: "Dynamic electrical lightning substation powering southwestern sectors."
   },
+
+  // 5. BSD Skyway Gale - Tier 1 (Angin)
+  {
+    id: "beacon-bsd-skyway",
+    name: "Jalur Angin BSD Skyway",
+    nameEn: "BSD Skyway Gale Beacon",
+    element: "Angin",
+    x: 18,
+    y: 84,
+    lat: -6.3000,
+    lng: 106.6500,
+    connectedNodeIds: ["beacon-sentinel-hq", "beacon-serpong-volt", "beacon-bintaro-sanctum", "beacon-depok-verdant"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 100,
+    maxDefenseHp: 100,
+    tier: 1,
+    reinforcementsCount: 0,
+    descriptionId: "Stasiun turbin angin barat daya yang meningkatkan mobilitas dan kecepatan tempur.",
+    descriptionEn: "Southwestern wind turbine station enhancing agility and tactical speed."
+  },
+
+  // 6. Cengkareng Aero Relay - Tier 2 (Angin)
+  {
+    id: "beacon-cengkareng-aero",
+    name: "Relay Udara Cengkareng",
+    nameEn: "Cengkareng Aero Relay",
+    element: "Angin",
+    x: 28,
+    y: 32,
+    lat: -6.1400,
+    lng: 106.7200,
+    connectedNodeIds: ["beacon-pik-spire", "beacon-tangerang-ridge", "beacon-ancol-ocean", "beacon-sudirman-tower", "beacon-monas-core"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 120,
+    maxDefenseHp: 120,
+    tier: 2,
+    reinforcementsCount: 0,
+    descriptionId: "Menara relay transmisi udara strategis penghubung koridor barat ke pusat ibu kota.",
+    descriptionEn: "Strategic aerial transmission relay bridging western approaches to central hubs."
+  },
+
+  // 7. Bintaro Eco Sanctum - Tier 2 (Tanah)
+  {
+    id: "beacon-bintaro-sanctum",
+    name: "Sanctuarium Bintaro Eco",
+    nameEn: "Bintaro Eco Sanctum",
+    element: "Tanah",
+    x: 28,
+    y: 68,
+    lat: -6.2800,
+    lng: 106.7300,
+    connectedNodeIds: ["beacon-serpong-volt", "beacon-bsd-skyway", "beacon-senayan-nexus", "beacon-kemang-wind", "beacon-depok-verdant"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 120,
+    maxDefenseHp: 120,
+    tier: 2,
+    reinforcementsCount: 0,
+    descriptionId: "Suaka alam berpagar geomantik kuat penopang jalur pertahanan selatan.",
+    descriptionEn: "Nature sanctuary guarded by strong geomantic barriers supporting southern lines."
+  },
+
+  // 8. Ancol Ocean Spire - Tier 2 (Air)
+  {
+    id: "beacon-ancol-ocean",
+    name: "Menara Samudra Ancol",
+    nameEn: "Ancol Ocean Spire",
+    element: "Air",
+    x: 38,
+    y: 14,
+    lat: -6.1200,
+    lng: 106.8300,
+    connectedNodeIds: ["beacon-pik-spire", "beacon-cengkareng-aero", "beacon-sudirman-tower", "beacon-tanjung-priok"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 120,
+    maxDefenseHp: 120,
+    tier: 2,
+    reinforcementsCount: 0,
+    descriptionId: "Spire pesisir utara berenergi air pasang. Memberikan +25% buff stat untuk Nekomon berelemen Air.",
+    descriptionEn: "Northern coastal spire brimming with oceanic tides. Grants +25% field bonus for Water Nekomon."
+  },
+
+  // 9. Sudirman Megatower Hub - Tier 2 (Petir)
   {
     id: "beacon-sudirman-tower",
     name: "Megatower Sudirman Hub",
     nameEn: "Sudirman Megatower Hub",
     element: "Petir",
-    x: 50,
-    y: 30,
+    x: 42,
+    y: 32,
     lat: -6.2100,
     lng: 106.8220,
-    connectedNodeIds: ["beacon-ancol-ocean", "beacon-kelapa-gading", "beacon-monas-core"],
+    connectedNodeIds: ["beacon-cengkareng-aero", "beacon-ancol-ocean", "beacon-monas-core", "beacon-kuningan-core"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5028,16 +5041,47 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionId: "Konektor sinyal kilat ultra-tinggi yang menghubungkan kawasan metropolitan dan Monas.",
     descriptionEn: "Ultra-high voltage signal connector linking metropolitan towers and Monas."
   },
+
+  // 10. Monas Central Energy Nexus - Tier 3 (Petir)
+  {
+    id: "beacon-monas-core",
+    name: "Puncak Nexus Monas",
+    nameEn: "Monas Central Energy Nexus",
+    element: "Petir",
+    x: 50,
+    y: 50,
+    lat: -6.1754,
+    lng: 106.8272,
+    connectedNodeIds: ["beacon-cengkareng-aero", "beacon-sudirman-tower", "beacon-senayan-nexus", "beacon-kuningan-core", "beacon-kemang-wind", "beacon-cakung-steel"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 180,
+    maxDefenseHp: 180,
+    tier: 3,
+    reinforcementsCount: 0,
+    descriptionId: "Pusat persimpangan petir paling strategis di pulau (Tier 3: 10 Cores/hari). Titik perebutan utama faksi!",
+    descriptionEn: "Most strategic Tier 3 energy nexus bridging central routes (10 Cores/day). Main faction contention point!"
+  },
+
+  // 11. Senayan Biosphere Nexus - Tier 2 (Tanah)
   {
     id: "beacon-senayan-nexus",
     name: "Nexus Biosfer Senayan",
     nameEn: "Senayan Biosphere Nexus",
     element: "Tanah",
-    x: 35,
-    y: 72,
+    x: 42,
+    y: 68,
     lat: -6.2250,
     lng: 106.8000,
-    connectedNodeIds: ["beacon-monas-core", "beacon-bsd-skyway", "beacon-kemang-wind", "beacon-depok-verdant"],
+    connectedNodeIds: ["beacon-bintaro-sanctum", "beacon-monas-core", "beacon-kemang-wind", "beacon-depok-verdant"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5052,19 +5096,50 @@ const DEFAULT_TERRITORY_NODES = [
     maxDefenseHp: 120,
     tier: 2,
     reinforcementsCount: 0,
-    descriptionId: "Benteng pertahanan geomantik tanah kokoh. Memberikan bonus ketahanan +20% untuk Nekomon Tanah.",
-    descriptionEn: "Solid geomagnetic earthen bastion. Provides +20% endurance bonus for Earth Nekomon."
+    descriptionId: "Benteng pertahanan geomantik tanah kokoh. Memberikan bonus ketahanan +25% untuk Nekomon Tanah.",
+    descriptionEn: "Solid geomagnetic earthen bastion. Provides +25% endurance bonus for Earth Nekomon."
   },
+
+  // 12. Kemang Gale Vortex - Tier 2 (Angin)
   {
-    id: "beacon-bsd-skyway",
-    name: "Jalur Angin BSD Skyway",
-    nameEn: "BSD Skyway Gale Beacon",
+    id: "beacon-kemang-wind",
+    name: "Pusat Badai Kemang Gale",
+    nameEn: "Kemang Gale Vortex",
     element: "Angin",
-    x: 18,
-    y: 78,
-    lat: -6.3000,
-    lng: 106.6500,
-    connectedNodeIds: ["beacon-sentinel-hq", "beacon-senayan-nexus"],
+    x: 54,
+    y: 70,
+    lat: -6.2700,
+    lng: 106.8150,
+    connectedNodeIds: ["beacon-bintaro-sanctum", "beacon-senayan-nexus", "beacon-monas-core", "beacon-depok-verdant", "beacon-tmii-bastion"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 120,
+    maxDefenseHp: 120,
+    tier: 2,
+    reinforcementsCount: 0,
+    descriptionId: "Pusat pusaran siklon udara selatan penyuplai energi angin.",
+    descriptionEn: "Southern cyclone vortex hub providing continuous wind energy currents."
+  },
+
+  // 13. Depok Verdant Spire - Tier 1 (Tanah)
+  {
+    id: "beacon-depok-verdant",
+    name: "Spire Hutan Depok Verdant",
+    nameEn: "Depok Verdant Spire",
+    element: "Tanah",
+    x: 45,
+    y: 90,
+    lat: -6.4000,
+    lng: 106.8200,
+    connectedNodeIds: ["beacon-bsd-skyway", "beacon-bintaro-sanctum", "beacon-senayan-nexus", "beacon-kemang-wind", "beacon-tmii-bastion"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5079,19 +5154,50 @@ const DEFAULT_TERRITORY_NODES = [
     maxDefenseHp: 100,
     tier: 1,
     reinforcementsCount: 0,
-    descriptionId: "Stasiun turbin angin barat daya yang meningkatkan kecepatan tempur.",
-    descriptionEn: "Southwestern wind turbine station enhancing tactical speed."
+    descriptionId: "Hutan rimbun selatan berenergi kristal bumi pelindung (Tier 1: 5 Cores/hari).",
+    descriptionEn: "Lush southern woodland infused with protective earthen crystals (Tier 1: 5 Cores/day)."
   },
+
+  // 14. Tanjung Priok Harbor Bastion - Tier 1 (Air)
   {
-    id: "beacon-kemang-wind",
-    name: "Pusat Badai Kemang Gale",
-    nameEn: "Kemang Gale Vortex",
-    element: "Angin",
-    x: 48,
-    y: 82,
-    lat: -6.2700,
-    lng: 106.8150,
-    connectedNodeIds: ["beacon-senayan-nexus", "beacon-depok-verdant", "beacon-tmii-bastion"],
+    id: "beacon-tanjung-priok",
+    name: "Dermaga Armada Tanjung Priok",
+    nameEn: "Tanjung Priok Harbor Bastion",
+    element: "Air",
+    x: 62,
+    y: 14,
+    lat: -6.1000,
+    lng: 106.8800,
+    connectedNodeIds: ["beacon-ancol-ocean", "beacon-pulomas-solar", "beacon-kelapa-gading"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 100,
+    maxDefenseHp: 100,
+    tier: 1,
+    reinforcementsCount: 0,
+    descriptionId: "Dermaga armada laut utara penghubung jalur maritim pesisir timur.",
+    descriptionEn: "Northern sea armada harbor connecting eastern maritime routes."
+  },
+
+  // 15. Kuningan Cyber Core - Tier 2 (Petir)
+  {
+    id: "beacon-kuningan-core",
+    name: "Siber Matriks Kuningan",
+    nameEn: "Kuningan Cyber Core",
+    element: "Petir",
+    x: 58,
+    y: 32,
+    lat: -6.2200,
+    lng: 106.8300,
+    connectedNodeIds: ["beacon-sudirman-tower", "beacon-monas-core", "beacon-pulomas-solar", "beacon-cakung-steel"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5106,19 +5212,108 @@ const DEFAULT_TERRITORY_NODES = [
     maxDefenseHp: 120,
     tier: 2,
     reinforcementsCount: 0,
-    descriptionId: "Pusat pusaran siklon udara selatan. Memberikan buff +20% SPD & ATK untuk Nekomon Angin.",
-    descriptionEn: "Southern cyclone vortex hub. Grants +20% SPD & ATK buff for Wind Nekomon."
+    descriptionId: "Matriks siber pusat dengan aliran data listrik berkecepatan tinggi.",
+    descriptionEn: "Central cyber matrix with high-speed electrical data conduits."
   },
+
+  // 16. Pulomas Solar Spire - Tier 1 (Api)
+  {
+    id: "beacon-pulomas-solar",
+    name: "Pilar Surya Pulomas",
+    nameEn: "Pulomas Solar Spire",
+    element: "Api",
+    x: 72,
+    y: 32,
+    lat: -6.1700,
+    lng: 106.8800,
+    connectedNodeIds: ["beacon-tanjung-priok", "beacon-kuningan-core", "beacon-kelapa-gading", "beacon-cakung-steel"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 100,
+    maxDefenseHp: 100,
+    tier: 1,
+    reinforcementsCount: 0,
+    descriptionId: "Pilar tenaga surya berkekuatan radiasi api stabil.",
+    descriptionEn: "Solar power spire channeling stable radiant Fire energy."
+  },
+
+  // 17. Kelapa Gading Ember Core - Tier 2 (Api)
+  {
+    id: "beacon-kelapa-gading",
+    name: "Pilar Bara Kelapa Gading",
+    nameEn: "Kelapa Gading Ember Core",
+    element: "Api",
+    x: 82,
+    y: 16,
+    lat: -6.1550,
+    lng: 106.9050,
+    connectedNodeIds: ["beacon-tanjung-priok", "beacon-pulomas-solar", "beacon-vanguard-hq", "beacon-cakung-steel"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 120,
+    maxDefenseHp: 120,
+    tier: 2,
+    reinforcementsCount: 0,
+    descriptionId: "Kubah bara vulkanik timur laut penyokong faksi Vanguard (Tier 2: 7 Cores/hari).",
+    descriptionEn: "Northeastern volcanic ember dome bolstering Vanguard territory (Tier 2: 7 Cores/day)."
+  },
+
+  // 18. Cakung Steel Nexus - Tier 2 (Petir)
+  {
+    id: "beacon-cakung-steel",
+    name: "Nexus Baja Cakung",
+    nameEn: "Cakung Steel Nexus",
+    element: "Petir",
+    x: 72,
+    y: 50,
+    lat: -6.1900,
+    lng: 106.9400,
+    connectedNodeIds: ["beacon-monas-core", "beacon-kuningan-core", "beacon-pulomas-solar", "beacon-cibubur-flame", "beacon-vanguard-hq"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 120,
+    maxDefenseHp: 120,
+    tier: 2,
+    reinforcementsCount: 0,
+    descriptionId: "Nexus industri baja timur penghubung sentral langsung ke Markas Vanguard.",
+    descriptionEn: "Eastern steel nexus directly connecting central corridors to Vanguard HQ."
+  },
+
+  // 19. TMII Heritage Bastion - Tier 2 (Tanah)
   {
     id: "beacon-tmii-bastion",
     name: "Bastion Budaya TMII",
     nameEn: "TMII Heritage Bastion",
     element: "Tanah",
-    x: 68,
-    y: 76,
+    x: 65,
+    y: 78,
     lat: -6.3000,
     lng: 106.8900,
-    connectedNodeIds: ["beacon-vanguard-hq", "beacon-kemang-wind", "beacon-bekasi-plasma", "beacon-depok-verdant"],
+    connectedNodeIds: ["beacon-kemang-wind", "beacon-depok-verdant", "beacon-cibubur-flame", "beacon-bekasi-plasma"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5136,16 +5331,47 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionId: "Benteng monumen geo-energi tenggara yang kaya akan pertahanan tanah alami.",
     descriptionEn: "Southeastern geo-energy monument rich in natural earthen defense fortifications."
   },
+
+  // 20. Cibubur Flame Sanctuary - Tier 2 (Api)
+  {
+    id: "beacon-cibubur-flame",
+    name: "Suaka Api Cibubur",
+    nameEn: "Cibubur Flame Sanctuary",
+    element: "Api",
+    x: 82,
+    y: 64,
+    lat: -6.3700,
+    lng: 106.9000,
+    connectedNodeIds: ["beacon-cakung-steel", "beacon-tmii-bastion", "beacon-bekasi-plasma", "beacon-vanguard-hq"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 120,
+    maxDefenseHp: 120,
+    tier: 2,
+    reinforcementsCount: 0,
+    descriptionId: "Suaka api keramat di tenggara penjaga gerbang benteng Vanguard.",
+    descriptionEn: "Sacred flame sanctuary guarding southeastern Vanguard gateway approaches."
+  },
+
+  // 21. Bekasi Plasma Array - Tier 1 (Petir)
   {
     id: "beacon-bekasi-plasma",
     name: "Array Plasma Bekasi",
     nameEn: "Bekasi Plasma Array",
     element: "Petir",
     x: 84,
-    y: 80,
+    y: 84,
     lat: -6.2400,
     lng: 106.9900,
-    connectedNodeIds: ["beacon-vanguard-hq", "beacon-kelapa-gading", "beacon-tmii-bastion"],
+    connectedNodeIds: ["beacon-tmii-bastion", "beacon-cibubur-flame", "beacon-vanguard-hq"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5160,62 +5386,128 @@ const DEFAULT_TERRITORY_NODES = [
     maxDefenseHp: 100,
     tier: 1,
     reinforcementsCount: 0,
-    descriptionId: "Pembangkit medan listrik industri di timur dengan aliran petir tak terbatas.",
-    descriptionEn: "Eastern industrial lightning generator with continuous plasma surges."
+    descriptionId: "Pembangkit medan listrik industri di timur dengan aliran petir tak terbatas (Tier 1: 5 Cores/hari).",
+    descriptionEn: "Eastern industrial lightning generator with continuous plasma surges (Tier 1: 5 Cores/day)."
   },
+
+  // 22. Vanguard Stronghold Prime (East Base) - Tier 3
   {
-    id: "beacon-depok-verdant",
-    name: "Spire Hutan Depok Verdant",
-    nameEn: "Depok Verdant Spire",
-    element: "Tanah",
-    x: 58,
-    y: 92,
-    lat: -6.4000,
-    lng: 106.8200,
-    connectedNodeIds: ["beacon-senayan-nexus", "beacon-kemang-wind", "beacon-tmii-bastion"],
-    isBase: false,
+    id: "beacon-vanguard-hq",
+    name: "Benteng Pusat Vanguard Prime",
+    nameEn: "Vanguard Stronghold Prime",
+    element: "Api",
+    x: 94,
+    y: 50,
+    lat: -6.2200,
+    lng: 106.8800,
+    connectedNodeIds: ["beacon-kelapa-gading", "beacon-cakung-steel", "beacon-cibubur-flame", "beacon-bekasi-plasma"],
+    isBase: true,
+    baseFaction: "Vanguard",
     ownerId: null,
     ownerName: null,
     ownerFaction: null,
+    ownerAvatar: undefined,
     anchorCard: null,
     garrisonDeck: [],
     capturedAt: null,
     lastClaimedAt: null,
     accumulatedCores: 0,
     isActive: true,
-    defenseHp: 100,
-    maxDefenseHp: 100,
-    tier: 1,
+    defenseHp: 250,
+    maxDefenseHp: 250,
+    tier: 3,
     reinforcementsCount: 0,
-    descriptionId: "Hutan rimbun selatan dengan kristal bumi pelindung.",
-    descriptionEn: "Lush southern woodland infused with protective earthen crystals."
+    descriptionId: "Markas Komando Utama faksi Vanguard. Berstatus netral di awal permainan dan harus segera di-capture oleh kartu Mythic Lv.3+ berenergi penuh (5/5).",
+    descriptionEn: "Supreme Stronghold of the Vanguard Faction. Neutral at start; must be captured first by a Mythic card Lv.3+ with full energy (5/5)."
   }
 ];
 
-// Helper: Ensure territory nodes exist
+// Helper: Ensure territory nodes exist and are seamlessly updated & handle 3-day war countdown reset
 function getInitializedTerritoryNodes(db: any) {
+  const now = Date.now();
+
+  // Check if 3-day countdown expired to reset all beacon areas to neutral
+  if (db.territoryWarResetCountdown) {
+    const countdownEnd = new Date(db.territoryWarResetCountdown.countdownUntil).getTime();
+    if (now >= countdownEnd) {
+      // 3 Days elapsed! Reset all territory nodes back to neutral and restart Beacon War!
+      if (Array.isArray(db.territoryNodes)) {
+        db.territoryNodes.forEach((node: any) => {
+          node.ownerId = null;
+          node.ownerName = null;
+          node.ownerFaction = null;
+          node.ownerAvatar = undefined;
+          node.anchorCard = null;
+          node.garrisonDeck = [];
+          node.capturedAt = null;
+          node.lastClaimedAt = null;
+          node.accumulatedCores = 0;
+          node.cooldownUntil = null;
+          node.defenseHp = node.maxDefenseHp || (node.isBase ? 250 : node.tier === 3 ? 180 : 120);
+          node.reinforcementsCount = 0;
+        });
+      }
+      db.territoryWarResetHistory = db.territoryWarResetHistory || [];
+      db.territoryWarResetHistory.push({
+        ...db.territoryWarResetCountdown,
+        completedAt: new Date(now).toISOString()
+      });
+      db.territoryWarResetCountdown = null;
+    }
+  }
+
   if (!db.territoryNodes || !Array.isArray(db.territoryNodes) || db.territoryNodes.length === 0) {
     db.territoryNodes = JSON.parse(JSON.stringify(DEFAULT_TERRITORY_NODES));
+  } else {
+    // Check if new nodes need to be merged in & clear legacy dummy owners
+    const existingMap = new Map<string, any>(db.territoryNodes.map((n: any) => [n.id, n]));
+    const merged = DEFAULT_TERRITORY_NODES.map((defNode: any) => {
+      const existing: any = existingMap.get(defNode.id);
+      if (existing) {
+        // Cleanse legacy dummy owner strings if any
+        if (existing.ownerId === "sentinel-faction-core" || existing.ownerId === "vanguard-faction-core") {
+          existing.ownerId = null;
+          existing.ownerName = null;
+          existing.ownerFaction = null;
+          existing.ownerAvatar = undefined;
+          existing.anchorCard = null;
+          existing.garrisonDeck = [];
+          existing.capturedAt = null;
+          existing.lastClaimedAt = null;
+          existing.accumulatedCores = 0;
+          existing.reinforcementsCount = 0;
+        }
+        return {
+          ...defNode,
+          ...existing,
+          x: defNode.x,
+          y: defNode.y,
+          connectedNodeIds: defNode.connectedNodeIds,
+          tier: defNode.tier,
+          element: defNode.element,
+          isBase: defNode.isBase,
+          baseFaction: defNode.baseFaction,
+          name: defNode.name,
+          nameEn: defNode.nameEn
+        };
+      }
+      return JSON.parse(JSON.stringify(defNode));
+    });
+    db.territoryNodes = merged;
   }
   return db.territoryNodes;
 }
 
-// Graph Algorithm: Evaluate supply lines for all nodes
-// A node is active if there is a connected path back to either:
-// 1. A base node of the same faction, OR
-// 2. The player's initial root anchor node
+// Graph Algorithm: Evaluate supply lines & tiered core accumulation for all nodes
 function evaluateSupplyLinesAndCores(nodes: any[]) {
   const nodeMap = new Map<string, any>();
   nodes.forEach(n => nodeMap.set(n.id, n));
 
   const now = Date.now();
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
-  const CORES_PER_DAY = 5;
 
-  // Find all bases / active roots for Sentinel, Vanguard, and individual players
+  // Run BFS from owned bases
   const activeNodesSet = new Set<string>();
-
-  // Run BFS from bases
   const baseNodes = nodes.filter(n => n.isBase && n.ownerId);
   baseNodes.forEach(base => {
     activeNodesSet.add(base.id);
@@ -5231,7 +5523,6 @@ function evaluateSupplyLinesAndCores(nodes: any[]) {
         const neighbor = nodeMap.get(neighborId);
         if (!neighbor || visited.has(neighborId)) return;
 
-        // Same owner or same faction connection
         const sameOwner = neighbor.ownerId && neighbor.ownerId === curr.ownerId;
         const sameFaction = neighbor.ownerFaction && neighbor.ownerFaction === curr.ownerFaction;
 
@@ -5244,7 +5535,8 @@ function evaluateSupplyLinesAndCores(nodes: any[]) {
     }
   });
 
-  // Update isActive and compute accumulated cores (5 cores / 24 hours)
+  // Update isActive and compute tiered core accumulation:
+  // Tier 1 (5 cores/day), Tier 2 (7 cores/day), Tier 3 (10 cores/day)
   nodes.forEach(node => {
     if (node.isBase) {
       node.isActive = true;
@@ -5254,24 +5546,25 @@ function evaluateSupplyLinesAndCores(nodes: any[]) {
       node.isActive = activeNodesSet.has(node.id);
     }
 
-    // Core accumulation calculation
+    // Tiered Core generation calculation
+    const coresPerDay = node.tier === 3 ? 10 : node.tier === 2 ? 7 : 5;
+    const maxCap = node.tier === 3 ? 40 : node.tier === 2 ? 30 : 20;
+
     if (node.ownerId && node.isActive && node.capturedAt) {
       const lastClaim = node.lastClaimedAt ? new Date(node.lastClaimedAt).getTime() : new Date(node.capturedAt).getTime();
       const elapsed = Math.max(0, now - lastClaim);
       const daysElapsed = elapsed / MS_PER_DAY;
-      // 5 cores per day, max cap 25 accumulated per node
-      const generated = Math.min(25, Math.floor(daysElapsed * CORES_PER_DAY * 10) / 10);
+      const generated = Math.min(maxCap, Math.floor(daysElapsed * coresPerDay * 10) / 10);
       node.accumulatedCores = (node.accumulatedCores || 0) + generated;
-      // Normalize timestamp to last calculated chunk
       node.lastClaimedAt = new Date(now).toISOString();
     }
   });
 }
 
-// Territory Node Capture Cooldown: 2 hours to prevent rapid expansion
+// Territory Node Base Capture Cooldown: 2 hours (scaled down by card level)
 const TERRITORY_CAPTURE_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
-// 1. Get all territory nodes
+// 1. Get all territory nodes & user faction status
 app.get("/api/territory/nodes", (req, res) => {
   const db = readDB();
   const nodes = getInitializedTerritoryNodes(db);
@@ -5287,25 +5580,17 @@ app.get("/api/territory/nodes", (req, res) => {
 
   // Populate cooldown fields on each node
   nodes.forEach(node => {
-    if (node.capturedAt) {
-      const cooldownEnd = node.cooldownUntil
-        ? new Date(node.cooldownUntil).getTime()
-        : new Date(node.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    if (node.capturedAt && node.cooldownUntil) {
+      const cooldownEnd = new Date(node.cooldownUntil).getTime();
       const remainingSec = Math.max(0, Math.ceil((cooldownEnd - now) / 1000));
       node.cooldownRemainingSeconds = remainingSec;
-      node.cooldownUntil = new Date(cooldownEnd).toISOString();
     } else {
       node.cooldownRemainingSeconds = 0;
-      node.cooldownUntil = null;
     }
   });
 
   if (user) {
-    // Derive faction from user style or dominant cards
-    const userCards = (db.cards || []).filter((c: any) => c.userId === user.id);
-    const sentinelCount = userCards.filter((c: any) => c.style === "Sentinel").length;
-    const vanguardCount = userCards.filter((c: any) => c.style === "Vanguard").length;
-    playerFaction = vanguardCount > sentinelCount ? "Vanguard" : "Sentinel";
+    playerFaction = user.faction || null;
 
     // Calculate total unclaimed cores owned by this user & check adjacent cooldown lock
     nodes.forEach(n => {
@@ -5332,16 +5617,52 @@ app.get("/api/territory/nodes", (req, res) => {
     });
   }
 
+  // Active 3-Day War Reset Countdown Info
+  let warResetCountdown: any = null;
+  if (db.territoryWarResetCountdown) {
+    const countdownEnd = new Date(db.territoryWarResetCountdown.countdownUntil).getTime();
+    const remainingSec = Math.max(0, Math.ceil((countdownEnd - now) / 1000));
+    warResetCountdown = {
+      ...db.territoryWarResetCountdown,
+      remainingSeconds: remainingSec
+    };
+  }
+
   res.json({
     success: true,
     nodes,
     playerFaction,
+    userFaction: user ? user.faction : null,
     playerUnclaimedCores: Math.round(playerUnclaimedCores * 10) / 10,
-    playerNodesCount
+    playerNodesCount,
+    warResetCountdown
   });
 });
 
-// 2. Capture a Beacon Node
+// 2. Select or Switch Faction (Sentinel or Vanguard)
+app.post("/api/territory/choose-faction", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized. Silakan login terlebih dahulu." });
+  }
+
+  const { faction } = req.body;
+  if (faction !== "Sentinel" && faction !== "Vanguard") {
+    return res.status(400).json({ error: "Faksi tidak valid. Pilih Sentinel atau Vanguard." });
+  }
+
+  user.faction = faction;
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: `Selamat bergabung dengan Faksi ${faction}! Semua kartu Nekomon milikmu siap bertempur untuk ${faction}.`,
+    faction: user.faction
+  });
+});
+
+// 3. Capture a Beacon Node (Enforcing Mythic requirement, HQ Lv3+ requirement, Full 5-Bar Energy for HQ, 2-Bar Energy for T2/T3, Speed bonus, Anchor migration, Connection rules & 3-Day war countdown)
 app.post("/api/territory/capture", (req, res) => {
   const db = readDB();
   const user = getAuthUser(req, db);
@@ -5360,10 +5681,6 @@ app.post("/api/territory/capture", (req, res) => {
     return res.status(404).json({ error: "Node Beacon tidak ditemukan di peta." });
   }
 
-  if (targetNode.isBase) {
-    return res.status(400).json({ error: "Markas Benteng Pusat (Base HQ) tidak dapat direbut langsung!" });
-  }
-
   // Verify Mythic Card Ownership
   const userCards = (db.cards || []).filter((c: any) => c.userId === user.id);
   const mythicCard = userCards.find((c: any) => c.id === anchorCardId);
@@ -5378,67 +5695,122 @@ app.post("/api/territory/capture", (req, res) => {
     });
   }
 
-  // Derive player faction
-  const sentinelCount = userCards.filter((c: any) => c.style === "Sentinel").length;
-  const vanguardCount = userCards.filter((c: any) => c.style === "Vanguard").length;
-  const playerFaction: "Sentinel" | "Vanguard" = mythicCard.style || (vanguardCount > sentinelCount ? "Vanguard" : "Sentinel");
+  // Update card energy before checking
+  updateCardEnergy(mythicCard);
+  const cardLevel = mythicCard.level || 1;
+  const currentCardEnergy = mythicCard.energy ?? 5;
 
-  // Connection Rule Verification:
-  // Must be directly connected to a node owned by the player OR connected to their faction's HQ base
-  const connectedNodes = nodes.filter(n => (targetNode.connectedNodeIds || []).includes(n.id));
-  const hasValidConnection = connectedNodes.some(neighbor => {
-    // Check if neighbor is owned by this player
-    if (neighbor.ownerId === user.id) return true;
-    // Check if neighbor is faction base
-    if (neighbor.isBase && neighbor.baseFaction === playerFaction) return true;
-    // Check if neighbor is owned by same faction and active
-    if (neighbor.ownerFaction === playerFaction && neighbor.isActive) return true;
-    return false;
-  });
+  // Rule 3 (Part A): Markas HQ (T3 Base) Harus di-capture oleh kartu Nekomon Mythic level minimal 3 & Energi Full Bar (5/5)
+  if (targetNode.isBase) {
+    if (cardLevel < 3) {
+      return res.status(400).json({
+        error: `Markas Komando HQ ${targetNode.name} adalah benteng komando utama dan hanya dapat dikuasai oleh kartu Nekomon Mythic dengan level minimal 3 (Lv.3+)! (Kartu ini Lv.${cardLevel}). Silakan latih / tingkatkan level kartu Mythic milikmu terlebih dahulu.`
+      });
+    }
 
-  if (!hasValidConnection) {
-    return res.status(400).json({
-      error: "Aturan Koneksi: Kamu hanya dapat merebut area yang terhubung langsung dengan Beacon milikmu atau Markas Faksimu!"
+    if (currentCardEnergy < 5) {
+      return res.status(400).json({
+        error: `Syarat Energi Penuh Markas HQ: Untuk menguasai Markas Komando HQ, energi kartu Nekomon Mythic harus FULL BAR (5/5). Energi kartu ini saat ini: ${currentCardEnergy}/5 bar.`
+      });
+    }
+  } else if (targetNode.tier >= 2) {
+    // Rule 3 (Part B): Beacon T2 dan T3 membutuhkan kartu Nekomon Mythic dengan energi minimal 2 bar
+    if (currentCardEnergy < 2) {
+      return res.status(400).json({
+        error: `Syarat Energi Beacon Tier ${targetNode.tier}: Untuk merebut Beacon Tier ${targetNode.tier}, kartu Nekomon Mythic minimal harus memiliki 2 bar energi! (Energi kartu saat ini: ${currentCardEnergy}/5 bar).`
+      });
+    }
+  }
+
+  // Player Faction
+  const playerFaction: "Sentinel" | "Vanguard" = user.faction || "Sentinel";
+
+  // Rule 1 & 6: Proses capturing beacon harus terhubung dengan Markas HQ atau wilayah yang sudah dikuasai
+  const isDirectOwnFactionHQ = targetNode.isBase && targetNode.baseFaction === playerFaction;
+
+  if (!isDirectOwnFactionHQ) {
+    // Non-starting HQ nodes require that the player's faction already owns their own HQ or active territory
+    const ownFactionHQ = nodes.find(n => n.isBase && n.baseFaction === playerFaction);
+    const isOwnHQCaptured = ownFactionHQ && ownFactionHQ.ownerFaction === playerFaction && ownFactionHQ.ownerId;
+
+    if (!isOwnHQCaptured) {
+      return res.status(400).json({
+        error: `Markas Komando ${playerFaction} Prime berstatus netral dan belum dikuasai! Faksi ${playerFaction} harus merebut Markas Komando HQ terlebih dahulu sebagai titik awal sebelum dapat menguasai Beacon lainnya.`
+      });
+    }
+
+    const connectedNodes = nodes.filter(n => (targetNode.connectedNodeIds || []).includes(n.id));
+    const hasValidConnection = connectedNodes.some(neighbor => {
+      // Check if neighbor is owned by this player
+      if (neighbor.ownerId === user.id) return true;
+      // Check if neighbor is faction base owned by player's faction
+      if (neighbor.isBase && neighbor.baseFaction === playerFaction && neighbor.ownerFaction === playerFaction && neighbor.ownerId) return true;
+      // Check if neighbor is owned by same faction and active
+      if (neighbor.ownerFaction === playerFaction && neighbor.isActive && neighbor.ownerId) return true;
+      return false;
     });
+
+    if (!hasValidConnection) {
+      return res.status(400).json({
+        error: "Aturan Jalur Terhubung: Kamu hanya dapat merebut Beacon yang terhubung langsung dengan Beacon aktif milikmu atau sekutu faksimu!"
+      });
+    }
   }
 
   // Check if any adjacent node owned by player is currently under capture cooldown
   const now = Date.now();
+  const connectedNodes = nodes.filter(n => (targetNode.connectedNodeIds || []).includes(n.id));
   const activeCooldownAdjacent = connectedNodes.find(adj => {
     if (adj.ownerId !== user.id) return false;
-    if (!adj.capturedAt && !adj.cooldownUntil) return false;
-    const cooldownEnd = adj.cooldownUntil
-      ? new Date(adj.cooldownUntil).getTime()
-      : new Date(adj.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    if (!adj.cooldownUntil) return false;
+    const cooldownEnd = new Date(adj.cooldownUntil).getTime();
     return cooldownEnd > now;
   });
 
   if (activeCooldownAdjacent) {
-    const cooldownEnd = activeCooldownAdjacent.cooldownUntil
-      ? new Date(activeCooldownAdjacent.cooldownUntil).getTime()
-      : new Date(activeCooldownAdjacent.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    const cooldownEnd = new Date(activeCooldownAdjacent.cooldownUntil!).getTime();
     const remainingSec = Math.ceil((cooldownEnd - now) / 1000);
     const hours = Math.floor(remainingSec / 3600);
     const mins = Math.floor((remainingSec % 3600) / 60);
     const secs = remainingSec % 60;
     const timeStr = `${hours > 0 ? `${hours} jam ` : ""}${mins} menit ${secs} detik`;
     return res.status(400).json({
-      error: `Jeda Penaklukan Teritori Aktif (2 Jam): Node terhubung "${activeCooldownAdjacent.name}" baru saja direbut. Harap tunggu ${timeStr} sebelum merebut node sekitar.`
+      error: `Jeda Penaklukan Aktif: Node terhubung "${activeCooldownAdjacent.name}" baru saja direbut. Harap tunggu ${timeStr} sebelum merebut node sekitar.`
     });
   }
 
-  // Node Cap per player (Prevent monopoly): Max 1 + (Number of Mythic cards owned * 2)
-  const mythicCardsOwned = userCards.filter((c: any) => c.rarity === "Mythic").length;
-  const maxAllowedNodes = Math.max(2, 1 + (mythicCardsOwned * 2));
-  const currentlyOwnedCount = nodes.filter(n => n.ownerId === user.id).length;
+  // Rule 5: Kartu mythic yang digunakan sebagai Anchor bisa dipakai untuk Capture Beacon lain, namun beacon sebelumnya akan kembali netral.
+  const previousAnchoredNode = nodes.find(
+    n => n.id !== targetNode.id && n.anchorCard && n.anchorCard.id === mythicCard.id
+  );
 
-  if (currentlyOwnedCount >= maxAllowedNodes && targetNode.ownerId !== user.id) {
-    return res.status(400).json({
-      error: `Batas Wilayah Tercapai: Kapasitas maksimum penguasaan nodemu saat ini adalah ${maxAllowedNodes} Beacon (Berdasarkan jumlah kartu Mythic milikmu).`
-    });
+  let previousNodeNeutralizedName: string | null = null;
+  if (previousAnchoredNode) {
+    previousNodeNeutralizedName = previousAnchoredNode.name;
+    previousAnchoredNode.ownerId = null;
+    previousAnchoredNode.ownerName = null;
+    previousAnchoredNode.ownerFaction = null;
+    previousAnchoredNode.ownerAvatar = undefined;
+    previousAnchoredNode.anchorCard = null;
+    previousAnchoredNode.garrisonDeck = [];
+    previousAnchoredNode.capturedAt = null;
+    previousAnchoredNode.lastClaimedAt = null;
+    previousAnchoredNode.accumulatedCores = 0;
+    previousAnchoredNode.cooldownUntil = null;
+    previousAnchoredNode.defenseHp = previousAnchoredNode.maxDefenseHp || 100;
+    previousAnchoredNode.reinforcementsCount = 0;
   }
 
-  // Prepare Garrison Deck (Anchor Mythic + optional 1-2 support cards)
+  // Rule 4: Semakin besar levelnya, semakin cepat proses capturenya (Jeda stabilisasi dipersingkat)
+  // Base cooldown: 7200s (2 jam). Each level above 1 provides +8% speed bonus.
+  const speedMultiplier = 1 + Math.max(0, (cardLevel - 1)) * 0.08;
+  const cooldownDurationMs = Math.max(15 * 60 * 1000, Math.round(TERRITORY_CAPTURE_COOLDOWN_MS / speedMultiplier));
+
+  // Deduct 1 bar energy for anchoring / capturing
+  mythicCard.energy = Math.max(0, currentCardEnergy - 1);
+  mythicCard.lastEnergyRefillAt = new Date().toISOString();
+
+  // Prepare Garrison Deck
   const garrisonDeck: any[] = [];
   if (Array.isArray(garrisonCardIds)) {
     garrisonCardIds.forEach((cId: string) => {
@@ -5449,7 +5821,7 @@ app.post("/api/territory/capture", (req, res) => {
     });
   }
 
-  // Assign ownership & set 2-hour capture cooldown
+  // Assign ownership & set capture cooldown based on speed multiplier
   targetNode.ownerId = user.id;
   targetNode.ownerName = user.username;
   targetNode.ownerFaction = playerFaction;
@@ -5457,25 +5829,61 @@ app.post("/api/territory/capture", (req, res) => {
   targetNode.anchorCard = mythicCard;
   targetNode.garrisonDeck = garrisonDeck;
   targetNode.capturedAt = new Date().toISOString();
-  targetNode.cooldownUntil = new Date(Date.now() + TERRITORY_CAPTURE_COOLDOWN_MS).toISOString();
+  targetNode.cooldownUntil = new Date(Date.now() + cooldownDurationMs).toISOString();
   targetNode.lastClaimedAt = new Date().toISOString();
-  targetNode.accumulatedCores = 0; // Starts fresh
-  targetNode.defenseHp = targetNode.maxDefenseHp || 120;
+  targetNode.accumulatedCores = 0;
+  targetNode.defenseHp = targetNode.maxDefenseHp || (targetNode.isBase ? 250 : targetNode.tier === 3 ? 180 : 120);
   targetNode.reinforcementsCount = 0;
+
+  // Rule 2: Setelah salah satu markas HQ berhasil di-capture oleh lawan, muncul countdown timer 3 hari sebelum semua area kembali netral
+  let warCountdownTriggered = false;
+  if (targetNode.isBase) {
+    if (targetNode.baseFaction && playerFaction !== targetNode.baseFaction) {
+      // Enemy Base Captured! Trigger 3-Day War Victory Reset Countdown
+      const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+      db.territoryWarResetCountdown = {
+        capturedHQId: targetNode.id,
+        capturedHQName: targetNode.name,
+        capturedHQNameEn: targetNode.nameEn || targetNode.name,
+        originalFaction: targetNode.baseFaction,
+        capturedByFaction: playerFaction,
+        capturedByUserName: user.username,
+        countdownUntil: new Date(Date.now() + threeDaysMs).toISOString(),
+        startedAt: new Date().toISOString()
+      };
+      warCountdownTriggered = true;
+    } else if (targetNode.baseFaction && playerFaction === targetNode.baseFaction) {
+      // Original Faction successfully defended or recaptured their HQ! Clear countdown if it targeted this HQ
+      if (db.territoryWarResetCountdown && db.territoryWarResetCountdown.capturedHQId === targetNode.id) {
+        db.territoryWarResetCountdown = null;
+      }
+    }
+  }
 
   // Re-evaluate whole network supply lines
   evaluateSupplyLinesAndCores(nodes);
   writeDB(db);
 
+  const tierCoresPerDay = targetNode.tier === 3 ? 10 : targetNode.tier === 2 ? 7 : 5;
+  let message = `Berhasil mengaktifkan Beacon ${targetNode.name} (Tier ${targetNode.tier}: ${tierCoresPerDay} Cores/hari) dengan Anchor Mythic ${mythicCard.name} (Lv.${cardLevel})!`;
+  if (warCountdownTriggered) {
+    message += ` ⚠️ PERINGATAN DARURAT: Markas Komando lawan telah ditaklukkan! Countdown 3 Hari menuju Reset Musim Beacon War telah dimulai!`;
+  }
+  if (previousNodeNeutralizedName) {
+    message += ` Catatan: Beacon sebelumnya "${previousNodeNeutralizedName}" telah dikembalikan ke status Netral karena kartu Anchor-nya dipindahkan.`;
+  }
+
   res.json({
     success: true,
-    message: `Berhasil mengaktifkan Beacon ${targetNode.name} dengan Anchor Mythic ${mythicCard.name}! Area ini akan menghasilkan 5 Nekomon Cores per hari.`,
+    message,
+    previousNodeNeutralizedName,
     node: targetNode,
-    nodes
+    nodes,
+    warResetCountdown: db.territoryWarResetCountdown
   });
 });
 
-// 3. Battle an Enemy Garrison / Neutral Guardian on a Node
+// 4. Battle an Enemy Garrison / Neutral Guardian on a Node (Requires connected path)
 app.post("/api/territory/battle", (req, res) => {
   const db = readDB();
   const user = getAuthUser(req, db);
@@ -5498,22 +5906,34 @@ app.post("/api/territory/battle", (req, res) => {
     return res.status(400).json({ error: "Beacon ini sudah berada di bawah kekuasaanmu!" });
   }
 
+  const playerFaction: "Sentinel" | "Vanguard" = user.faction || "Sentinel";
+
+  // Rule 6: Attacking enemy/neutral beacon requires connected node
+  const connectedNodes = nodes.filter(n => (targetNode.connectedNodeIds || []).includes(n.id));
+  const hasValidConnection = connectedNodes.some(neighbor => {
+    if (neighbor.ownerId === user.id) return true;
+    if (neighbor.isBase && neighbor.baseFaction === playerFaction) return true;
+    if (neighbor.ownerFaction === playerFaction && neighbor.isActive) return true;
+    return false;
+  });
+
+  if (!hasValidConnection) {
+    return res.status(400).json({
+      error: "Aturan Jalur Perang: Kamu hanya dapat menyerang Beacon yang terhubung langsung dengan wilayah milikmu, sekutu faksimu, atau Markas Faksimu!"
+    });
+  }
+
   // Check 2-Hour Territory Capture Cooldown: Prevent attacking adjacent nodes if recently captured an adjacent node
   const now = Date.now();
-  const connectedNodes = nodes.filter(n => (targetNode.connectedNodeIds || []).includes(n.id));
   const activeCooldownAdjacent = connectedNodes.find(adj => {
     if (adj.ownerId !== user.id) return false;
-    if (!adj.capturedAt && !adj.cooldownUntil) return false;
-    const cooldownEnd = adj.cooldownUntil
-      ? new Date(adj.cooldownUntil).getTime()
-      : new Date(adj.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    if (!adj.cooldownUntil) return false;
+    const cooldownEnd = new Date(adj.cooldownUntil).getTime();
     return cooldownEnd > now;
   });
 
   if (activeCooldownAdjacent) {
-    const cooldownEnd = activeCooldownAdjacent.cooldownUntil
-      ? new Date(activeCooldownAdjacent.cooldownUntil).getTime()
-      : new Date(activeCooldownAdjacent.capturedAt).getTime() + TERRITORY_CAPTURE_COOLDOWN_MS;
+    const cooldownEnd = new Date(activeCooldownAdjacent.cooldownUntil!).getTime();
     const remainingSec = Math.ceil((cooldownEnd - now) / 1000);
     const hours = Math.floor(remainingSec / 3600);
     const mins = Math.floor((remainingSec % 3600) / 60);
@@ -5522,8 +5942,8 @@ app.post("/api/territory/battle", (req, res) => {
     const timeStrEn = `${hours > 0 ? `${hours}h ` : ""}${mins}m ${secs}s`;
 
     return res.status(400).json({
-      error: `Jeda Penaklukan Teritori Aktif (2 Jam): Kamu baru saja merebut node terhubung "${activeCooldownAdjacent.name}". Untuk menjaga keseimbangan dan mencegah ekspansi kilat, serangan ke node di sekitarnya dijeda selama 2 jam (Sisa jeda: ${timeStr}).`,
-      errorEn: `Territory Capture Cooldown Active (2 Hours): You recently captured adjacent node "${activeCooldownAdjacent.nameEn || activeCooldownAdjacent.name}". Attacks on adjacent nodes are paused for 2 hours to prevent rapid expansion (Remaining: ${timeStrEn}).`,
+      error: `Jeda Penaklukan Teritori Aktif: Kamu baru saja merebut node terhubung "${activeCooldownAdjacent.name}". Serangan ke node di sekitarnya dijeda selama ${timeStr}.`,
+      errorEn: `Territory Capture Cooldown Active: You recently captured adjacent node "${activeCooldownAdjacent.nameEn || activeCooldownAdjacent.name}". Attacks on adjacent nodes are paused (Remaining: ${timeStrEn}).`,
       cooldownRemainingSeconds: remainingSec,
       cooldownUntil: new Date(cooldownEnd).toISOString()
     });
@@ -5536,7 +5956,7 @@ app.post("/api/territory/battle", (req, res) => {
     return res.status(400).json({ error: "Kartu penyerang tidak valid." });
   }
 
-  // Determine defender cards (either owner's anchor + garrison, or a neutral guardian bot)
+  // Determine defender cards
   let defenderDeck: any[] = [];
   if (targetNode.anchorCard) {
     defenderDeck = [targetNode.anchorCard, ...(targetNode.garrisonDeck || [])];
@@ -5621,7 +6041,6 @@ app.post("/api/territory/battle", (req, res) => {
   let coresRewarded = 1;
 
   if (attackerWon) {
-    // Check if damage completely breached node HP
     targetNode.defenseHp = Math.max(0, defenderTotalHp);
     if (targetNode.defenseHp <= 0) {
       // Node is breached / neutral and ready for Mythic anchor installation
@@ -5630,7 +6049,7 @@ app.post("/api/territory/battle", (req, res) => {
       targetNode.ownerFaction = null;
       targetNode.anchorCard = null;
       targetNode.garrisonDeck = [];
-      targetNode.defenseHp = targetNode.maxDefenseHp || 100;
+      targetNode.defenseHp = targetNode.maxDefenseHp || (targetNode.isBase ? 250 : targetNode.tier === 3 ? 180 : 120);
       nodeCaptured = true;
       pointsRewarded = 60;
       coresRewarded = 2;
@@ -5656,7 +6075,7 @@ app.post("/api/territory/battle", (req, res) => {
   });
 });
 
-// 4. Claim all accumulated Nekomon Cores from active connected territory nodes (5 cores/day)
+// 5. Claim all accumulated Nekomon Cores from active connected territory nodes (Tier 1: 5, Tier 2: 7, Tier 3: 10 cores/day)
 app.post("/api/territory/claim-cores", (req, res) => {
   const db = readDB();
   const user = getAuthUser(req, db);
@@ -5684,7 +6103,7 @@ app.post("/api/territory/claim-cores", (req, res) => {
 
   if (totalClaimable <= 0) {
     return res.status(400).json({
-      error: "Belum ada akumulasi Nekomon Core yang siap diklaim. Area aktif menghasilkan 5 Cores per 24 jam!"
+      error: "Belum ada akumulasi Nekomon Core yang siap diklaim. Area aktif menghasilkan Cores setiap hari berdasarkan Tier Beacon (T1: 5, T2: 7, T3: 10 Cores/hari)!"
     });
   }
 
@@ -5700,7 +6119,7 @@ app.post("/api/territory/claim-cores", (req, res) => {
   });
 });
 
-// 5. Reinforce Beacon (Accessibility for non-Mythic & faction members)
+// 6. Reinforce Beacon (Accessibility for non-Mythic & faction members)
 app.post("/api/territory/reinforce", (req, res) => {
   const db = readDB();
   const user = getAuthUser(req, db);
@@ -5721,7 +6140,6 @@ app.post("/api/territory/reinforce", (req, res) => {
     return res.status(400).json({ error: "Pilih kartu support untuk memperkuat garnisun beacon!" });
   }
 
-  // Add support card to garrison if room exists
   if (!node.garrisonDeck) node.garrisonDeck = [];
   if (node.garrisonDeck.length < 4) {
     node.garrisonDeck.push(supportCard);
@@ -5731,7 +6149,6 @@ app.post("/api/territory/reinforce", (req, res) => {
   node.defenseHp = Math.min((node.maxDefenseHp || 100) + 50, (node.defenseHp || 100) + 30);
   node.reinforcementsCount = (node.reinforcementsCount || 0) + 1;
 
-  // Reward player with points for defending faction territory
   user.points = (user.points || 0) + 20;
   writeDB(db);
 
@@ -5742,7 +6159,6 @@ app.post("/api/territory/reinforce", (req, res) => {
     userPoints: user.points
   });
 });
-
 
 // Explicit endpoint for Google AdSense ads.txt verification
 app.get("/ads.txt", (_req, res) => {

@@ -5,6 +5,7 @@ export interface User {
   points: number;
   cores?: number;
   avatarUrl?: string;
+  faction?: "Sentinel" | "Vanguard" | null;
   nameChangeCount?: number;
   lastDailyBonusAt?: string;
   lastLevel8BonusAt?: string;
@@ -218,5 +219,18 @@ export interface TerritoryBattleResult {
   coresRewarded: number;
   pointsRewarded: number;
 }
+
+export interface WarResetCountdown {
+  capturedHQId: string;
+  capturedHQName: string;
+  capturedHQNameEn?: string;
+  originalFaction: "Sentinel" | "Vanguard";
+  capturedByFaction: "Sentinel" | "Vanguard";
+  capturedByUserName: string;
+  countdownUntil: string;
+  startedAt: string;
+  remainingSeconds: number;
+}
+
 
 
