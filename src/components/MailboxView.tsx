@@ -3,10 +3,10 @@ import {
   Mail, MessageSquare, Send, Gift, Sparkles, CheckCircle2, ShieldCheck, 
   Clock, AlertCircle, Search, UserPlus, RefreshCw, Trash2, Pin, 
   ChevronRight, Volume2, PlusCircle, X, ExternalLink, Flame, Droplets, 
-  Zap, Wind, Mountain
+  Zap, Wind, Mountain, MapPin, Camera, Image as ImageIcon, Share2, Compass
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { User, OfficialMail, DirectMessage, ConversationThread, OfficialMailCategory } from "../types";
+import { User, OfficialMail, DirectMessage, ConversationThread, OfficialMailCategory, Capture } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { audio } from "../lib/audio";
 
@@ -17,6 +17,9 @@ interface MailboxViewProps {
   initialTab?: "official" | "direct";
   initialPartnerId?: string | null;
   onClearInitialPartner?: () => void;
+  captures?: Capture[];
+  pendingSharedCapture?: Capture | null;
+  onClearPendingSharedCapture?: () => void;
 }
 
 export const MailboxView: React.FC<MailboxViewProps> = ({
@@ -25,7 +28,10 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
   onUpdateUser,
   initialTab = "official",
   initialPartnerId = null,
-  onClearInitialPartner
+  onClearInitialPartner,
+  captures = [],
+  pendingSharedCapture = null,
+  onClearPendingSharedCapture
 }) => {
   const { language, t } = useLanguage();
 
@@ -279,13 +285,28 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
     }
   };
 
+  // Direct Message Selected Photo to Share
+  const [selectedPhotoToShare, setSelectedPhotoToShare] = useState<Capture | null>(pendingSharedCapture);
+  const [showPhotoSelectModal, setShowPhotoSelectModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (pendingSharedCapture) {
+      setSelectedPhotoToShare(pendingSharedCapture);
+      setActiveSubTab("direct");
+    }
+  }, [pendingSharedCapture]);
+
   // Send Direct Message
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!messageInput.trim() || !activePartnerId || sendingMessage) return;
+    if ((!messageInput.trim() && !selectedPhotoToShare) || !activePartnerId || sendingMessage) return;
 
-    const content = messageInput.trim();
+    const content = messageInput.trim() || (language === "id" ? "📸 Berbagi Foto Kucing & Lokasi Geolocation" : "📸 Shared Cat Photo & Geolocation");
+    const photoToAttach = selectedPhotoToShare;
+    
     setMessageInput("");
+    setSelectedPhotoToShare(null);
+    if (onClearPendingSharedCapture) onClearPendingSharedCapture();
     setSendingMessage(true);
 
     try {
@@ -301,7 +322,16 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
         },
         body: JSON.stringify({
           recipientId: activePartnerId,
-          content
+          content,
+          sharedPhotoUrl: photoToAttach?.photoUrl,
+          sharedSpotName: photoToAttach?.spotName || photoToAttach?.locationName,
+          sharedLocation: (photoToAttach?.lat !== undefined && photoToAttach?.lng !== undefined && photoToAttach?.lat !== null && photoToAttach?.lng !== null)
+            ? {
+                lat: photoToAttach.lat,
+                lng: photoToAttach.lng,
+                locationName: photoToAttach.locationName || photoToAttach.spotName
+              }
+            : undefined
         })
       });
       const data = await res.json();
@@ -1219,18 +1249,47 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                       return (
                         <div
                           key={msg.id}
-                          className={`flex flex-col max-w-[80%] ${
+                          className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${
                             isMe ? "self-end items-end" : "self-start items-start"
                           }`}
                         >
                           <div
-                            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed flex flex-col gap-2 ${
                               isMe
                                 ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 font-medium rounded-tr-xs shadow-md shadow-amber-500/10"
                                 : "bg-slate-800 border border-slate-700/80 text-slate-200 rounded-tl-xs shadow-md"
                             }`}
                           >
-                            {msg.content}
+                            {/* Attached Cat Photo if any */}
+                            {msg.sharedPhotoUrl && (
+                              <div className="overflow-hidden rounded-xl border border-black/20 shadow-md bg-black max-w-[240px]">
+                                <img
+                                  src={msg.sharedPhotoUrl}
+                                  alt="Shared Cat Capture"
+                                  className="w-full h-36 sm:h-44 object-cover"
+                                />
+                                {(msg.sharedLocation || msg.sharedSpotName) && (
+                                  <div className={`p-2 flex flex-col gap-0.5 text-[10px] font-mono ${isMe ? "bg-amber-600 text-slate-950" : "bg-slate-900 text-slate-300"}`}>
+                                    <div className="flex items-center gap-1 font-bold">
+                                      <MapPin className="w-3 h-3 text-emerald-300 shrink-0" />
+                                      <span className="truncate">
+                                        {msg.sharedSpotName || (msg.sharedLocation?.lat ? `Lat: ${msg.sharedLocation.lat.toFixed(4)}, Lng: ${msg.sharedLocation.lng.toFixed(4)}` : "Lokasi Nekomon")}
+                                      </span>
+                                    </div>
+                                    {msg.sharedLocation?.lat && (
+                                      <span className="text-[9px] opacity-85">
+                                        GPS: {msg.sharedLocation.lat.toFixed(5)}, {msg.sharedLocation.lng.toFixed(5)}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Message Text Content */}
+                            {msg.content && (
+                              <div>{msg.content}</div>
+                            )}
                           </div>
                           <span className="text-[9px] font-mono text-slate-500 mt-1 px-1">
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -1242,19 +1301,72 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Quick Cat Emojis Bar */}
-                <div className="flex items-center gap-1.5 pb-2 overflow-x-auto select-none">
-                  {["🐾", "🐱", "✨", "🔥", "💧", "⚡", "🏆", "⚔️"].map(emoji => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setMessageInput(prev => prev + emoji)}
-                      className="px-2 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs transition-all cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                {/* Quick Cat Emojis & Photo Attach Toolbar */}
+                <div className="flex items-center justify-between gap-2 pb-2 select-none border-b border-slate-800/60">
+                  <div className="flex items-center gap-1.5 overflow-x-auto">
+                    {["🐾", "🐱", "✨", "🔥", "💧", "⚡", "🏆", "⚔️"].map(emoji => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setMessageInput(prev => prev + emoji)}
+                        className="px-2 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs transition-all cursor-pointer"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Button to attach photo from gallery */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoSelectModal(true)}
+                    className={`px-2.5 py-1 text-xs rounded-lg border font-mono flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+                      selectedPhotoToShare
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                        : "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700"
+                    }`}
+                    title={language === "id" ? "Bagikan foto kucing & lokasi" : "Share cat photo & location"}
+                  >
+                    <Camera className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-[11px] hidden sm:inline">
+                      {selectedPhotoToShare ? (language === "id" ? "Foto Terpilih" : "Photo Selected") : (language === "id" ? "Share Foto" : "Share Photo")}
+                    </span>
+                  </button>
                 </div>
+
+                {/* Attached Photo Preview Pill if selected */}
+                {selectedPhotoToShare && (
+                  <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl mt-1 text-xs">
+                    <div className="flex items-center gap-2 truncate">
+                      <img
+                        src={selectedPhotoToShare.photoUrl}
+                        alt="Preview attach"
+                        className="w-8 h-8 rounded-lg object-cover border border-amber-500/50 shrink-0"
+                      />
+                      <div className="flex flex-col truncate">
+                        <span className="font-bold text-amber-300 truncate text-[11px]">
+                          {selectedPhotoToShare.spotName || (language === "id" ? "Foto Kucing Liar" : "Wild Cat Photo")}
+                        </span>
+                        {(selectedPhotoToShare.lat !== undefined && selectedPhotoToShare.lng !== undefined) && (
+                          <span className="text-[9px] text-emerald-400 font-mono flex items-center gap-1">
+                            <MapPin className="w-2.5 h-2.5" />
+                            GPS: {selectedPhotoToShare.lat.toFixed(4)}, {selectedPhotoToShare.lng.toFixed(4)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPhotoToShare(null);
+                        if (onClearPendingSharedCapture) onClearPendingSharedCapture();
+                      }}
+                      className="p-1 text-slate-400 hover:text-red-400 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Message Input Bar */}
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-slate-800">
@@ -1262,12 +1374,12 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                     type="text"
                     value={messageInput}
                     onChange={e => setMessageInput(e.target.value)}
-                    placeholder={t("mail.send_placeholder")}
+                    placeholder={selectedPhotoToShare ? (language === "id" ? "Tambahkan caption untuk foto kucing..." : "Add a caption for cat photo...") : t("mail.send_placeholder")}
                     className="flex-1 bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none rounded-2xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600"
                   />
                   <button
                     type="submit"
-                    disabled={!messageInput.trim() || sendingMessage}
+                    disabled={(!messageInput.trim() && !selectedPhotoToShare) || sendingMessage}
                     className="px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 hover:brightness-110 disabled:opacity-50 text-slate-950 font-black text-xs rounded-2xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                   >
                     {sendingMessage ? (
@@ -2022,6 +2134,78 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                   </button>
                 </form>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Select Cat Photo to Share in Direct Message Modal */}
+      <AnimatePresence>
+        {showPhotoSelectModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+            >
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-black text-sm text-slate-100">
+                    {language === "id" ? "Pilih Foto Kucing & Lokasi untuk Dibagikan" : "Select Cat Photo & Location to Share"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowPhotoSelectModal(false)}
+                  className="p-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 overflow-y-auto flex-1">
+                {captures.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 flex flex-col items-center gap-2">
+                    <Camera className="w-10 h-10 text-slate-600" />
+                    <p className="text-xs">
+                      {language === "id"
+                        ? "Anda belum memiliki foto kucing di Galeri. Tangkap kucing di kamera terlebih dahulu!"
+                        : "You haven't captured any cat photos yet. Use the camera to capture cats first!"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {captures.map((cap) => (
+                      <div
+                        key={cap.id}
+                        onClick={() => {
+                          setSelectedPhotoToShare(cap);
+                          setShowPhotoSelectModal(false);
+                        }}
+                        className="group relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-700/80 hover:border-amber-400 cursor-pointer transition-all hover:scale-[1.02] shadow-md bg-black"
+                      >
+                        <img
+                          src={cap.photoUrl}
+                          alt="Cat capture"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-90 p-2 flex flex-col justify-end text-[10px]">
+                          <span className="font-bold text-amber-300 truncate">
+                            {cap.spotName || (language === "id" ? "Kucing Liar" : "Wild Cat")}
+                          </span>
+                          {(cap.lat !== undefined && cap.lng !== undefined && cap.lat !== null && cap.lng !== null) && (
+                            <span className="text-[8px] text-emerald-400 font-mono flex items-center gap-0.5 truncate">
+                              <MapPin className="w-2.5 h-2.5 shrink-0" />
+                              {cap.locationName || `${cap.lat.toFixed(2)}, ${cap.lng.toFixed(2)}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

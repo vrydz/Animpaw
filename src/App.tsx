@@ -79,6 +79,33 @@ import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
 import { PLAYER_BADGES, getTrainerLevel, getHighestBadge, PlayerBadge } from "./lib/badges";
 
+// Smooth mobile native-feel tab transition variants
+const tabMotionVariants = {
+  initial: {
+    opacity: 0,
+    y: 12,
+    scale: 0.995,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.28,
+      ease: [0.22, 1, 0.36, 1], // Custom cubic-bezier for smooth native iOS/Android spring-like easing
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    scale: 0.995,
+    transition: {
+      duration: 0.18,
+      ease: [0.4, 0, 1, 1],
+    },
+  },
+};
+
 // Example showcase cards for landing page visual presentation (AI Forging Results)
 const SHOWCASE_CARDS: Card[] = [
   {
@@ -246,6 +273,7 @@ export default function App() {
   // Mail & Direct Messages State
   const [mailUnreadCount, setMailUnreadCount] = useState<number>(0);
   const [mailPartnerId, setMailPartnerId] = useState<string | null>(null);
+  const [pendingSharedCapture, setPendingSharedCapture] = useState<Capture | null>(null);
 
   useEffect(() => {
     if (!token || !user) return;
@@ -793,8 +821,8 @@ export default function App() {
     setShowForgeModal(false);
   };
 
-  // Photo captured callback (+10 points base + optional spot bonus)
-  const handleCapture = async (base64Photo: string) => {
+  // Photo captured callback (+10 points base + optional spot bonus + geolocation)
+  const handleCapture = async (base64Photo: string, spotId?: string, spotName?: string, lat?: number, lng?: number, locationName?: string) => {
     if (!token) return;
     const currentSpot = activeSpotToCapture;
     try {
@@ -814,7 +842,11 @@ export default function App() {
         body: JSON.stringify({ 
           photo: base64Photo,
           spotBonus: currentSpot ? currentSpot.bonusPoints : undefined,
-          spotName: currentSpot ? currentSpot.name : undefined
+          spotName: spotName || (currentSpot ? currentSpot.name : undefined),
+          spotId: spotId || (currentSpot ? currentSpot.id : undefined),
+          lat,
+          lng,
+          locationName
         }),
       });
 
@@ -1956,20 +1988,28 @@ export default function App() {
                 ).map((tab) => {
                   const Icon = tab.icon;
                   const badgeCount = (tab as any).badge;
+                  const isActive = mobileTab === tab.id;
                   return (
                     <button
                       key={tab.id}
                       onClick={() => handleTabChange(tab.id as any)}
-                      className={`relative flex items-center gap-1.5 py-2 px-3.5 rounded-lg font-black text-[10px] tracking-wider transition-all cursor-pointer ${
-                        mobileTab === tab.id
-                          ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-md shadow-yellow-500/10"
+                      className={`relative flex items-center gap-1.5 py-2 px-3.5 rounded-lg font-black text-[10px] tracking-wider transition-colors cursor-pointer ${
+                        isActive
+                          ? "text-slate-950"
                           : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      <Icon className="w-3.5 h-3.5" />
-                      <span>{tab.label}</span>
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeTabPill"
+                          className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-lg shadow-md shadow-yellow-500/20"
+                          transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                        />
+                      )}
+                      <Icon className="w-3.5 h-3.5 relative z-10" />
+                      <span className="relative z-10">{tab.label}</span>
                       {badgeCount && badgeCount > 0 ? (
-                        <span className="w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse">
+                        <span className="w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse relative z-10">
                           {badgeCount}
                         </span>
                       ) : null}
@@ -1985,9 +2025,10 @@ export default function App() {
                 {mobileTab === "spot_map" && (
                   <motion.div
                     key="spot-map-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="flex flex-col gap-4"
                   >
                     <NekomonSpotMap
@@ -2004,9 +2045,10 @@ export default function App() {
                 {mobileTab === "territory" && (
                   <motion.div
                     key="territory-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="w-full"
                   >
                     <TerritoryControlView
@@ -2026,9 +2068,10 @@ export default function App() {
                 {mobileTab === "camera" && (
                   <motion.div
                     key="camera-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6"
                   >
                     <div className="border-b border-slate-800 pb-4">
@@ -2047,7 +2090,7 @@ export default function App() {
                         userPoints={user.points}
                         activeSpot={activeSpotToCapture}
                         onClearSpot={() => setActiveSpotToCapture(null)}
-                        spotCapturesCount={
+                        spotCapturesTodayCount={
                           activeSpotToCapture 
                             ? captures.filter(c => {
                                 const todayStr = new Date().toISOString().split("T")[0];
@@ -2064,9 +2107,10 @@ export default function App() {
                 {mobileTab === "gallery" && (
                   <motion.div
                     key="gallery-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6"
                   >
                     {showForgeModal ? (
@@ -2172,6 +2216,10 @@ export default function App() {
                           onRetakeCapture={handleRetakeCapture}
                           onEvolveCard={handleEvolveCard}
                           onCancelEvolution={handleCancelEvolution}
+                          onShareCaptureInChat={(cap) => {
+                            setPendingSharedCapture(cap);
+                            handleTabChange("mail");
+                          }}
                           user={user}
                         />
                       </>
@@ -2182,9 +2230,10 @@ export default function App() {
                 {mobileTab === "dex" && (
                   <motion.div
                     key="dex-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="w-full"
                   >
                     <NekomonDex
@@ -2200,9 +2249,10 @@ export default function App() {
                 {mobileTab === "arena" && (
                   <motion.div
                     key="arena-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6"
                   >
                     <div className="border-b border-slate-800 pb-4">
@@ -2218,6 +2268,7 @@ export default function App() {
                     <ArenaView
                       cards={cards}
                       token={token || ""}
+                      userId={user?.id}
                       onBattleEndRefresh={() => {
                         if (token) {
                           fetchProfile(token);
@@ -2231,9 +2282,10 @@ export default function App() {
                 {mobileTab === "missions" && (
                   <motion.div
                     key="missions-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6"
                   >
                     <div className="border-b border-slate-800 pb-4">
@@ -2268,9 +2320,10 @@ export default function App() {
                 {mobileTab === "trading" && (
                   <motion.div
                     key="trading-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6"
                   >
                     <div className="border-b border-slate-800 pb-4">
@@ -2294,9 +2347,10 @@ export default function App() {
                 {mobileTab === "leaderboard" && (
                   <motion.div
                     key="leaderboard-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6"
                   >
                     <div className="border-b border-slate-800 pb-4">
@@ -2328,9 +2382,10 @@ export default function App() {
                   return (
                     <motion.div
                       key="profile-view"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -15 }}
+                      variants={tabMotionVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
                       className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col gap-6 max-w-2xl mx-auto w-full font-mono"
                     >
                       <div className="border-b border-slate-800 pb-4">
@@ -2590,9 +2645,10 @@ export default function App() {
                 {mobileTab === "shop" && (
                   <motion.div
                     key="shop-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="w-full"
                   >
                     <ShopView 
@@ -2623,9 +2679,10 @@ export default function App() {
                 {mobileTab === "mail" && (
                   <motion.div
                     key="mail-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="w-full"
                   >
                     <MailboxView
@@ -2636,6 +2693,9 @@ export default function App() {
                       }}
                       initialPartnerId={mailPartnerId}
                       onClearInitialPartner={() => setMailPartnerId(null)}
+                      captures={captures}
+                      pendingSharedCapture={pendingSharedCapture}
+                      onClearPendingSharedCapture={() => setPendingSharedCapture(null)}
                     />
                   </motion.div>
                 )}
@@ -2643,9 +2703,10 @@ export default function App() {
                 {mobileTab === "guide" && (
                   <motion.div
                     key="guide-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="w-full"
                   >
                     <GameGuide />

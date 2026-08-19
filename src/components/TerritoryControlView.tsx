@@ -86,6 +86,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   const [selectedGarrisonCardIds, setSelectedGarrisonCardIds] = useState<string[]>([]);
   const [isSubmittingCapture, setIsSubmittingCapture] = useState<boolean>(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [showTransferConfirmModal, setShowTransferConfirmModal] = useState<boolean>(false);
 
   // Battle selection & simulation
   const [selectedAttackerCardIds, setSelectedAttackerCardIds] = useState<string[]>([]);
@@ -348,6 +349,19 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   };
 
   // Capture Beacon Node Handler
+  const handleInitiateCapture = () => {
+    if (!selectedNode || !selectedAnchorCardId) {
+      setCaptureError(language === "id" ? "Pilih 1 kartu Mythic sebagai Anchor!" : "Select 1 Mythic card as Anchor!");
+      return;
+    }
+    const existingNode = nodes.find(n => n.id !== selectedNode.id && (n.anchorCard?.id === selectedAnchorCardId || n.anchorCardId === selectedAnchorCardId));
+    if (existingNode) {
+      setShowTransferConfirmModal(true);
+      return;
+    }
+    handleCaptureBeacon();
+  };
+
   const handleCaptureBeacon = async () => {
     if (!selectedNode || !selectedAnchorCardId) {
       setCaptureError(language === "id" ? "Pilih 1 kartu Mythic sebagai Anchor!" : "Select 1 Mythic card as Anchor!");
@@ -390,6 +404,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
           confetti({ particleCount: 70, spread: 70, origin: { y: 0.5 } });
         } catch (_) {}
         setShowCaptureModal(false);
+        setShowTransferConfirmModal(false);
         onRefreshUser();
         fetchTerritoryNodes();
       } else {
@@ -1237,14 +1252,29 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
           const speedBonusPct = Math.max(0, (cardLevel - 1) * 8);
           const speedMultiplier = 1 + Math.max(0, (cardLevel - 1)) * 0.08;
-          const cooldownDurationMs = Math.max(15 * 60 * 1000, Math.round(7200000 / speedMultiplier));
+          const rawCooldownMs = Math.round(7200000 / speedMultiplier);
+          const garrisonDiscountMs = selectedGarrisonCardIds.length * 5 * 60 * 1000;
+          const cooldownDurationMs = Math.max(5 * 60 * 1000, rawCooldownMs - garrisonDiscountMs);
           const cooldownMins = Math.round(cooldownDurationMs / 60000);
           const cooldownDurationStr = Math.floor(cooldownMins / 60) > 0 
             ? `${Math.floor(cooldownMins / 60)}j ${cooldownMins % 60}m` 
             : `${cooldownMins} menit`;
 
-          const existingAnchoredNode = nodes.find(n => n.id !== selectedNode.id && n.anchorCard?.id === selectedAnchorCardId);
+          const existingAnchoredNode = nodes.find(n => n.id !== selectedNode.id && (n.anchorCard?.id === selectedAnchorCardId || n.anchorCardId === selectedAnchorCardId));
           const tierCores = getNodeTierCores(selectedNode.tier);
+          const availableGarrisonCards = cards.filter(c => c.id !== selectedAnchorCardId && !c.isTerritoryAnchor);
+
+          const toggleGarrisonCard = (cardId: string) => {
+            if (selectedGarrisonCardIds.includes(cardId)) {
+              setSelectedGarrisonCardIds(prev => prev.filter(id => id !== cardId));
+            } else {
+              if (selectedGarrisonCardIds.length >= 3) {
+                showToast(language === "id" ? "Maksimal 3 kartu garnisun!" : "Maximum 3 garrison cards!", "error");
+                return;
+              }
+              setSelectedGarrisonCardIds(prev => [...prev, cardId]);
+            }
+          };
 
           return (
             <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
@@ -1331,7 +1361,10 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                         return (
                           <div
                             key={c.id}
-                            onClick={() => setSelectedAnchorCardId(c.id)}
+                            onClick={() => {
+                              setSelectedAnchorCardId(c.id);
+                              setSelectedGarrisonCardIds(prev => prev.filter(id => id !== c.id));
+                            }}
                             className={`p-2 rounded-xl border cursor-pointer transition-all flex flex-col items-center text-center relative ${
                               isChosen
                                 ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400"
@@ -1384,22 +1417,85 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                   )}
                 </div>
 
-                {/* Speed & Anchor Migration Feedback */}
+                {/* Optional Initial Garrison Selection (Up to 3 cards) */}
+                <div className="flex flex-col gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-teal-300 uppercase text-[11px] flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 text-teal-400" />
+                      <span>{language === "id" ? "Tambahkan Garnisun Awal (Opsional, Maks 3):" : "Add Initial Garrison (Optional, Max 3):"}</span>
+                    </label>
+                    <span className="text-[10px] text-emerald-400 font-bold">
+                      {language === "id" ? "-5 Menit Jeda / Kartu" : "-5 Mins Cooldown / Card"}
+                    </span>
+                  </div>
+
+                  {availableGarrisonCards.length > 0 ? (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-36 overflow-y-auto p-1">
+                      {availableGarrisonCards.slice(0, 16).map(c => {
+                        const isSelectedGarrison = selectedGarrisonCardIds.includes(c.id);
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => toggleGarrisonCard(c.id)}
+                            className={`p-1.5 rounded-lg border cursor-pointer transition-all flex flex-col items-center text-center ${
+                              isSelectedGarrison
+                                ? "bg-teal-500/20 border-teal-400 ring-1 ring-teal-400"
+                                : "bg-slate-900 border-slate-800 hover:border-teal-500/40"
+                            }`}
+                          >
+                            <div className="w-full h-14 rounded overflow-hidden mb-1 bg-slate-950 relative">
+                              <img 
+                                src={c.imageUrl} 
+                                alt={c.name} 
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover" 
+                              />
+                              {isSelectedGarrison && (
+                                <div className="absolute inset-0 bg-teal-500/30 flex items-center justify-center">
+                                  <Shield className="w-4 h-4 text-teal-200 fill-teal-400" />
+                                </div>
+                              )}
+                            </div>
+                            <span className="font-bold text-[9px] text-white truncate w-full">{c.name}</span>
+                            <span className="text-[8px] text-teal-400 font-mono">Lv.{c.level || 1}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-slate-500 italic text-center py-1">
+                      {language === "id" ? "Tidak ada kartu cadangan untuk garnisun." : "No backup cards available for garrison."}
+                    </div>
+                  )}
+                </div>
+
+                {/* Speed, Garrison Cooldown Reduction & Anchor Migration Feedback */}
                 {selectedMythicCard && (
                   <div className="flex flex-col gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="text-slate-400 font-bold flex items-center gap-1">
                         <Zap className="w-3.5 h-3.5 text-amber-400" />
-                        {language === "id" ? "Kecepatan Penaklukan:" : "Capture Speed Bonus:"}
+                        {language === "id" ? "Estimasi Jeda Penaklukan:" : "Estimated Cooldown Duration:"}
                       </span>
                       <span className="text-amber-300 font-black">
-                        +{speedBonusPct}% (Jeda: {cooldownDurationStr})
+                        {cooldownDurationStr}
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 leading-tight">
-                      {language === "id"
-                        ? `Kartu ${selectedMythicCard.name} (Lv.${cardLevel}) mempercepat stabilisasi penaklukan menjadi ${cooldownDurationStr} (Standar: 2 Jam).`
-                        : `${selectedMythicCard.name} (Lv.${cardLevel}) reduces capture stabilization cooldown to ${cooldownDurationStr} (Standard: 2 Hours).`}
+
+                    {/* Breakdown Details */}
+                    <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 pt-1 border-t border-slate-850">
+                      <span className="bg-slate-900 px-2 py-0.5 rounded text-amber-300">
+                        ⚡ Lv.{cardLevel}: +{speedBonusPct}% Spd
+                      </span>
+                      {selectedGarrisonCardIds.length > 0 && (
+                        <span className="bg-teal-950/80 border border-teal-500/30 px-2 py-0.5 rounded text-teal-300 flex items-center gap-1">
+                          <Shield className="w-3 h-3 text-teal-400" />
+                          Garnisun ({selectedGarrisonCardIds.length}): -{selectedGarrisonCardIds.length * 5} Menit
+                        </span>
+                      )}
+                      <span className="text-slate-500">
+                        (Standar: 2 Jam)
+                      </span>
                     </div>
 
                     {/* Energy Bar visual preview */}
@@ -1427,12 +1523,12 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
                     {/* Relocation Notice */}
                     {existingAnchoredNode && (
-                      <div className="mt-1 p-2 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] flex items-start gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                      <div className="mt-1 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[10px] flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                         <span>
                           {language === "id"
-                            ? `Perhatian: Kartu ini sedang menjadi Anchor di "${existingAnchoredNode.name}". Memasangnya di sini akan mengembalikan "${existingAnchoredNode.name}" ke status Netral!`
-                            : `Warning: This card is anchoring "${existingAnchoredNode.nameEn || existingAnchoredNode.name}". Assigning it here will reset that Beacon to Neutral!`}
+                            ? `Perhatian: Kartu ini sedang menjadi Anchor di "${existingAnchoredNode.name}". Konfirmasi akan diminta sebelum beacon lama dikembalikan ke status Netral.`
+                            : `Notice: This card is anchoring "${existingAnchoredNode.nameEn || existingAnchoredNode.name}". You will be asked to confirm before transferring.`}
                         </span>
                       </div>
                     )}
@@ -1464,11 +1560,90 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                     {language === "id" ? "Batal" : "Cancel"}
                   </button>
                   <button
-                    onClick={handleCaptureBeacon}
+                    onClick={handleInitiateCapture}
                     disabled={!selectedAnchorCardId || isSubmittingCapture || !isEligibleToCapture}
                     className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 disabled:opacity-50 text-slate-950 font-black cursor-pointer shadow-lg"
                   >
                     {isSubmittingCapture ? (language === "id" ? "Mengaktifkan..." : "Activating...") : (language === "id" ? "Klaim Area Sekarang" : "Claim Area Now")}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* MODAL 1B: CONFIRM ANCHOR RELOCATION */}
+      <AnimatePresence>
+        {showTransferConfirmModal && selectedNode && (() => {
+          const selectedMythicCard = userMythicCards.find(c => c.id === selectedAnchorCardId);
+          const existingAnchoredNode = nodes.find(n => n.id !== selectedNode.id && (n.anchorCard?.id === selectedAnchorCardId || n.anchorCardId === selectedAnchorCardId));
+          if (!existingAnchoredNode || !selectedMythicCard) return null;
+
+          return (
+            <div className="fixed inset-0 z-[3100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-slate-900 border-2 border-amber-500/80 p-6 rounded-2xl shadow-2xl max-w-md w-full flex flex-col gap-4 text-xs font-mono"
+              >
+                <div className="flex items-center gap-2.5 text-amber-400 border-b border-slate-800 pb-3">
+                  <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0 animate-bounce" />
+                  <h3 className="text-sm font-black text-white uppercase">
+                    {language === "id" ? "Konfirmasi Pemindahan Anchor" : "Confirm Anchor Relocation"}
+                  </h3>
+                </div>
+
+                <div className="flex flex-col gap-3 text-slate-300">
+                  <p className="leading-relaxed">
+                    {language === "id" ? (
+                      <>
+                        Kartu <span className="text-amber-300 font-bold">{selectedMythicCard.name} (Lv.{selectedMythicCard.level || 1})</span> saat ini sedang bertugas menjaga beacon:
+                      </>
+                    ) : (
+                      <>
+                        Card <span className="text-amber-300 font-bold">{selectedMythicCard.name} (Lv.{selectedMythicCard.level || 1})</span> is currently anchoring:
+                      </>
+                    )}
+                  </p>
+
+                  <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-rose-400 font-bold">Beacon Asal:</span>
+                      <span className="text-white font-bold">{existingAnchoredNode.name}</span>
+                    </div>
+                    <div className="text-[10px] text-rose-300/80">
+                      ➔ {language === "id" ? "Kepemilikan beacon ini akan dilepas & kembali Netral" : "This beacon will be released back to Neutral"}
+                    </div>
+                    <div className="border-t border-slate-850 pt-2 flex justify-between items-center text-[11px]">
+                      <span className="text-emerald-400 font-bold">Beacon Baru:</span>
+                      <span className="text-white font-bold">{selectedNode.name}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    {language === "id"
+                      ? "Apakah Anda yakin ingin memindahkan Anchor ini ke beacon yang baru?"
+                      : "Are you sure you want to relocate this Anchor to the new beacon?"}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                  <button
+                    onClick={() => setShowTransferConfirmModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
+                  >
+                    {language === "id" ? "Batal" : "Cancel"}
+                  </button>
+                  <button
+                    onClick={handleCaptureBeacon}
+                    disabled={isSubmittingCapture}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black cursor-pointer shadow-lg disabled:opacity-50"
+                  >
+                    {isSubmittingCapture 
+                      ? (language === "id" ? "Memindahkan..." : "Relocating...") 
+                      : (language === "id" ? "Ya, Pindahkan Anchor" : "Yes, Relocate Anchor")}
                   </button>
                 </div>
               </motion.div>

@@ -98,9 +98,100 @@ export const PLAYER_BADGES: PlayerBadge[] = [
   }
 ];
 
-export function getTrainerLevel(cardsCount: number, totalCardLevels: number, points: number): number {
-  const calculated = Math.floor(1 + (cardsCount * 1.5) + (totalCardLevels * 0.8) + ((points || 0) / 25));
-  return Math.max(1, calculated);
+export interface TrainerProgress {
+  level: number;
+  currentLevelXp: number;
+  nextLevelXp: number;
+  progressPercent: number;
+  totalExp: number;
+  rankTitleId: string;
+  rankTitleEn: string;
+  highestBadge: PlayerBadge | null;
+  nextBadge: PlayerBadge | null;
+  levelsUntilNextBadge: number;
+}
+
+// XP required to level up from level L to L+1
+export function getXpRequiredForLevel(level: number): number {
+  return Math.floor(180 + Math.pow(level, 1.32) * 48);
+}
+
+// Get rank title based on trainer level
+export function getRankTitle(level: number): { id: string; en: string } {
+  if (level >= 50) return { id: "Dewa Nekomon", en: "Nekomon God Sovereign" };
+  if (level >= 40) return { id: "Legenda Astral", en: "Astral Legend" };
+  if (level >= 30) return { id: "Panglima Kosmik", en: "Cosmic Commander" };
+  if (level >= 20) return { id: "Ksatria Arena", en: "Arena Knight" };
+  if (level >= 10) return { id: "Pionir Lapangan", en: "Field Pioneer" };
+  if (level >= 5) return { id: "Penjelajah Kucing", en: "Cat Explorer" };
+  return { id: "Pemula Nekomon", en: "Nekomon Novice" };
+}
+
+// Comprehensive Trainer Progress & XP calculation
+export function getTrainerProgress(
+  cardsCount: number,
+  totalCardLevels: number,
+  points: number = 0,
+  cores: number = 0,
+  capturesCount: number = 0,
+  territoryCount: number = 0
+): TrainerProgress {
+  // Balanced EXP contribution weights
+  const cardExp = Math.max(0, cardsCount) * 120;
+  const levelExp = Math.max(0, totalCardLevels) * 60;
+  const captureExp = Math.max(0, capturesCount) * 40;
+  const pointExp = Math.floor(Math.max(0, points) * 0.4);
+  const coreExp = Math.max(0, cores) * 5;
+  const territoryExp = Math.max(0, territoryCount) * 250;
+
+  const totalExp = Math.max(0, cardExp + levelExp + captureExp + pointExp + coreExp + territoryExp);
+
+  let currentLevel = 1;
+  let accumulatedXp = 0;
+
+  // Step through level thresholds
+  while (currentLevel < 100) {
+    const neededForNext = getXpRequiredForLevel(currentLevel);
+    if (accumulatedXp + neededForNext <= totalExp) {
+      accumulatedXp += neededForNext;
+      currentLevel++;
+    } else {
+      break;
+    }
+  }
+
+  const currentLevelXp = Math.max(0, totalExp - accumulatedXp);
+  const nextLevelXp = getXpRequiredForLevel(currentLevel);
+  const progressPercent = Math.min(100, Math.max(0, Math.round((currentLevelXp / nextLevelXp) * 100)));
+
+  const rank = getRankTitle(currentLevel);
+  const highestBadge = getHighestBadge(currentLevel);
+  const nextBadge = PLAYER_BADGES.find(b => b.levelRequirement > currentLevel) || null;
+  const levelsUntilNextBadge = nextBadge ? Math.max(0, nextBadge.levelRequirement - currentLevel) : 0;
+
+  return {
+    level: currentLevel,
+    currentLevelXp,
+    nextLevelXp,
+    progressPercent,
+    totalExp,
+    rankTitleId: rank.id,
+    rankTitleEn: rank.en,
+    highestBadge,
+    nextBadge,
+    levelsUntilNextBadge
+  };
+}
+
+export function getTrainerLevel(
+  cardsCount: number, 
+  totalCardLevels: number, 
+  points: number, 
+  cores: number = 0, 
+  capturesCount: number = 0,
+  territoryCount: number = 0
+): number {
+  return getTrainerProgress(cardsCount, totalCardLevels, points, cores, capturesCount, territoryCount).level;
 }
 
 export function getUnlockedBadges(trainerLevel: number): PlayerBadge[] {

@@ -25,7 +25,7 @@ import { haptics } from "../lib/vibration";
 import { NekomonSpot } from "../types";
 
 interface VirtualCameraProps {
-  onCapture: (base64Photo: string, spotId?: string, spotName?: string) => Promise<void>;
+  onCapture: (base64Photo: string, spotId?: string, spotName?: string, lat?: number, lng?: number, locationName?: string) => Promise<void>;
   userPoints: number;
   activeSpot?: NekomonSpot | null;
   onClearSpot?: () => void;
@@ -46,6 +46,40 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showPointsToast, setShowPointsToast] = useState<boolean>(false);
   const [capturedDraft, setCapturedDraft] = useState<string | null>(null);
+
+  // Geolocation State for Captured Photos
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoLocating, setGeoLocating] = useState<boolean>(false);
+  const [geoStatus, setGeoStatus] = useState<string | null>(null);
+
+  // Fetch / update geolocation
+  const fetchGeolocation = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus(language === "id" ? "Geolocation tidak didukung" : "Geolocation not supported");
+      return;
+    }
+    setGeoLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentLocation({
+          lat: Number(pos.coords.latitude.toFixed(6)),
+          lng: Number(pos.coords.longitude.toFixed(6))
+        });
+        setGeoLocating(false);
+        setGeoStatus(null);
+      },
+      (err) => {
+        console.warn("Geolocation notice:", err.message);
+        setGeoLocating(false);
+        setGeoStatus(language === "id" ? "GPS Opsional / Izin Lokasi Nonaktif" : "GPS Optional / Permission Disabled");
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+  };
+
+  useEffect(() => {
+    fetchGeolocation();
+  }, []);
 
   // AR Scanner Overlay States
   const [arEnabled, setArEnabled] = useState<boolean>(true);
@@ -230,7 +264,14 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
     if (!capturedDraft) return;
     setIsCapturing(true);
     try {
-      await onCapture(capturedDraft, activeSpot?.id, activeSpot?.name);
+      await onCapture(
+        capturedDraft,
+        activeSpot?.id,
+        activeSpot?.name,
+        currentLocation?.lat,
+        currentLocation?.lng,
+        activeSpot?.name || (currentLocation ? `GPS (${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)})` : undefined)
+      );
       setShowPointsToast(true);
       setTimeout(() => setShowPointsToast(false), 3000);
       setCapturedDraft(null);
@@ -368,6 +409,21 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
                 alt="Draft Cat Capture"
                 className="w-full h-full object-cover"
               />
+
+              {/* Geolocation Tag Overlay on Photo */}
+              <div className="absolute bottom-2 left-2 right-2 bg-slate-950/85 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-700/80 flex items-center justify-between text-[10px] font-mono text-slate-300 shadow-lg">
+                <div className="flex items-center gap-1.5 truncate">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">
+                    {activeSpot?.name || (currentLocation ? `Lat: ${currentLocation.lat.toFixed(4)}, Lng: ${currentLocation.lng.toFixed(4)}` : (language === "id" ? "Lokasi: Belum terdeteksi" : "Location: Undetected"))}
+                  </span>
+                </div>
+                {currentLocation && (
+                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold shrink-0">
+                    GPS OK
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons: Retake, Delete, Confirm */}

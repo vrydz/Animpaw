@@ -1508,7 +1508,7 @@ async function analyzeCatPhoto(photoBase64: string): Promise<{ isCat: boolean; r
 
 // Capture photo and get 10 points (plus optional Nekomon Spot bonus)
 app.post("/api/capture", async (req, res) => {
-  const { photo, spotBonus, spotName, spotId } = req.body; // base64 photo + optional spot bonus & spot info
+  const { photo, spotBonus, spotName, spotId, lat, lng, locationName } = req.body; // base64 photo + optional spot bonus & spot info & geolocation
   if (!photo) {
     return res.status(400).json({ error: "Data foto kucing wajib dikirim." });
   }
@@ -1560,7 +1560,10 @@ app.post("/api/capture", async (req, res) => {
     isForged: false,
     createdAt: new Date().toISOString(),
     spotId: spotId || null,
-    spotName: spotName || null
+    spotName: spotName || null,
+    lat: typeof lat === "number" ? lat : null,
+    lng: typeof lng === "number" ? lng : null,
+    locationName: locationName || null
   };
 
   db.captures.push(newCapture);
@@ -4616,7 +4619,7 @@ app.get("/api/messages/thread/:partnerId", (req, res) => {
   });
 });
 
-// 8. Send Direct Message to a player
+// 8. Send Direct Message to a player (Supports text, shared cat photo, and shared geolocation)
 app.post("/api/messages/send", (req, res) => {
   const db = readDB();
   const user = getAuthUser(req, db);
@@ -4624,8 +4627,8 @@ app.post("/api/messages/send", (req, res) => {
     return res.status(401).json({ error: "Sesi login tidak valid." });
   }
 
-  const { recipientId, recipientUsername, content } = req.body;
-  if (!content || !content.trim()) {
+  const { recipientId, recipientUsername, content, sharedPhotoUrl, sharedLocation, sharedSpotName } = req.body;
+  if ((!content || !content.trim()) && !sharedPhotoUrl && !sharedLocation) {
     return res.status(400).json({ error: "Pesan tidak boleh kosong." });
   }
 
@@ -4654,7 +4657,14 @@ app.post("/api/messages/send", (req, res) => {
     recipientId: recipient.id,
     recipientUsername: recipient.username,
     recipientAvatar: recipient.avatar || "",
-    content: content.trim(),
+    content: (content || "").trim(),
+    sharedPhotoUrl: sharedPhotoUrl || undefined,
+    sharedLocation: (sharedLocation && typeof sharedLocation.lat === "number" && typeof sharedLocation.lng === "number") ? {
+      lat: sharedLocation.lat,
+      lng: sharedLocation.lng,
+      name: sharedLocation.name || sharedSpotName || "Lokasi Tangkapan Kucing"
+    } : undefined,
+    sharedSpotName: sharedSpotName || undefined,
     createdAt: new Date().toISOString(),
     read: false
   };
@@ -4785,11 +4795,11 @@ const DEFAULT_TERRITORY_NODES = [
     name: "Benteng Pusat Sentinel Alpha",
     nameEn: "Sentinel Prime Bastion Alpha",
     element: "Air",
-    x: 6,
+    x: 8,
     y: 50,
     lat: -6.1754,
-    lng: 106.8272,
-    connectedNodeIds: ["beacon-pik-spire", "beacon-tangerang-ridge", "beacon-serpong-volt", "beacon-bsd-skyway"],
+    lng: 106.6800,
+    connectedNodeIds: ["beacon-pik-spire", "beacon-tangerang-ridge", "beacon-serpong-volt"],
     isBase: true,
     baseFaction: "Sentinel",
     ownerId: null,
@@ -4816,8 +4826,8 @@ const DEFAULT_TERRITORY_NODES = [
     name: "Suaka Pesisir PIK",
     nameEn: "PIK Coastal Sanctuary",
     element: "Air",
-    x: 18,
-    y: 16,
+    x: 20,
+    y: 18,
     lat: -6.1100,
     lng: 106.7400,
     connectedNodeIds: ["beacon-sentinel-hq", "beacon-tangerang-ridge", "beacon-ancol-ocean", "beacon-cengkareng-aero"],
@@ -4845,8 +4855,8 @@ const DEFAULT_TERRITORY_NODES = [
     name: "Punggungan Kristal Tangerang",
     nameEn: "Tangerang Crystal Ridge",
     element: "Tanah",
-    x: 16,
-    y: 36,
+    x: 20,
+    y: 50,
     lat: -6.1700,
     lng: 106.6300,
     connectedNodeIds: ["beacon-sentinel-hq", "beacon-pik-spire", "beacon-cengkareng-aero", "beacon-serpong-volt"],
@@ -4874,11 +4884,11 @@ const DEFAULT_TERRITORY_NODES = [
     name: "Substasi Kilat Serpong",
     nameEn: "Serpong Volt Substation",
     element: "Petir",
-    x: 16,
-    y: 64,
+    x: 20,
+    y: 82,
     lat: -6.2800,
     lng: 106.6600,
-    connectedNodeIds: ["beacon-sentinel-hq", "beacon-tangerang-ridge", "beacon-bintaro-sanctum", "beacon-bsd-skyway"],
+    connectedNodeIds: ["beacon-sentinel-hq", "beacon-tangerang-ridge", "beacon-bintaro-sanctum"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -4897,43 +4907,14 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Dynamic electrical lightning substation powering southwestern sectors."
   },
 
-  // 5. BSD Skyway Gale - Tier 1 (Angin)
-  {
-    id: "beacon-bsd-skyway",
-    name: "Jalur Angin BSD Skyway",
-    nameEn: "BSD Skyway Gale Beacon",
-    element: "Angin",
-    x: 18,
-    y: 84,
-    lat: -6.3000,
-    lng: 106.6500,
-    connectedNodeIds: ["beacon-sentinel-hq", "beacon-serpong-volt", "beacon-bintaro-sanctum", "beacon-depok-verdant"],
-    isBase: false,
-    ownerId: null,
-    ownerName: null,
-    ownerFaction: null,
-    anchorCard: null,
-    garrisonDeck: [],
-    capturedAt: null,
-    lastClaimedAt: null,
-    accumulatedCores: 0,
-    isActive: true,
-    defenseHp: 100,
-    maxDefenseHp: 100,
-    tier: 1,
-    reinforcementsCount: 0,
-    descriptionId: "Stasiun turbin angin barat daya yang meningkatkan mobilitas dan kecepatan tempur.",
-    descriptionEn: "Southwestern wind turbine station enhancing agility and tactical speed."
-  },
-
-  // 6. Cengkareng Aero Relay - Tier 2 (Angin)
+  // 5. Cengkareng Aero Relay - Tier 2 (Angin)
   {
     id: "beacon-cengkareng-aero",
     name: "Relay Udara Cengkareng",
     nameEn: "Cengkareng Aero Relay",
     element: "Angin",
-    x: 28,
-    y: 32,
+    x: 34,
+    y: 34,
     lat: -6.1400,
     lng: 106.7200,
     connectedNodeIds: ["beacon-pik-spire", "beacon-tangerang-ridge", "beacon-ancol-ocean", "beacon-sudirman-tower", "beacon-monas-core"],
@@ -4955,17 +4936,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Strategic aerial transmission relay bridging western approaches to central hubs."
   },
 
-  // 7. Bintaro Eco Sanctum - Tier 2 (Tanah)
+  // 6. Bintaro Eco Sanctum - Tier 2 (Tanah)
   {
     id: "beacon-bintaro-sanctum",
     name: "Sanctuarium Bintaro Eco",
     nameEn: "Bintaro Eco Sanctum",
     element: "Tanah",
-    x: 28,
+    x: 34,
     y: 68,
     lat: -6.2800,
     lng: 106.7300,
-    connectedNodeIds: ["beacon-serpong-volt", "beacon-bsd-skyway", "beacon-senayan-nexus", "beacon-kemang-wind", "beacon-depok-verdant"],
+    connectedNodeIds: ["beacon-serpong-volt", "beacon-tangerang-ridge", "beacon-senayan-nexus", "beacon-depok-verdant"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -4984,17 +4965,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Nature sanctuary guarded by strong geomantic barriers supporting southern lines."
   },
 
-  // 8. Ancol Ocean Spire - Tier 2 (Air)
+  // 7. Ancol Ocean Spire - Tier 2 (Air)
   {
     id: "beacon-ancol-ocean",
     name: "Menara Samudra Ancol",
     nameEn: "Ancol Ocean Spire",
     element: "Air",
-    x: 38,
-    y: 14,
+    x: 48,
+    y: 16,
     lat: -6.1200,
     lng: 106.8300,
-    connectedNodeIds: ["beacon-pik-spire", "beacon-cengkareng-aero", "beacon-sudirman-tower", "beacon-tanjung-priok"],
+    connectedNodeIds: ["beacon-pik-spire", "beacon-cengkareng-aero", "beacon-sudirman-tower", "beacon-kelapa-gading"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5013,17 +4994,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Northern coastal spire brimming with oceanic tides. Grants +25% field bonus for Water Nekomon."
   },
 
-  // 9. Sudirman Megatower Hub - Tier 2 (Petir)
+  // 8. Sudirman Megatower Hub - Tier 2 (Petir)
   {
     id: "beacon-sudirman-tower",
     name: "Megatower Sudirman Hub",
     nameEn: "Sudirman Megatower Hub",
     element: "Petir",
-    x: 42,
-    y: 32,
+    x: 44,
+    y: 36,
     lat: -6.2100,
     lng: 106.8220,
-    connectedNodeIds: ["beacon-cengkareng-aero", "beacon-ancol-ocean", "beacon-monas-core", "beacon-kuningan-core"],
+    connectedNodeIds: ["beacon-cengkareng-aero", "beacon-ancol-ocean", "beacon-monas-core", "beacon-cakung-steel"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5042,17 +5023,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Ultra-high voltage signal connector linking metropolitan towers and Monas."
   },
 
-  // 10. Monas Central Energy Nexus - Tier 3 (Petir)
+  // 9. Monas Central Energy Nexus - Tier 3 (Petir)
   {
     id: "beacon-monas-core",
     name: "Puncak Nexus Monas",
     nameEn: "Monas Central Energy Nexus",
     element: "Petir",
     x: 50,
-    y: 50,
+    y: 52,
     lat: -6.1754,
     lng: 106.8272,
-    connectedNodeIds: ["beacon-cengkareng-aero", "beacon-sudirman-tower", "beacon-senayan-nexus", "beacon-kuningan-core", "beacon-kemang-wind", "beacon-cakung-steel"],
+    connectedNodeIds: ["beacon-cengkareng-aero", "beacon-sudirman-tower", "beacon-senayan-nexus", "beacon-cakung-steel"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5071,17 +5052,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Most strategic Tier 3 energy nexus bridging central routes (10 Cores/day). Main faction contention point!"
   },
 
-  // 11. Senayan Biosphere Nexus - Tier 2 (Tanah)
+  // 10. Senayan Biosphere Nexus - Tier 2 (Tanah)
   {
     id: "beacon-senayan-nexus",
     name: "Nexus Biosfer Senayan",
     nameEn: "Senayan Biosphere Nexus",
     element: "Tanah",
-    x: 42,
+    x: 44,
     y: 68,
     lat: -6.2250,
     lng: 106.8000,
-    connectedNodeIds: ["beacon-bintaro-sanctum", "beacon-monas-core", "beacon-kemang-wind", "beacon-depok-verdant"],
+    connectedNodeIds: ["beacon-bintaro-sanctum", "beacon-monas-core", "beacon-depok-verdant", "beacon-tmii-bastion"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5100,46 +5081,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Solid geomagnetic earthen bastion. Provides +25% endurance bonus for Earth Nekomon."
   },
 
-  // 12. Kemang Gale Vortex - Tier 2 (Angin)
-  {
-    id: "beacon-kemang-wind",
-    name: "Pusat Badai Kemang Gale",
-    nameEn: "Kemang Gale Vortex",
-    element: "Angin",
-    x: 54,
-    y: 70,
-    lat: -6.2700,
-    lng: 106.8150,
-    connectedNodeIds: ["beacon-bintaro-sanctum", "beacon-senayan-nexus", "beacon-monas-core", "beacon-depok-verdant", "beacon-tmii-bastion"],
-    isBase: false,
-    ownerId: null,
-    ownerName: null,
-    ownerFaction: null,
-    anchorCard: null,
-    garrisonDeck: [],
-    capturedAt: null,
-    lastClaimedAt: null,
-    accumulatedCores: 0,
-    isActive: true,
-    defenseHp: 120,
-    maxDefenseHp: 120,
-    tier: 2,
-    reinforcementsCount: 0,
-    descriptionId: "Pusat pusaran siklon udara selatan penyuplai energi angin.",
-    descriptionEn: "Southern cyclone vortex hub providing continuous wind energy currents."
-  },
-
-  // 13. Depok Verdant Spire - Tier 1 (Tanah)
+  // 11. Depok Verdant Spire - Tier 1 (Tanah)
   {
     id: "beacon-depok-verdant",
     name: "Spire Hutan Depok Verdant",
     nameEn: "Depok Verdant Spire",
     element: "Tanah",
-    x: 45,
-    y: 90,
+    x: 48,
+    y: 86,
     lat: -6.4000,
     lng: 106.8200,
-    connectedNodeIds: ["beacon-bsd-skyway", "beacon-bintaro-sanctum", "beacon-senayan-nexus", "beacon-kemang-wind", "beacon-tmii-bastion"],
+    connectedNodeIds: ["beacon-bintaro-sanctum", "beacon-senayan-nexus", "beacon-tmii-bastion"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5158,104 +5110,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Lush southern woodland infused with protective earthen crystals (Tier 1: 5 Cores/day)."
   },
 
-  // 14. Tanjung Priok Harbor Bastion - Tier 1 (Air)
-  {
-    id: "beacon-tanjung-priok",
-    name: "Dermaga Armada Tanjung Priok",
-    nameEn: "Tanjung Priok Harbor Bastion",
-    element: "Air",
-    x: 62,
-    y: 14,
-    lat: -6.1000,
-    lng: 106.8800,
-    connectedNodeIds: ["beacon-ancol-ocean", "beacon-pulomas-solar", "beacon-kelapa-gading"],
-    isBase: false,
-    ownerId: null,
-    ownerName: null,
-    ownerFaction: null,
-    anchorCard: null,
-    garrisonDeck: [],
-    capturedAt: null,
-    lastClaimedAt: null,
-    accumulatedCores: 0,
-    isActive: true,
-    defenseHp: 100,
-    maxDefenseHp: 100,
-    tier: 1,
-    reinforcementsCount: 0,
-    descriptionId: "Dermaga armada laut utara penghubung jalur maritim pesisir timur.",
-    descriptionEn: "Northern sea armada harbor connecting eastern maritime routes."
-  },
-
-  // 15. Kuningan Cyber Core - Tier 2 (Petir)
-  {
-    id: "beacon-kuningan-core",
-    name: "Siber Matriks Kuningan",
-    nameEn: "Kuningan Cyber Core",
-    element: "Petir",
-    x: 58,
-    y: 32,
-    lat: -6.2200,
-    lng: 106.8300,
-    connectedNodeIds: ["beacon-sudirman-tower", "beacon-monas-core", "beacon-pulomas-solar", "beacon-cakung-steel"],
-    isBase: false,
-    ownerId: null,
-    ownerName: null,
-    ownerFaction: null,
-    anchorCard: null,
-    garrisonDeck: [],
-    capturedAt: null,
-    lastClaimedAt: null,
-    accumulatedCores: 0,
-    isActive: true,
-    defenseHp: 120,
-    maxDefenseHp: 120,
-    tier: 2,
-    reinforcementsCount: 0,
-    descriptionId: "Matriks siber pusat dengan aliran data listrik berkecepatan tinggi.",
-    descriptionEn: "Central cyber matrix with high-speed electrical data conduits."
-  },
-
-  // 16. Pulomas Solar Spire - Tier 1 (Api)
-  {
-    id: "beacon-pulomas-solar",
-    name: "Pilar Surya Pulomas",
-    nameEn: "Pulomas Solar Spire",
-    element: "Api",
-    x: 72,
-    y: 32,
-    lat: -6.1700,
-    lng: 106.8800,
-    connectedNodeIds: ["beacon-tanjung-priok", "beacon-kuningan-core", "beacon-kelapa-gading", "beacon-cakung-steel"],
-    isBase: false,
-    ownerId: null,
-    ownerName: null,
-    ownerFaction: null,
-    anchorCard: null,
-    garrisonDeck: [],
-    capturedAt: null,
-    lastClaimedAt: null,
-    accumulatedCores: 0,
-    isActive: true,
-    defenseHp: 100,
-    maxDefenseHp: 100,
-    tier: 1,
-    reinforcementsCount: 0,
-    descriptionId: "Pilar tenaga surya berkekuatan radiasi api stabil.",
-    descriptionEn: "Solar power spire channeling stable radiant Fire energy."
-  },
-
-  // 17. Kelapa Gading Ember Core - Tier 2 (Api)
+  // 12. Kelapa Gading Ember Core - Tier 2 (Api)
   {
     id: "beacon-kelapa-gading",
     name: "Pilar Bara Kelapa Gading",
     nameEn: "Kelapa Gading Ember Core",
     element: "Api",
-    x: 82,
-    y: 16,
+    x: 66,
+    y: 20,
     lat: -6.1550,
     lng: 106.9050,
-    connectedNodeIds: ["beacon-tanjung-priok", "beacon-pulomas-solar", "beacon-vanguard-hq", "beacon-cakung-steel"],
+    connectedNodeIds: ["beacon-ancol-ocean", "beacon-pulomas-solar", "beacon-cakung-steel", "beacon-vanguard-hq"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5274,17 +5139,46 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Northeastern volcanic ember dome bolstering Vanguard territory (Tier 2: 7 Cores/day)."
   },
 
-  // 18. Cakung Steel Nexus - Tier 2 (Petir)
+  // 13. Pulomas Solar Spire - Tier 1 (Api)
+  {
+    id: "beacon-pulomas-solar",
+    name: "Pilar Surya Pulomas",
+    nameEn: "Pulomas Solar Spire",
+    element: "Api",
+    x: 66,
+    y: 40,
+    lat: -6.1700,
+    lng: 106.8800,
+    connectedNodeIds: ["beacon-kelapa-gading", "beacon-cakung-steel", "beacon-cibubur-flame", "beacon-vanguard-hq"],
+    isBase: false,
+    ownerId: null,
+    ownerName: null,
+    ownerFaction: null,
+    anchorCard: null,
+    garrisonDeck: [],
+    capturedAt: null,
+    lastClaimedAt: null,
+    accumulatedCores: 0,
+    isActive: true,
+    defenseHp: 100,
+    maxDefenseHp: 100,
+    tier: 1,
+    reinforcementsCount: 0,
+    descriptionId: "Pilar tenaga surya berkekuatan radiasi api stabil.",
+    descriptionEn: "Solar power spire channeling stable radiant Fire energy."
+  },
+
+  // 14. Cakung Steel Nexus - Tier 2 (Petir)
   {
     id: "beacon-cakung-steel",
     name: "Nexus Baja Cakung",
     nameEn: "Cakung Steel Nexus",
     element: "Petir",
-    x: 72,
-    y: 50,
+    x: 64,
+    y: 56,
     lat: -6.1900,
     lng: 106.9400,
-    connectedNodeIds: ["beacon-monas-core", "beacon-kuningan-core", "beacon-pulomas-solar", "beacon-cibubur-flame", "beacon-vanguard-hq"],
+    connectedNodeIds: ["beacon-monas-core", "beacon-sudirman-tower", "beacon-kelapa-gading", "beacon-pulomas-solar", "beacon-cibubur-flame", "beacon-vanguard-hq"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5303,17 +5197,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Eastern steel nexus directly connecting central corridors to Vanguard HQ."
   },
 
-  // 19. TMII Heritage Bastion - Tier 2 (Tanah)
+  // 15. TMII Heritage Bastion - Tier 2 (Tanah)
   {
     id: "beacon-tmii-bastion",
     name: "Bastion Budaya TMII",
     nameEn: "TMII Heritage Bastion",
     element: "Tanah",
-    x: 65,
+    x: 64,
     y: 78,
     lat: -6.3000,
     lng: 106.8900,
-    connectedNodeIds: ["beacon-kemang-wind", "beacon-depok-verdant", "beacon-cibubur-flame", "beacon-bekasi-plasma"],
+    connectedNodeIds: ["beacon-senayan-nexus", "beacon-depok-verdant", "beacon-cibubur-flame"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5332,17 +5226,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Southeastern geo-energy monument rich in natural earthen defense fortifications."
   },
 
-  // 20. Cibubur Flame Sanctuary - Tier 2 (Api)
+  // 16. Cibubur Flame Sanctuary - Tier 2 (Api)
   {
     id: "beacon-cibubur-flame",
     name: "Suaka Api Cibubur",
     nameEn: "Cibubur Flame Sanctuary",
     element: "Api",
-    x: 82,
-    y: 64,
+    x: 78,
+    y: 72,
     lat: -6.3700,
     lng: 106.9000,
-    connectedNodeIds: ["beacon-cakung-steel", "beacon-tmii-bastion", "beacon-bekasi-plasma", "beacon-vanguard-hq"],
+    connectedNodeIds: ["beacon-cakung-steel", "beacon-pulomas-solar", "beacon-tmii-bastion", "beacon-vanguard-hq"],
     isBase: false,
     ownerId: null,
     ownerName: null,
@@ -5361,46 +5255,17 @@ const DEFAULT_TERRITORY_NODES = [
     descriptionEn: "Sacred flame sanctuary guarding southeastern Vanguard gateway approaches."
   },
 
-  // 21. Bekasi Plasma Array - Tier 1 (Petir)
-  {
-    id: "beacon-bekasi-plasma",
-    name: "Array Plasma Bekasi",
-    nameEn: "Bekasi Plasma Array",
-    element: "Petir",
-    x: 84,
-    y: 84,
-    lat: -6.2400,
-    lng: 106.9900,
-    connectedNodeIds: ["beacon-tmii-bastion", "beacon-cibubur-flame", "beacon-vanguard-hq"],
-    isBase: false,
-    ownerId: null,
-    ownerName: null,
-    ownerFaction: null,
-    anchorCard: null,
-    garrisonDeck: [],
-    capturedAt: null,
-    lastClaimedAt: null,
-    accumulatedCores: 0,
-    isActive: true,
-    defenseHp: 100,
-    maxDefenseHp: 100,
-    tier: 1,
-    reinforcementsCount: 0,
-    descriptionId: "Pembangkit medan listrik industri di timur dengan aliran petir tak terbatas (Tier 1: 5 Cores/hari).",
-    descriptionEn: "Eastern industrial lightning generator with continuous plasma surges (Tier 1: 5 Cores/day)."
-  },
-
-  // 22. Vanguard Stronghold Prime (East Base) - Tier 3
+  // Vanguard Stronghold Prime (East Base) - Tier 3
   {
     id: "beacon-vanguard-hq",
     name: "Benteng Pusat Vanguard Prime",
     nameEn: "Vanguard Stronghold Prime",
     element: "Api",
-    x: 94,
+    x: 92,
     y: 50,
     lat: -6.2200,
     lng: 106.8800,
-    connectedNodeIds: ["beacon-kelapa-gading", "beacon-cakung-steel", "beacon-cibubur-flame", "beacon-bekasi-plasma"],
+    connectedNodeIds: ["beacon-kelapa-gading", "beacon-pulomas-solar", "beacon-cakung-steel", "beacon-cibubur-flame"],
     isBase: true,
     baseFaction: "Vanguard",
     ownerId: null,
@@ -5801,11 +5666,6 @@ app.post("/api/territory/capture", (req, res) => {
     previousAnchoredNode.reinforcementsCount = 0;
   }
 
-  // Rule 4: Semakin besar levelnya, semakin cepat proses capturenya (Jeda stabilisasi dipersingkat)
-  // Base cooldown: 7200s (2 jam). Each level above 1 provides +8% speed bonus.
-  const speedMultiplier = 1 + Math.max(0, (cardLevel - 1)) * 0.08;
-  const cooldownDurationMs = Math.max(15 * 60 * 1000, Math.round(TERRITORY_CAPTURE_COOLDOWN_MS / speedMultiplier));
-
   // Deduct 1 bar energy for anchoring / capturing
   mythicCard.energy = Math.max(0, currentCardEnergy - 1);
   mythicCard.lastEnergyRefillAt = new Date().toISOString();
@@ -5821,7 +5681,15 @@ app.post("/api/territory/capture", (req, res) => {
     });
   }
 
-  // Assign ownership & set capture cooldown based on speed multiplier
+  // Rule 4: Semakin besar levelnya, semakin cepat proses capturenya (Jeda stabilisasi dipersingkat)
+  // Base cooldown: 7200s (2 jam). Each level above 1 provides +8% speed bonus.
+  // Rule 5: Penambahan garnisun saat proses capture memangkas cooldown (1 kartu = -5 menit)
+  const speedMultiplier = 1 + Math.max(0, (cardLevel - 1)) * 0.08;
+  const baseCooldownMs = Math.round(TERRITORY_CAPTURE_COOLDOWN_MS / speedMultiplier);
+  const garrisonReductionMs = garrisonDeck.length * 5 * 60 * 1000;
+  const cooldownDurationMs = Math.max(5 * 60 * 1000, baseCooldownMs - garrisonReductionMs);
+
+  // Assign ownership & set capture cooldown based on speed multiplier and garrison reduction
   targetNode.ownerId = user.id;
   targetNode.ownerName = user.username;
   targetNode.ownerFaction = playerFaction;

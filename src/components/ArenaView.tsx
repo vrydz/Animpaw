@@ -50,6 +50,7 @@ import { haptics } from "../lib/vibration";
 interface ArenaViewProps {
   cards: Card[];
   token: string;
+  userId?: string;
   onBattleEndRefresh?: () => void;
 }
 
@@ -271,7 +272,7 @@ function ElementalEffectOverlay({ element, animationType }: ElementalEffectOverl
   );
 }
 
-export function ArenaView({ cards, token, onBattleEndRefresh }: ArenaViewProps) {
+export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaViewProps) {
   const { language, t } = useLanguage();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [activeTab, setActiveTab] = useState<"lobby" | "online" | "history">("lobby");
@@ -296,14 +297,24 @@ export function ArenaView({ cards, token, onBattleEndRefresh }: ArenaViewProps) 
         if (res.ok) {
           const data = await res.json();
           if (data.success && Array.isArray(data.history)) {
-            let myUserId = "";
-            try {
-              const decodedToken = Buffer.from(token, "base64").toString("utf8");
-              myUserId = decodedToken.split(":")[0];
-            } catch (_) {}
+            let myUserId = userId || "";
+            if (!myUserId && token) {
+              try {
+                if (typeof window !== "undefined" && window.atob) {
+                  const decoded = window.atob(token);
+                  myUserId = decoded.split(":")[0] || "";
+                }
+              } catch (_) {}
+              if (!myUserId && typeof Buffer !== "undefined") {
+                try {
+                  const decodedToken = Buffer.from(token, "base64").toString("utf8");
+                  myUserId = decodedToken.split(":")[0] || "";
+                } catch (_) {}
+              }
+            }
 
             const serverRecords: BattleHistoryRecord[] = data.history.map((item: any) => {
-              const isWin = item.winnerId === myUserId;
+              const isWin = item.winnerId === myUserId || (!item.loserId && item.winnerId);
               return {
                 id: item.id,
                 opponentName: isWin ? item.loserName : item.winnerName,
@@ -312,10 +323,10 @@ export function ArenaView({ cards, token, onBattleEndRefresh }: ArenaViewProps) 
                 opponentCardLevel: isWin ? item.loserCardLevel : item.winnerCardLevel,
                 opponentCardElement: isWin ? item.loserCardElement : item.winnerCardElement,
                 myCardName: isWin ? item.winnerCardName : item.loserCardName,
-                myCardImageUrl: isWin ? item.winnerCardImageUrl : item.winnerCardImageUrl,
+                myCardImageUrl: isWin ? item.winnerCardImageUrl : item.loserCardImageUrl,
                 myCardLevel: isWin ? item.winnerCardLevel : item.loserCardLevel,
-                myCardElement: isWin ? item.winnerCardElement : item.winnerCardElement,
-                result: isWin ? "WIN" : "LOSS",
+                myCardElement: isWin ? item.winnerCardElement : item.loserCardElement,
+                result: (item.winnerId === myUserId ? "WIN" : (item.loserId === myUserId ? "LOSS" : (isWin ? "WIN" : "LOSS"))),
                 isBotMatch: item.isBotMatch,
                 createdAt: item.createdAt
               };

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Capture, Card, User } from "../types";
 import { NekomonCard } from "./NekomonCard";
-import { Camera, Hammer, Download, Image as ImageIcon, Calendar, Sparkles, X, ChevronLeft, ChevronRight, Award, Trash2, AlertTriangle, Loader2, Swords, Shield, Activity, Heart, RotateCcw, History } from "lucide-react";
+import { Camera, Hammer, Download, Image as ImageIcon, Calendar, Sparkles, X, ChevronLeft, ChevronRight, Award, Trash2, AlertTriangle, Loader2, Swords, Shield, Activity, Heart, RotateCcw, History, MapPin, Share2, MessageSquare, Zap, Crown, Filter } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
 import { audio } from "../lib/audio";
@@ -19,6 +19,7 @@ interface GalleryViewProps {
   onRetakeCapture?: (captureId: string, newPhotoBase64: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   onEvolveCard: (cardId: string) => Promise<{ success: boolean; message?: string; error?: string; card?: Card }>;
   onCancelEvolution: (cardId: string) => Promise<{ success: boolean; message?: string; error?: string; card?: Card }>;
+  onShareCaptureInChat?: (capture: Capture) => void;
   user?: User | null;
 }
 
@@ -31,17 +32,41 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   onRetakeCapture,
   onEvolveCard,
   onCancelEvolution,
+  onShareCaptureInChat,
   user,
 }) => {
   const { language, t } = useLanguage();
   const [activeTab, setActiveTab] = useState<"cards" | "captures">("cards");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   
+  // Card Filter state: all, mythic_idle, mythic_anchored, or element
+  const [cardFilter, setCardFilter] = useState<string>("all");
+
+  // Filtered Cards logic
+  const filteredCards = useMemo(() => {
+    if (cardFilter === "all") return cards;
+    if (cardFilter === "mythic_idle") {
+      return cards.filter(c => c.rarity === "Mythic" && !c.isTerritoryAnchor);
+    }
+    if (cardFilter === "mythic_anchored") {
+      return cards.filter(c => c.rarity === "Mythic" && !!c.isTerritoryAnchor);
+    }
+    if (cardFilter === "mythic") {
+      return cards.filter(c => c.rarity === "Mythic");
+    }
+    return cards.filter(c => c.element === cardFilter);
+  }, [cards, cardFilter]);
+
   // Carousel state
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
+  // Reset current card index when filter changes
+  useEffect(() => {
+    setCurrentCardIndex(0);
+  }, [cardFilter]);
+
   // Active card displayed in gallery
-  const activeDisplayedCard = cards[Math.min(currentCardIndex, cards.length - 1)];
+  const activeDisplayedCard = filteredCards[Math.min(currentCardIndex, Math.max(0, filteredCards.length - 1))];
 
   // Play unique element sound whenever a card appears in the gallery view
   useEffect(() => {
@@ -55,13 +80,13 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   }, [activeDisplayedCard?.id, activeTab]);
 
   const handleNextCard = () => {
-    if (cards.length === 0) return;
-    setCurrentCardIndex((prev) => (prev + 1) % cards.length);
+    if (filteredCards.length === 0) return;
+    setCurrentCardIndex((prev) => (prev + 1) % filteredCards.length);
   };
 
   const handlePrevCard = () => {
-    if (cards.length === 0) return;
-    setCurrentCardIndex((prev) => (prev - 1 + cards.length) % cards.length);
+    if (filteredCards.length === 0) return;
+    setCurrentCardIndex((prev) => (prev - 1 + filteredCards.length) % filteredCards.length);
   };
 
   const handleSelectCardModal = (card: Card) => {
@@ -264,6 +289,75 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
             exit={{ opacity: 0, y: -10 }}
             className="flex flex-col gap-4"
           >
+            {/* Filter Bar for Cards */}
+            {cards.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5 bg-slate-950/70 p-2 rounded-2xl border border-slate-800/80 font-mono text-[11px]">
+                <span className="text-slate-500 font-bold uppercase tracking-wider text-[9px] mr-1 hidden sm:inline flex items-center gap-1">
+                  <Filter className="w-3 h-3 text-slate-400" />
+                  {language === "id" ? "FILTER:" : "FILTER:"}
+                </span>
+
+                <button
+                  onClick={() => setCardFilter("all")}
+                  className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer font-bold ${
+                    cardFilter === "all"
+                      ? "bg-slate-700 text-white shadow-sm border border-slate-600"
+                      : "bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800"
+                  }`}
+                >
+                  {language === "id" ? `Semua (${cards.length})` : `All (${cards.length})`}
+                </button>
+
+                {/* Mythic Idle Filter */}
+                <button
+                  onClick={() => setCardFilter("mythic_idle")}
+                  className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer font-bold flex items-center gap-1 ${
+                    cardFilter === "mythic_idle"
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md border border-emerald-400"
+                      : "bg-emerald-950/40 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30"
+                  }`}
+                  title={language === "id" ? "Kartu Mythic yang tidak sedang dipasang sebagai anchor beacon" : "Mythic cards ready to anchor without active assignment"}
+                >
+                  <Zap className="w-3 h-3 text-emerald-400 fill-emerald-400" />
+                  <span>{language === "id" ? "Mythic Idle / Siap Anchor" : "Mythic Idle"} ({cards.filter(c => c.rarity === "Mythic" && !c.isTerritoryAnchor).length})</span>
+                </button>
+
+                {/* Mythic Anchored Filter */}
+                <button
+                  onClick={() => setCardFilter("mythic_anchored")}
+                  className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer font-bold flex items-center gap-1 ${
+                    cardFilter === "mythic_anchored"
+                      ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md border border-cyan-400"
+                      : "bg-cyan-950/40 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30"
+                  }`}
+                  title={language === "id" ? "Kartu Mythic yang sedang aktif menjaga Beacon wilayah" : "Mythic cards actively anchoring territory beacons"}
+                >
+                  <Shield className="w-3 h-3 text-cyan-400 fill-cyan-400/40" />
+                  <span>{language === "id" ? "Mythic Anchored" : "Mythic Anchored"} ({cards.filter(c => c.rarity === "Mythic" && !!c.isTerritoryAnchor).length})</span>
+                </button>
+
+                {/* Element filters */}
+                {(["Api", "Air", "Tanah", "Angin", "Petir"] as const).map(elem => {
+                  const count = cards.filter(c => c.element === elem).length;
+                  if (count === 0) return null;
+                  const elemIcon = elem === "Api" ? "🔥" : elem === "Air" ? "💧" : elem === "Tanah" ? "🌿" : elem === "Angin" ? "💨" : "⚡";
+                  return (
+                    <button
+                      key={elem}
+                      onClick={() => setCardFilter(elem)}
+                      className={`px-2 py-1 rounded-xl transition-all cursor-pointer font-bold ${
+                        cardFilter === elem
+                          ? "bg-amber-500 text-slate-950 shadow-sm border border-yellow-300"
+                          : "bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800"
+                      }`}
+                    >
+                      {elemIcon} {elem} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {cards.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 px-4 text-center gap-5 bg-slate-900/10 rounded-2xl border border-slate-800/50 max-w-lg mx-auto w-full">
                 <div className="relative w-44 h-44 rounded-2xl overflow-hidden border-2 border-yellow-500/30 shadow-[0_0_25px_rgba(234,179,8,0.15)] bg-slate-950 flex items-center justify-center">
@@ -287,12 +381,30 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                   </p>
                 </div>
               </div>
+            ) : filteredCards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-3 bg-slate-950/60 rounded-2xl border border-slate-850 max-w-md mx-auto w-full font-mono">
+                <Filter className="w-8 h-8 text-slate-500" />
+                <h4 className="text-sm font-bold text-slate-200">
+                  {language === "id" ? "Tidak Ada Kartu yang Cocok" : "No Matching Cards Found"}
+                </h4>
+                <p className="text-xs text-slate-400 max-w-xs">
+                  {language === "id"
+                    ? "Tidak ada kartu pada filter ini. Coba pilih kategori filter lain."
+                    : "No cards match this filter. Try selecting another category."}
+                </p>
+                <button
+                  onClick={() => setCardFilter("all")}
+                  className="mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-yellow-400 rounded-xl text-xs font-bold border border-slate-700 cursor-pointer"
+                >
+                  {language === "id" ? "Tampilkan Semua Kartu" : "Show All Cards"}
+                </button>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-5 w-full">
                 {/* Stunning Interactive Horizontal Carousel */}
                 <div className="relative flex items-center justify-center w-full min-h-[500px] py-4 bg-slate-950/20 rounded-2xl border border-slate-900/50 p-6">
                   {/* Left Navigation Arrow */}
-                  {cards.length > 1 && (
+                  {filteredCards.length > 1 && (
                     <button
                       onClick={handlePrevCard}
                       className="absolute left-4 z-30 p-2.5 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 transition-all cursor-pointer shadow-xl active:scale-95"
@@ -305,9 +417,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                   {/* Dynamic Centered Active Card Slide */}
                   <div className="overflow-visible flex items-center justify-center max-w-full">
                     <AnimatePresence mode="wait">
-                      {cards[Math.min(currentCardIndex, cards.length - 1)] && (
+                      {filteredCards[Math.min(currentCardIndex, filteredCards.length - 1)] && (
                         <motion.div
-                          key={cards[Math.min(currentCardIndex, cards.length - 1)].id}
+                          key={filteredCards[Math.min(currentCardIndex, filteredCards.length - 1)].id}
                           initial={{ opacity: 0, x: 80, scale: 0.95 }}
                           animate={{ opacity: 1, x: 0, scale: 1 }}
                           exit={{ opacity: 0, x: -80, scale: 0.95 }}
@@ -315,8 +427,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                           className="flex justify-center"
                         >
                           <NekomonCard
-                            card={cards[Math.min(currentCardIndex, cards.length - 1)]}
-                            onClick={() => handleSelectCardModal(cards[Math.min(currentCardIndex, cards.length - 1)])}
+                            card={filteredCards[Math.min(currentCardIndex, filteredCards.length - 1)]}
+                            onClick={() => handleSelectCardModal(filteredCards[Math.min(currentCardIndex, filteredCards.length - 1)])}
                           />
                         </motion.div>
                       )}
@@ -324,7 +436,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                   </div>
 
                   {/* Right Navigation Arrow */}
-                  {cards.length > 1 && (
+                  {filteredCards.length > 1 && (
                     <button
                       onClick={handleNextCard}
                       className="absolute right-4 z-30 p-2.5 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 transition-all cursor-pointer shadow-xl active:scale-95"
@@ -336,14 +448,14 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                 </div>
 
                 {/* Dot Pagination indicators */}
-                {cards.length > 1 && (
+                {filteredCards.length > 1 && (
                   <div className="flex items-center justify-center gap-2 flex-wrap max-w-md px-4 mt-1">
-                    {cards.map((card, idx) => (
+                    {filteredCards.map((card, idx) => (
                       <button
                         key={card.id}
                         onClick={() => setCurrentCardIndex(idx)}
                         className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                          idx === Math.min(currentCardIndex, cards.length - 1)
+                          idx === Math.min(currentCardIndex, filteredCards.length - 1)
                             ? "bg-yellow-500 w-5"
                             : "bg-slate-800 hover:bg-slate-700 w-2"
                         }`}
@@ -357,8 +469,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                 <div className="text-center">
                   <span className="text-[10px] text-slate-500 font-mono tracking-widest uppercase bg-slate-950 px-3 py-1.5 rounded-full border border-slate-900/60">
                     {language === "id"
-                      ? `KARTU ${Math.min(currentCardIndex, cards.length - 1) + 1} DARI ${cards.length} • KLIK UNTUK DETAIL STATS`
-                      : `CARD ${Math.min(currentCardIndex, cards.length - 1) + 1} OF ${cards.length} • CLICK FOR DETAIL STATS`}
+                      ? `KARTU ${Math.min(currentCardIndex, filteredCards.length - 1) + 1} DARI ${filteredCards.length} • KLIK UNTUK DETAIL STATS`
+                      : `CARD ${Math.min(currentCardIndex, filteredCards.length - 1) + 1} OF ${filteredCards.length} • CLICK FOR DETAIL STATS`}
                   </span>
                 </div>
               </div>
@@ -448,19 +560,41 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                         )}
                       </div>
 
-                      {!cap.isForged ? (
-                        <button
-                          onClick={() => onSelectForge(cap)}
-                          className="w-full mt-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-bold py-1.5 px-2.5 rounded-lg text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm"
-                        >
-                          <Hammer className="w-3.5 h-3.5" />
-                          {language === "id" ? "Forge ke Nekomon" : "Forge to Nekomon"}
-                        </button>
-                      ) : (
-                        <span className="w-full mt-1 bg-slate-950 border border-slate-800 text-slate-500 font-medium py-1.5 text-center block rounded-lg text-[10px] uppercase font-mono">
-                          {language === "id" ? "Sudah Di-Forge" : "Already Forged"}
-                        </span>
+                      {/* Geolocation Coordinate Badge if available */}
+                      {(cap.lat !== undefined && cap.lng !== undefined && cap.lat !== null && cap.lng !== null) && (
+                        <div className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-md truncate">
+                          <MapPin className="w-3 h-3 shrink-0 text-emerald-400" />
+                          <span className="truncate">
+                            {cap.locationName || `${cap.lat.toFixed(4)}, ${cap.lng.toFixed(4)}`}
+                          </span>
+                        </div>
                       )}
+
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {!cap.isForged ? (
+                          <button
+                            onClick={() => onSelectForge(cap)}
+                            className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-bold py-1.5 px-2 rounded-lg text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer shadow-sm"
+                          >
+                            <Hammer className="w-3.5 h-3.5" />
+                            <span>{language === "id" ? "Forge" : "Forge"}</span>
+                          </button>
+                        ) : (
+                          <span className="flex-1 bg-slate-950 border border-slate-800 text-slate-500 font-medium py-1.5 text-center block rounded-lg text-[10px] uppercase font-mono">
+                            {language === "id" ? "Forged" : "Forged"}
+                          </span>
+                        )}
+
+                        {onShareCaptureInChat && (
+                          <button
+                            onClick={() => onShareCaptureInChat(cap)}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 hover:border-cyan-500/50 rounded-lg text-[10px] font-mono transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            title={language === "id" ? "Bagikan foto & lokasi ini ke Chat Trainer" : "Share photo & location to Trainer Chat"}
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -983,6 +1117,44 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
                           <span className="text-teal-400 font-bold">{selectedCard.style === "Sentinel" ? "Sentinel" : "Vanguard"}</span>
                         </p>
                       </div>
+
+                      {/* Mythic Territory Status Banner */}
+                      {selectedCard.rarity === "Mythic" && (
+                        <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 font-mono text-xs ${
+                          selectedCard.isTerritoryAnchor 
+                            ? "bg-cyan-950/40 border-cyan-500/40 text-cyan-300" 
+                            : "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            {selectedCard.isTerritoryAnchor ? (
+                              <Shield className="w-4 h-4 text-cyan-400 shrink-0" />
+                            ) : (
+                              <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
+                            )}
+                            <div>
+                              <div className="font-bold text-[11px]">
+                                {selectedCard.isTerritoryAnchor 
+                                  ? (language === "id" ? "STATUS: AKTIF SEBAGAI BEACON ANCHOR" : "STATUS: ACTIVE BEACON ANCHOR")
+                                  : (language === "id" ? "STATUS: IDLE (SIAP ANCHOR)" : "STATUS: IDLE (READY TO ANCHOR)")}
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                {selectedCard.isTerritoryAnchor
+                                  ? (language === "id" 
+                                      ? `Menjaga sektor: ${selectedCard.anchoredTerritoryName || "Beacon Wilayah"}. Dapat dipindahkan ke beacon lain.` 
+                                      : `Anchored to: ${selectedCard.anchoredTerritoryName || "Territory Beacon"}. Can be relocated.`)
+                                  : (language === "id"
+                                      ? "Kartu ini bebas dan siap digunakan untuk merebut atau memperkuat Beacon di Peta Wilayah."
+                                      : "Free to deploy and claim or secure strategic Beacons on the Territory Map.")}
+                              </div>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase shrink-0 ${
+                            selectedCard.isTerritoryAnchor ? "bg-cyan-500 text-slate-950" : "bg-emerald-500 text-slate-950"
+                          }`}>
+                            {selectedCard.isTerritoryAnchor ? "ANCHORED" : "IDLE"}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Power Level Widget */}
                       <div className="bg-slate-950/60 border border-slate-800/60 p-3 rounded-xl flex flex-col gap-2.5">

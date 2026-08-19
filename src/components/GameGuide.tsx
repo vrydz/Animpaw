@@ -19,7 +19,8 @@ import {
   Users,
   Target,
   ZoomIn,
-  Mail
+  Mail,
+  Smartphone
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -145,17 +146,17 @@ export const GameGuide: React.FC = () => {
                     <Target className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">6. Mode Dominasi Wilayah & Beacon War (5 Cores/Hari) 🏰</h4>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">6. Mode Dominasi Wilayah & Beacon War (16 Titik Strategis) 🏰</h4>
                     <p className="leading-relaxed">
-                      Kuasai area strategis pada peta dengan memasang kartu bertingkat kelangkaan <span className="text-amber-400 font-bold font-mono">MYTHIC</span> sebagai <span className="text-amber-300 font-bold font-mono">BEACON ANCHOR</span>! Setiap Beacon yang aktif menghasilkan <span className="text-cyan-400 font-bold font-mono">5 Nekomon Core points per hari</span>.
+                      Kuasai area strategis pada peta 16 Beacon berjenjang (Tier 1: 5 Cores, Tier 2: 7 Cores, Tier 3: 10 Cores/hari) dengan memasang kartu bertingkat kelangkaan <span className="text-amber-400 font-bold font-mono">MYTHIC</span> sebagai <span className="text-amber-300 font-bold font-mono">BEACON ANCHOR</span>!
                       <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Aturan Koneksi:</span> Beacon baru harus terhubung langsung dengan wilayah milikmu atau Markas Faksimu (Sentinel / Vanguard).
+                      <span className="text-yellow-400 font-bold font-mono">• Sebaran 16 Beacon Merata:</span> Mencakup Markas Sentinel di barat, Markas Vanguard di timur, serta jalur sentral Monas dan koridor strategis lintas 5 elemen (Air, Api, Tanah, Angin, Petir).
                       <br/>
                       <span className="text-red-400 font-bold font-mono">• Supply Line Cut-off:</span> Jika jalur koneksi ke markas terputus, Beacon hilir berhenti menghasilkan Cores sampai jalur tersambung kembali!
                       <br/>
-                      <span className="text-orange-400 font-bold font-mono">• Jeda Penaklukan (Cooldown 2 Jam):</span> Setelah berhasil merebut sebuah Beacon, penyerangan ke node di sekitarnya dijeda selama 2 jam dengan timer visual langsung untuk menyeimbangkan taktik permainan dan mencegah ekspansi kilat!
+                      <span className="text-orange-400 font-bold font-mono">• Jeda Penaklukan & Pemangkasan Waktu Garnisun:</span> Standar jeda penaklukan adalah 2 jam. Level kartu Mythic Anchor memberikan bonus kecepatan (+8% speed/level). Ditambah lagi, menyiagakan kartu <span className="text-teal-400 font-bold font-mono">Garnisun Awal</span> langsung memangkas waktu jeda sebesar <span className="text-emerald-400 font-bold font-mono">-5 Menit per kartu</span> (maks 3 kartu = -15 Menit)!
                       <br/>
-                      <span className="text-emerald-400 font-bold font-mono">• Peran Semua Pemain:</span> Pemain tanpa kartu Mythic tetap dapat berpartisipasi dengan memperkuat pertahanan garnisun faksi (+HP & +Poin) atau menyerang garnisun musuh!
+                      <span className="text-cyan-400 font-bold font-mono">• Filter Mythic & Pemindahan Anchor:</span> Anda dapat menyaring kartu <span className="text-cyan-300 font-mono font-bold">Mythic Idle</span> di Galeri untuk melihat kartu yang belum terpasang. Kartu yang sudah menjadi anchor dapat dipindahkan ke beacon lain melalui dialog konfirmasi aman.
                     </p>
                   </div>
                 </div>
@@ -184,6 +185,32 @@ export const GameGuide: React.FC = () => {
                       Pendaftaran akun baru Nekomon dilindungi oleh verifikasi email resmi via SMTP Server <span className="text-cyan-400 font-mono font-bold">support@nekomon.online</span>.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Link & Kode OTP 6-Digit:</span> Saat mendaftar, sistem otomatis mengirim email berisi tombol verifikasi langsung dan kode OTP 6-digit. Anda dapat mengklik tombol di email atau mengetikkan kode OTP di layar untuk menyelesaikan pendaftaran akun Anda secara instan dan aman.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-yellow-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">9. Animasi Transisi Tab Halus Native Mobile 📱</h4>
+                    <p className="leading-relaxed">
+                      Antarmuka game dilengkapi transisi animasi <span className="text-yellow-400 font-bold font-mono">Framer Motion</span> dengan kurva akselerasi pegas (*spring cubic-bezier*) dan indikator pil aktif bergerak (*layoutId morphing pill*). Memberikan respons sentuhan super halus layaknya aplikasi mobile Android/iOS native tanpa jeda muat ulang halaman!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">10. Geolocation Foto Kucing & Berbagi di Chat 📍📸</h4>
+                    <p className="leading-relaxed">
+                      Setiap foto kucing yang Anda tangkap di kamera otomatis dilengkapi koordinat <span className="text-emerald-400 font-bold font-mono">Geolocation (GPS)</span> presisi tinggi serta nama spot tangkapan.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Bagikan ke Chat Trainer:</span> Anda dapat membagikan foto kucing favorit beserta koordinat lokasinya ke pesan privat (Direct Message) Trainer lain langsung dari Galeri atau tombol lampiran kamera di ruang chat!
                     </p>
                   </div>
                 </div>
@@ -257,17 +284,17 @@ export const GameGuide: React.FC = () => {
                     <Target className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">6. Territory Control & Beacon War (5 Cores/Day) 🏰</h4>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">6. Territory Control & Beacon War (16 Strategic Nodes) 🏰</h4>
                     <p className="leading-relaxed">
-                      Dominate map areas by anchoring <span className="text-amber-400 font-bold font-mono">MYTHIC</span> rarity cards as <span className="text-amber-300 font-bold font-mono">BEACON ANCHORS</span>! Each active Beacon node generates <span className="text-cyan-400 font-bold font-mono">5 Nekomon Core points per day</span>.
+                      Dominate map areas across 16 tiered Beacons (Tier 1: 5 Cores, Tier 2: 7 Cores, Tier 3: 10 Cores/day) by anchoring <span className="text-amber-400 font-bold font-mono">MYTHIC</span> rarity cards as <span className="text-amber-300 font-bold font-mono">BEACON ANCHORS</span>!
                       <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Connection Rule:</span> New captures must be directly connected to an existing owned node or your Faction Base (Sentinel / Vanguard).
+                      <span className="text-yellow-400 font-bold font-mono">• 16 Evenly Distributed Beacons:</span> Spans the Sentinel Base in the west, Vanguard Stronghold in the east, central Monas nexus, and all 5 elemental hubs (Water, Fire, Earth, Wind, Lightning).
                       <br/>
                       <span className="text-red-400 font-bold font-mono">• Supply Line Cut-off:</span> Severed supply lines disable downstream beacons and halt core generation until reconnected!
                       <br/>
-                      <span className="text-orange-400 font-bold font-mono">• Capture Cooldown (2 Hours):</span> After capturing a Beacon, attacks on adjacent nodes are paused for 2 hours with a live visual timer to balance territorial gameplay and prevent rapid expansion!
+                      <span className="text-orange-400 font-bold font-mono">• Capture Cooldown & Garrison Reductions:</span> Standard cooldown is 2 hours. Mythic Anchor card levels grant capture speed (+8% speed/level). Stationing <span className="text-teal-400 font-bold font-mono">Initial Garrison</span> cards shaves off <span className="text-emerald-400 font-bold font-mono">-5 Minutes cooldown per card</span> (up to 3 cards = -15 Mins)!
                       <br/>
-                      <span className="text-emerald-400 font-bold font-mono">• Accessibility:</span> Non-mythic players can reinforce friendly garrisons (+HP & +Points) or assault enemy defenses!
+                      <span className="text-cyan-400 font-bold font-mono">• Mythic Filter & Anchor Relocation:</span> Filter for <span className="text-cyan-300 font-mono font-bold">Mythic Idle</span> cards in Gallery to see available anchors. Anchored cards can be relocated to new beacons with a safe confirmation step.
                     </p>
                   </div>
                 </div>
@@ -296,6 +323,32 @@ export const GameGuide: React.FC = () => {
                       New Nekomon account registrations are protected by official email verification via SMTP Server <span className="text-cyan-400 font-mono font-bold">support@nekomon.online</span>.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Link & 6-Digit OTP:</span> Upon registration, the system sends an email with a direct verification link and a 6-digit OTP code. You can click the email link or enter the OTP code on screen to complete your registration quickly and securely.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-yellow-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">9. Native Mobile Smooth Tab Transitions 📱</h4>
+                    <p className="leading-relaxed">
+                      The game interface incorporates smooth <span className="text-yellow-400 font-bold font-mono">Framer Motion</span> view transitions with spring cubic-bezier easing and dynamic pill layout morphing (*layoutId morphing pill*). Delivers a fluid, native app-like experience on mobile and desktop without page reload flickers!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">10. Cat Photo Geolocation & Chat Sharing 📍📸</h4>
+                    <p className="leading-relaxed">
+                      Every cat photo captured with your camera automatically embeds authentic <span className="text-emerald-400 font-bold font-mono">Geolocation (GPS)</span> coordinates and spot tags.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Share in Trainer Chat:</span> You can seamlessly share captured cat photos along with their location tags in Direct Messages with other Trainers directly from your Gallery or the chat camera attachment tool!
                     </p>
                   </div>
                 </div>
@@ -405,12 +458,23 @@ export const GameGuide: React.FC = () => {
 
             <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-850">
               <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-2 text-teal-400 flex items-center gap-1.5">
-                <Award className="w-4 h-4" /> {language === "id" ? "Tingkatkan Level Trainer Anda 🎒" : "Upgrade Your Trainer Level 🎒"}
+                <Award className="w-4 h-4" /> {language === "id" ? "Progres Trainer Level & EXP Bar 🎒" : "Trainer Level & EXP Bar Progression 🎒"}
               </h4>
               <p>
                 {language === "id"
-                  ? "Tingkat Level Trainer Anda dihitung secara dinamis berdasarkan jumlah total koleksi kartu Nekomon unik yang Anda miliki. Semakin tinggi Level Trainer Anda, semakin tinggi batasan HP maksimum kartu baru yang dapat ditempa secara acak!"
-                  : "Your Trainer Level is computed dynamically based on the total number of unique Nekomon cards you own. A higher Trainer Level unlocks a higher cap for randomized HP metrics on newly forged cards!"}
+                  ? "Trainer Level kini memiliki sistem EXP Bar seimbang. Raih EXP dengan berburu foto kucing (+10 EXP), menuntaskan quest (+20 EXP), menempa kartu (+25 EXP), menang Arena (+30 EXP), dan menguasai Beacon (+50 EXP). Level yang lebih tinggi membuka batas potensi status penempaan kartu dan memperkuat wibawa Anda di papan peringkat!"
+                  : "Trainer Level now features a balanced progressive EXP Bar. Earn EXP by capturing cat photos (+10 EXP), completing quests (+20 EXP), forging cards (+25 EXP), winning in Arena (+30 EXP), and capturing Beacons (+50 EXP). Higher levels increase forged card stat potentials and climb leaderboard ranks!"}
+              </p>
+            </div>
+
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-850">
+              <h4 className="font-bold text-slate-100 font-mono text-xs uppercase mb-2 text-amber-400 flex items-center gap-1.5">
+                <Camera className="w-4 h-4" /> {language === "id" ? "Batas Capture Spot Kucing (Maksimal 3x) 📍" : "Cat Spot Capture Limit (Max 3x) 📍"}
+              </h4>
+              <p>
+                {language === "id"
+                  ? "Aturan konservasi spot: Setiap titik spot peta memiliki kuota maksimal 3 kali penangkapan foto. Setelah 3 kali, kucing di spot tersebut akan beristirahat (Depleted), mendorong Trainer untuk menjelajahi spot baru di sekitar lingkungan Anda."
+                  : "Spot conservation rule: Each map spot permits a maximum of 3 photo captures. After 3 captures, cats at that spot rest (Depleted), encouraging Trainers to explore new surrounding locations."}
               </p>
             </div>
 

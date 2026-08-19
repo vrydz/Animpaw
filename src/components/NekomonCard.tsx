@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Card } from "../types";
-import { Sparkles, Flame, Droplet, Trees, Wind, Zap, Award } from "lucide-react";
+import { Sparkles, Flame, Droplet, Trees, Wind, Zap, Award, Shield } from "lucide-react";
 import { motion } from "motion/react";
 import { getAnimeNekomonSpeciesArtwork } from "../data/nekomonSpeciesData";
 
@@ -317,10 +317,26 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
 
-          {/* Style watermark in bottom left corner of art */}
-          <span className="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur-xs border border-slate-800 text-[8px] font-mono font-bold tracking-widest px-2 py-0.5 rounded text-slate-300">
-            {style === "Sentinel" ? "SENTINEL" : "VANGUARD"}
-          </span>
+          {/* Style watermark & Mythic Anchor/Idle status in bottom of art */}
+          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-1 pointer-events-none">
+            <span className="bg-slate-950/80 backdrop-blur-xs border border-slate-800 text-[8px] font-mono font-bold tracking-widest px-2 py-0.5 rounded text-slate-300">
+              {style === "Sentinel" ? "SENTINEL" : "VANGUARD"}
+            </span>
+
+            {rarity === "Mythic" && (
+              card.isTerritoryAnchor ? (
+                <span className="bg-cyan-950/90 border border-cyan-400 text-cyan-300 text-[8px] font-mono font-black px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.4)] flex items-center gap-1">
+                  <Shield className="w-2.5 h-2.5 text-cyan-400 fill-cyan-400/40" />
+                  <span>ANCHOR: {card.anchoredTerritoryName || "BEACON"}</span>
+                </span>
+              ) : (
+                <span className="bg-emerald-950/90 border border-emerald-400 text-emerald-300 text-[8px] font-mono font-black px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.4)] flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5 text-emerald-400 fill-emerald-400" />
+                  <span>MYTHIC IDLE</span>
+                </span>
+              )
+            )}
+          </div>
 
           {/* Elemental Circle Indicator in top right corner of artwork frame */}
           <div className="absolute top-3.5 right-3.5 w-9 h-9 rounded-full bg-slate-950/80 backdrop-blur-xs border border-white/50 flex items-center justify-center shadow-lg">

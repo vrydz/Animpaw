@@ -39,6 +39,9 @@ export interface Capture {
   createdAt: string;
   spotId?: string;
   spotName?: string;
+  lat?: number;
+  lng?: number;
+  locationName?: string;
 }
 
 export interface EvolutionLog {
@@ -155,6 +158,13 @@ export interface DirectMessage {
   content: string;
   createdAt: string;
   read: boolean;
+  sharedPhotoUrl?: string;
+  sharedLocation?: {
+    lat: number;
+    lng: number;
+    name?: string;
+  };
+  sharedSpotName?: string;
 }
 
 export interface ConversationThread {
