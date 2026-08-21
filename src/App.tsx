@@ -73,7 +73,8 @@ import {
   Info,
   Mail,
   Shield,
-  Target
+  Target,
+  Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
@@ -261,6 +262,66 @@ export default function App() {
     userRef.current = user;
   }, [user]);
   
+  // PWA Install Prompt State
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Check if running in standalone mode
+    if (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone) {
+      setIsPwaInstalled(true);
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsPwaInstalled(true);
+      setDeferredInstallPrompt(null);
+      setNotification({
+        message: language === "id" 
+          ? "🎉 Nekomon berhasil terpasang di perangkat Anda! Selamat bermain!" 
+          : "🎉 Nekomon installed successfully on your device! Enjoy playing!",
+        type: "success"
+      });
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, [language]);
+
+  const handleInstallPwa = async () => {
+    if (!deferredInstallPrompt) {
+      // Fallback instruction for browsers where prompt cannot be triggered directly
+      setNotification({
+        message: language === "id"
+          ? "💡 Untuk menginstal: Klik tombol menu browser (⋮ atau Bagikan) lalu pilih 'Tambahkan ke Layar Utama' / 'Install App'."
+          : "💡 To install: Tap browser menu (⋮ or Share) and select 'Add to Home Screen' / 'Install App'.",
+        type: "info"
+      });
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+    const choiceResult = await deferredInstallPrompt.userChoice;
+    if (choiceResult && choiceResult.outcome === "accepted") {
+      setNotification({
+        message: language === "id" 
+          ? "🎉 Menginstal Nekomon ke perangkat Anda..." 
+          : "🎉 Installing Nekomon to your device...",
+        type: "success"
+      });
+    }
+    setDeferredInstallPrompt(null);
+  };
+
   // App navigation & layout toggles
   const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "territory" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop">("spot_map");
   const [desktopView, setDesktopView] = useState<"album" | "trading">("album");
@@ -1306,6 +1367,18 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Install PWA Button */}
+          {!isPwaInstalled && (
+            <button
+              onClick={handleInstallPwa}
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black font-mono text-[10px] sm:text-xs shadow-md transition-all cursor-pointer shrink-0 active:scale-95 border border-amber-300/40"
+              title={language === "id" ? "Pasang Nekomon sebagai Aplikasi Android / PWA" : "Install Nekomon as Android / PWA App"}
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{language === "id" ? "PASANG APP 📱" : "INSTALL APP 📱"}</span>
+            </button>
+          )}
+
           {/* Language Switcher */}
           <div className="flex bg-slate-900/90 border border-slate-800 p-1 rounded-xl text-[10px] font-black font-mono shadow-md select-none shrink-0">
             <button

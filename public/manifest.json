@@ -1,0 +1,62 @@
+{
+  "short_name": "Nekomon",
+  "name": "Nekomon - Game Kartu AR Berburu Kucing",
+  "description": "Tangkap foto kucing di dunia nyata, tempa (forge) menjadi kartu anime Faksi Sentinel atau Vanguard, dan adu strategi di Arena PVP & Territory Control.",
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["games", "entertainment", "card"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Berburu Kucing (AR Spot)",
+      "short_name": "Berburu",
+      "description": "Buka kamera untuk memotret kucing nyata di sekitarmu",
+      "url": "/?tab=camera",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "TCG Arena Pertarungan",
+      "short_name": "Arena",
+      "description": "Tantang pemain lain dalam pertarungan kartu TCG",
+      "url": "/?tab=arena",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Territory Control (Peta)",
+      "short_name": "Territory",
+      "description": "Rebut dan pertahankan Beacon wilayah faksi Anda",
+      "url": "/?tab=territory",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Galeri Kartu & Deck",
+      "short_name": "Galeri",
+      "description": "Lihat koleksi kartu Nekomon yang sudah Anda tempa",
+      "url": "/?tab=gallery",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": []
+}
