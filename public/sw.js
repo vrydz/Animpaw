@@ -6,7 +6,12 @@ const PRECACHE_ASSETS = [
   "/index.html",
   "/manifest.json",
   "/manifest.webmanifest",
-  "/icon.svg"
+  "/icon.svg",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/icon-512-maskable.png",
+  "/screenshots/screenshot-desktop.png",
+  "/screenshots/screenshot-mobile.png"
 ];
 
 // Install Event - Precache Core Assets
