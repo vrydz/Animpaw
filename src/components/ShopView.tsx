@@ -915,7 +915,7 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1.5 bg-pink-500/20 text-pink-300 border border-pink-500/40 text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase">
                   <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-                  ADMOB & UNITY ADS REWARDED SDK
+                  GOOGLE ADSENSE & ADSTERRA NETWORK
                 </span>
                 <span className="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold font-mono px-2.5 py-1 rounded-full">
                   <Clock className="w-3 h-3 text-amber-400" />
