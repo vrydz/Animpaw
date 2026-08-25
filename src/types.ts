@@ -90,7 +90,23 @@ export interface AuthResponse {
   error?: string;
 }
 
-export type SpotCategory = "taman" | "jalan" | "komplek" | "cafe" | "stasiun" | "terminal" | "halte" | "others" | "lapangan" | "mall" | "pantai";
+export type SpotCategory = 
+  | "taman" 
+  | "jalan" 
+  | "komplek" 
+  | "cafe" 
+  | "stasiun" 
+  | "terminal" 
+  | "halte" 
+  | "others" 
+  | "lapangan" 
+  | "mall" 
+  | "pantai"
+  | "shelter_kucing"
+  | "street_feeding"
+  | "vet_clinic"
+  | "landmark"
+  | "tempat_ibadah";
 
 export interface NekomonSpot {
   id: string;
@@ -111,6 +127,44 @@ export interface NekomonSpot {
   submittedBy?: string;
   votes?: number;
   createdAt?: string;
+  sponsoredEventId?: string;
+}
+
+export type SponsorEventType = "pet_shop" | "vet_clinic" | "pet_food_brand" | "shelter_rescue" | "community_event";
+
+export interface SponsorshipEvent {
+  id: string;
+  title: string;
+  titleEn?: string;
+  sponsorName: string;
+  type: SponsorEventType;
+  bannerUrl: string;
+  logoUrl?: string;
+  tagline: string;
+  taglineEn?: string;
+  description: string;
+  descriptionEn?: string;
+  promoCode?: string;
+  promoDiscount?: string;
+  targetLink: string;
+  rewardPoints?: number;
+  rewardCores?: number;
+  hasPhysicalLocation?: boolean;
+  locationName?: string;
+  latitude?: number;
+  longitude?: number;
+  radiusMeters?: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  socialQuestGoal?: string;
+  socialQuestGoalEn?: string;
+  socialQuestCurrentPurchases?: number;
+  socialQuestTargetPurchases?: number;
+  socialImpactDescription?: string;
+  socialImpactDescriptionEn?: string;
+  createdAt: string;
+  createdBy: string;
 }
 
 export interface ExplorationDailyQuests {

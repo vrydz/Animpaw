@@ -4301,13 +4301,13 @@ app.post("/api/mail/official/broadcast", (req, res) => {
   const user = getAuthUser(req, db);
   const { title, category, content, summary, rewardPoints, rewardCores, pinned } = req.body;
 
-  // Strict check: only verified developer accounts with email verydiaz@gmail.com or support@nekomon.online
-  const developerEmails = ["verydiaz@gmail.com", "support@nekomon.online"];
+  // Strict check: only verified developer accounts with email verydiaz@gmail.com, nekomaster@nekomon.online, or support@nekomon.online
+  const developerEmails = ["verydiaz@gmail.com", "nekomaster@nekomon.online", "support@nekomon.online"];
   const isAuthorized = user && user.email && developerEmails.includes(user.email.toLowerCase().trim());
 
   if (!isAuthorized) {
     return res.status(403).json({
-      error: "Akses ditolak. Fitur siaran resmi ini hanya dapat dilakukan oleh akun Developer Nekomon (verydiaz@gmail.com / support@nekomon.online)."
+      error: "Akses ditolak. Fitur siaran resmi ini hanya dapat dilakukan oleh akun Developer Nekomon (verydiaz@gmail.com / nekomaster@nekomon.online / support@nekomon.online)."
     });
   }
 
@@ -4345,19 +4345,19 @@ app.post("/api/mail/official/broadcast", (req, res) => {
   });
 });
 
-// 4b. Developer Gift to Specific User (Developer Only: verydiaz@gmail.com & support@nekomon.online)
+// 4b. Developer Gift to Specific User (Developer Only: verydiaz@gmail.com, nekomaster@nekomon.online, support@nekomon.online)
 app.post("/api/developer/gift-user", (req, res) => {
   const db = readDB();
   const user = getAuthUser(req, db);
   const { targetUserId, targetUsername, points, cores, note } = req.body;
 
-  // Strict check: only verified developer accounts with email verydiaz@gmail.com or support@nekomon.online
-  const developerEmails = ["verydiaz@gmail.com", "support@nekomon.online"];
+  // Strict check: only verified developer accounts
+  const developerEmails = ["verydiaz@gmail.com", "nekomaster@nekomon.online", "support@nekomon.online"];
   const isAuthorized = user && user.email && developerEmails.includes(user.email.toLowerCase().trim());
 
   if (!isAuthorized) {
     return res.status(403).json({
-      error: "Akses ditolak. Fitur pemberian hadiah ini khusus akun Developer Nekomon (verydiaz@gmail.com / support@nekomon.online)."
+      error: "Akses ditolak. Fitur pemberian hadiah ini khusus akun Developer Nekomon."
     });
   }
 
@@ -4430,7 +4430,7 @@ app.post("/api/developer/gift-broadcast", (req, res) => {
   const user = getAuthUser(req, db);
   const { title, content, summary, category, rewardPoints, rewardCores, distributionMode, pinned } = req.body;
 
-  const developerEmails = ["verydiaz@gmail.com", "support@nekomon.online"];
+  const developerEmails = ["verydiaz@gmail.com", "nekomaster@nekomon.online", "support@nekomon.online"];
   const isAuthorized = user && user.email && developerEmails.includes(user.email.toLowerCase().trim());
 
   if (!isAuthorized) {
@@ -6025,6 +6025,271 @@ app.post("/api/territory/reinforce", (req, res) => {
     message: `Garnisun Beacon ${node.name} berhasil diperkuat dengan ${supportCard.name}! (+30 Defense HP, +20 Trainer Pts)`,
     node,
     userPoints: user.points
+  });
+});
+
+// Developer emails list with full access
+const DEVELOPER_EMAILS = [
+  "verydiaz@gmail.com",
+  "nekomaster@nekomon.online",
+  "support@nekomon.online"
+];
+
+// Helper to check if a user is an authorized developer
+function isDeveloperUser(user: any): boolean {
+  if (!user || !user.email) return false;
+  const cleanEmail = user.email.toLowerCase().trim();
+  return user.role === "developer" || DEVELOPER_EMAILS.includes(cleanEmail);
+}
+
+// ----------------------------------------------------------------
+// SPONSORSHIP & EVENT HUB ROUTES (PET SHOPS, VET CLINICS, FOOD BRANDS)
+// ----------------------------------------------------------------
+
+// Default initial seeded events
+const DEFAULT_SPONSOR_EVENTS = [
+  {
+    id: "event_whiskas_shelter",
+    title: "🐾 Donasi Pakan Shelter Kucing & Diskon Pakan 25%",
+    titleEn: "🐾 Cat Shelter Food Drive & 25% Brand Discount",
+    sponsorName: "Purrfect Feed & Whiskas Indonesia",
+    type: "pet_food_brand",
+    bannerUrl: "https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=1200&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=200&q=80",
+    tagline: "Beli Pakan Favorit Kucingmu, Bantu Pakan Kucing Liar di Shelter!",
+    taglineEn: "Buy your cat's favorite food, feed rescue shelter cats!",
+    description: "Setiap pembelian produk pakan kucing bermerek mitra dengan kode voucher NEKOCARE25, Anda mendapatkan potongan harga 25% langsung, dan 10% dari nilai transaksi dialokasikan untuk penyediaan pakan gratis ke Shelter Kucing Indonesia.",
+    descriptionEn: "Use code NEKOCARE25 for 25% off partner cat foods. 10% of proceeds go directly to funding dry food supplies for local rescue cat shelters.",
+    promoCode: "NEKOCARE25",
+    promoDiscount: "Diskon 25%",
+    targetLink: "https://nekomon.online",
+    rewardPoints: 50,
+    rewardCores: 1,
+    hasPhysicalLocation: false,
+    startDate: new Date("2026-08-01T00:00:00.000Z").toISOString(),
+    endDate: new Date("2026-12-31T23:59:59.000Z").toISOString(),
+    isActive: true,
+    socialQuestGoal: "Target 500kg Pakan Kucing untuk 5 Shelter Mitra",
+    socialQuestGoalEn: "Target 500kg Cat Food Donated to 5 Partner Shelters",
+    socialImpactDescription: "Program kerjasama resmi dengan shelter hewan terlantar untuk memastikan asupan gizi kucing rescue tetap terpenuhi.",
+    socialImpactDescriptionEn: "Official collaboration program with rescue shelters ensuring rescued stray cats receive proper nutritional care.",
+    createdAt: new Date().toISOString(),
+    createdBy: "support@nekomon.online"
+  },
+  {
+    id: "event_vet_care_spot",
+    title: "🏥 Diskon 30% Cek Kesehatan & Vaksinasi Kucing di Vet Mitra",
+    titleEn: "🏥 30% Off Health Check & Vaccines at Partner Vet Clinic",
+    sponsorName: "NekoCare Vet Clinic & Pet Hospital",
+    type: "vet_clinic",
+    bannerUrl: "https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=1200&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=200&q=80",
+    tagline: "Kucing Sehat, Trainer Hebat! Rawat Kucing Kesayanganmu Sekarang.",
+    taglineEn: "Healthy Cats, Happy Trainers! Care for your companion today.",
+    description: "Tunjukkan profil game Nekomon Online Anda di meja resepsionis Klinik Hewan NekoCare untuk menikmati potongan diskon 30% biaya konsultasi dokter hewan, sterilisasi, dan vaksin tahunan.",
+    descriptionEn: "Show your Nekomon Online game profile at NekoCare Clinic front desk to claim 30% discount on veterinary consultation, spaying/neutering, and annual vaccines.",
+    promoCode: "VETNEKO30",
+    promoDiscount: "Diskon 30%",
+    targetLink: "https://nekomon.online",
+    rewardPoints: 100,
+    rewardCores: 2,
+    hasPhysicalLocation: true,
+    locationName: "NekoCare Central Vet Clinic",
+    latitude: -6.2088,
+    longitude: 106.8456,
+    radiusMeters: 300,
+    startDate: new Date("2026-08-01T00:00:00.000Z").toISOString(),
+    endDate: new Date("2026-12-31T23:59:59.000Z").toISOString(),
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    createdBy: "verydiaz@gmail.com"
+  }
+];
+
+// 1. Get All Active Sponsor Events (Public to all players)
+app.get("/api/events", (req, res) => {
+  const db = readDB();
+  if (!db.sponsorshipEvents) {
+    db.sponsorshipEvents = DEFAULT_SPONSOR_EVENTS;
+    writeDB(db);
+  }
+  res.json({
+    success: true,
+    events: db.sponsorshipEvents.filter((ev: any) => ev.isActive !== false)
+  });
+});
+
+// 2. Create Sponsor Event (Developer Only)
+app.post("/api/developer/events", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({
+      error: "Akses ditolak. Hanya Akun Developer resmi (verydiaz@gmail.com / support@nekomon.online) yang dapat membuat event sponsor."
+    });
+  }
+
+  const {
+    title,
+    titleEn,
+    sponsorName,
+    type,
+    bannerUrl,
+    logoUrl,
+    tagline,
+    taglineEn,
+    description,
+    descriptionEn,
+    promoCode,
+    promoDiscount,
+    targetLink,
+    rewardPoints,
+    rewardCores,
+    hasPhysicalLocation,
+    locationName,
+    latitude,
+    longitude,
+    radiusMeters,
+    startDate,
+    endDate,
+    socialQuestGoal,
+    socialQuestGoalEn,
+    socialImpactDescription,
+    socialImpactDescriptionEn
+  } = req.body;
+
+  if (!title || !sponsorName || !bannerUrl || !targetLink) {
+    return res.status(400).json({ error: "Judul, Nama Sponsor, Banner URL, dan Link Tautan wajib diisi." });
+  }
+
+  if (!db.sponsorshipEvents) db.sponsorshipEvents = DEFAULT_SPONSOR_EVENTS;
+
+  const newEvent = {
+    id: "event_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 5),
+    title: title.trim(),
+    titleEn: titleEn ? titleEn.trim() : title.trim(),
+    sponsorName: sponsorName.trim(),
+    type: type || "pet_shop",
+    bannerUrl: bannerUrl.trim(),
+    logoUrl: logoUrl ? logoUrl.trim() : "",
+    tagline: tagline ? tagline.trim() : "",
+    taglineEn: taglineEn ? taglineEn.trim() : "",
+    description: description.trim(),
+    descriptionEn: descriptionEn ? descriptionEn.trim() : description.trim(),
+    promoCode: promoCode ? promoCode.trim().toUpperCase() : "",
+    promoDiscount: promoDiscount ? promoDiscount.trim() : "",
+    targetLink: targetLink.trim(),
+    rewardPoints: Number(rewardPoints) || 0,
+    rewardCores: Number(rewardCores) || 0,
+    hasPhysicalLocation: !!hasPhysicalLocation,
+    locationName: locationName ? locationName.trim() : "",
+    latitude: latitude ? Number(latitude) : undefined,
+    longitude: longitude ? Number(longitude) : undefined,
+    radiusMeters: Number(radiusMeters) || 250,
+    startDate: startDate || new Date().toISOString(),
+    endDate: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    isActive: true,
+    socialQuestGoal: socialQuestGoal ? socialQuestGoal.trim() : "",
+    socialQuestGoalEn: socialQuestGoalEn ? socialQuestGoalEn.trim() : "",
+    socialImpactDescription: socialImpactDescription ? socialImpactDescription.trim() : "",
+    socialImpactDescriptionEn: socialImpactDescriptionEn ? socialImpactDescriptionEn.trim() : "",
+    createdAt: new Date().toISOString(),
+    createdBy: user.email || "developer"
+  };
+
+  db.sponsorshipEvents.unshift(newEvent);
+
+  // If this event has a physical location, automatically add/sync it to Community Spots on Map
+  if (newEvent.hasPhysicalLocation && newEvent.latitude && newEvent.longitude) {
+    if (!db.communitySpots) db.communitySpots = [];
+    const spotCat = newEvent.type === "vet_clinic" ? "vet_clinic" : newEvent.type === "pet_shop" ? "cafe" : "landmark";
+    const newSpot = {
+      id: "spot_event_" + newEvent.id,
+      name: `[SPONSOR] ${newEvent.locationName || newEvent.sponsorName}`,
+      category: spotCat,
+      categoryLabel: newEvent.sponsorName,
+      lat: newEvent.latitude,
+      lng: newEvent.longitude,
+      radiusMeters: newEvent.radiusMeters || 250,
+      boostedElement: "Air",
+      bonusPoints: 30,
+      bonusCores: 1,
+      targetCatName: "Sponsored Companion",
+      rarity: "Epic",
+      iconEmoji: newEvent.type === "vet_clinic" ? "🏥" : "🏬",
+      description: `${newEvent.title} - ${newEvent.promoDiscount || "Promo Spesial"}`,
+      isCommunity: true,
+      submittedBy: user.username || "Developer",
+      sponsoredEventId: newEvent.id,
+      createdAt: new Date().toISOString()
+    };
+    db.communitySpots.unshift(newSpot);
+  }
+
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Event sponsor baru berhasil dipublikasikan! 🎉",
+    event: newEvent
+  });
+});
+
+// 3. Update Sponsor Event (Developer Only)
+app.put("/api/developer/events/:id", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses ditolak." });
+  }
+
+  const { id } = req.params;
+  if (!db.sponsorshipEvents) db.sponsorshipEvents = DEFAULT_SPONSOR_EVENTS;
+
+  const idx = db.sponsorshipEvents.findIndex((ev: any) => ev.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: "Event sponsor tidak ditemukan." });
+  }
+
+  const existing = db.sponsorshipEvents[idx];
+  const updated = {
+    ...existing,
+    ...req.body,
+    id: existing.id,
+    updatedAt: new Date().toISOString()
+  };
+
+  db.sponsorshipEvents[idx] = updated;
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Event sponsor berhasil diperbarui.",
+    event: updated
+  });
+});
+
+// 4. Delete Sponsor Event (Developer Only)
+app.delete("/api/developer/events/:id", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses ditolak." });
+  }
+
+  const { id } = req.params;
+  if (!db.sponsorshipEvents) db.sponsorshipEvents = DEFAULT_SPONSOR_EVENTS;
+
+  db.sponsorshipEvents = db.sponsorshipEvents.filter((ev: any) => ev.id !== id);
+  if (db.communitySpots) {
+    db.communitySpots = db.communitySpots.filter((s: any) => s.sponsoredEventId !== id);
+  }
+
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Event sponsor berhasil dihapus."
   });
 });
 

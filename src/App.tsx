@@ -23,6 +23,7 @@ import { AdSenseBanner } from "./components/AdSenseBanner";
 import { LegalPagesModal, LegalTabType } from "./components/LegalPagesModal";
 import { MailboxView } from "./components/MailboxView";
 import { TerritoryControlView } from "./components/TerritoryControlView";
+import { EventHubView } from "./components/EventHubView";
 import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
 
@@ -2046,6 +2047,7 @@ export default function App() {
                   [
                     { id: "spot_map", label: language === "id" ? "PETA SPOT 📍" : "SPOT MAP 📍", icon: MapPin },
                     { id: "territory", label: language === "id" ? "DOMINASI WILAYAH 🏰" : "TERRITORY 🏰", icon: Shield },
+                    { id: "events", label: language === "id" ? "EVENT & MITRA 🐾" : "EVENTS & PARTNERS 🐾", icon: Sparkles },
                     { id: "camera", label: t("nav.camera"), icon: Camera },
                     { id: "gallery", label: t("nav.gallery"), icon: FolderHeart },
                     { id: "dex", label: t("nav.dex"), icon: BookOpen },
@@ -2133,6 +2135,25 @@ export default function App() {
                           fetchProfile(token);
                           fetchGallery(token);
                         }
+                      }}
+                    />
+                  </motion.div>
+                )}
+
+                {mobileTab === "events" && (
+                  <motion.div
+                    key="events-view"
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="w-full"
+                  >
+                    <EventHubView
+                      user={user}
+                      language={language}
+                      onOpenMapLocation={(lat, lng, name) => {
+                        handleTabChange("spot_map");
                       }}
                     />
                   </motion.div>

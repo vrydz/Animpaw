@@ -214,6 +214,24 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-amber-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">11. Event & Mitra Peduli Kucing (Social Quests & Sponsor) 🛍️🐾</h4>
+                    <p className="leading-relaxed">
+                      Jelajahi tab <span className="text-amber-400 font-bold font-mono">EVENT & MITRA</span> untuk mengakses program kolaborasi resmi Nekomon bersama Pet Shop lokal, Klinik Dokter Hewan (Vet), Merek Pakan Kucing, dan Shelter Penyelamatan Hewan Terlantar.
+                      <br className="my-1"/>
+                      <span className="text-emerald-400 font-bold font-mono">• Kode Voucher & Diskon Fisik:</span> Dapatkan kode promo untuk diskon konsultasi dokter hewan, sterilisasi, dan belanja pakan di toko mitra.
+                      <br/>
+                      <span className="text-rose-400 font-bold font-mono">• Misi Donasi Shelter Nyata:</span> Dukung kampanye donasi pakan untuk ratusan kucing terlantar di shelter resmi melalui transaksi mitra.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Akses Pengembang:</span> Akun Developer (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span>, <span className="text-amber-300 font-mono">nekomaster@nekomon.online</span>, <span className="text-amber-300 font-mono">support@nekomon.online</span>) dapat mempublikasikan dan mengelola banner event secara langsung melalui panel game!
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -349,6 +367,24 @@ export const GameGuide: React.FC = () => {
                       Every cat photo captured with your camera automatically embeds authentic <span className="text-emerald-400 font-bold font-mono">Geolocation (GPS)</span> coordinates and spot tags.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Share in Trainer Chat:</span> You can seamlessly share captured cat photos along with their location tags in Direct Messages with other Trainers directly from your Gallery or the chat camera attachment tool!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-amber-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">11. Events & Cat Care Partners (Social Quests & Sponsors) 🛍️🐾</h4>
+                    <p className="leading-relaxed">
+                      Open the <span className="text-amber-400 font-bold font-mono">EVENTS & PARTNERS</span> tab to discover official collaborations with local Pet Shops, Veterinary Clinics, Cat Food Brands, and Rescue Shelters.
+                      <br className="my-1"/>
+                      <span className="text-emerald-400 font-bold font-mono">• Vouchers & Physical Discounts:</span> Unlock promo codes for discounts on vet checkups, neutering, and pet food purchases.
+                      <br/>
+                      <span className="text-rose-400 font-bold font-mono">• Real Shelter Food Drives:</span> Support shelter food campaigns providing meals for rescued stray cats through partner activities.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Developer Access:</span> Verified Developer accounts (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span>, <span className="text-amber-300 font-mono">nekomaster@nekomon.online</span>, <span className="text-amber-300 font-mono">support@nekomon.online</span>) can publish and manage events directly in-game without code editing!
                     </p>
                   </div>
                 </div>
@@ -499,12 +535,12 @@ export const GameGuide: React.FC = () => {
         </div>
         <p className="text-sm font-black text-slate-100 tracking-wider">astronian22</p>
         <a 
-          href="https://wa.me/6285624089327" 
+          href="https://www.instagram.com/nekomontcg/" 
           target="_blank" 
           rel="noopener noreferrer" 
           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer shadow-sm"
         >
-          <span className="text-sm">💬</span> WhatsApp: 085624089327
+          <span className="text-sm">💬</span> Instagram: NekomonTCG
         </a>
         <p className="text-[11px] text-slate-400 font-mono max-w-md mx-auto">
           {language === "id"
