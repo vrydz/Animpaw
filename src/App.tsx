@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Capture, Card, Mission, NekomonSpot } from "./types";
+import { User, Capture, Card, Mission, NekomonSpot, RaidLobbyRoom } from "./types";
 import { AuthForm } from "./components/AuthForm";
 import { VirtualCamera } from "./components/VirtualCamera";
 import { NekomonSpotMap } from "./components/NekomonSpotMap";
@@ -24,6 +24,8 @@ import { LegalPagesModal, LegalTabType } from "./components/LegalPagesModal";
 import { MailboxView } from "./components/MailboxView";
 import { TerritoryControlView } from "./components/TerritoryControlView";
 import { EventHubView } from "./components/EventHubView";
+import { RaidBossHub } from "./components/RaidBossHub";
+import { RaidBattleArena } from "./components/RaidBattleArena";
 import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
 
@@ -324,13 +326,35 @@ export default function App() {
   };
 
   // App navigation & layout toggles
-  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "territory" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop">("spot_map");
+  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "territory" | "events" | "raid" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop">("spot_map");
   const [desktopView, setDesktopView] = useState<"album" | "trading">("album");
   const [showForgeModal, setShowForgeModal] = useState<boolean>(false);
   const [showDailyBonusModal, setShowDailyBonusModal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [bgmOn, setBgmOn] = useState<boolean>(false);
   const [activeSpotToCapture, setActiveSpotToCapture] = useState<NekomonSpot | null>(null);
+
+  // Raid Boss State
+  const [activeRaidRoom, setActiveRaidRoom] = useState<RaidLobbyRoom | null>(null);
+  const [userCoordinates, setUserCoordinates] = useState<{ lat: number; lng: number } | null>({
+    lat: -6.1754,
+    lng: 106.8272
+  });
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserCoordinates({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          });
+        },
+        (err) => console.log("GPS Notice:", err.message),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
 
   // Mail & Direct Messages State
   const [mailUnreadCount, setMailUnreadCount] = useState<number>(0);
@@ -358,7 +382,7 @@ export default function App() {
 
   // Ads Simulation State (AdMob & Unity Ads)
   const [showInterstitialAd, setShowInterstitialAd] = useState<boolean>(false);
-  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "territory" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop" | null>(null);
+  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "territory" | "events" | "raid" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop" | null>(null);
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
   const [interstitialFreq, setInterstitialFreq] = useState<"random" | "always" | "off">("random");
 
@@ -491,7 +515,7 @@ export default function App() {
     }
   }, [user, currentTrainerLv, language]);
 
-  const handleTabChange = (targetTab: "camera" | "spot_map" | "territory" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop") => {
+  const handleTabChange = (targetTab: "camera" | "spot_map" | "territory" | "events" | "raid" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop") => {
     if (targetTab === mobileTab) return;
     setShowForgeModal(false);
 
@@ -2047,12 +2071,13 @@ export default function App() {
                   [
                     { id: "spot_map", label: language === "id" ? "PETA SPOT 📍" : "SPOT MAP 📍", icon: MapPin },
                     { id: "territory", label: language === "id" ? "DOMINASI WILAYAH 🏰" : "TERRITORY 🏰", icon: Shield },
+                    { id: "raid", label: language === "id" ? "RAID BOSS ⚔️" : "RAID BOSS ⚔️", icon: Swords },
                     { id: "events", label: language === "id" ? "EVENT & MITRA 🐾" : "EVENTS & PARTNERS 🐾", icon: Sparkles },
                     { id: "camera", label: t("nav.camera"), icon: Camera },
                     { id: "gallery", label: t("nav.gallery"), icon: FolderHeart },
                     { id: "dex", label: t("nav.dex"), icon: BookOpen },
-                    { id: "arena", label: t("nav.arena"), icon: Swords },
-                    { id: "missions", label: t("nav.missions"), icon: Gamepad2 },
+                    { id: "arena", label: t("nav.arena"), icon: Gamepad2 },
+                    { id: "missions", label: t("nav.missions"), icon: Target },
                     { id: "trading", label: t("nav.trading"), icon: ArrowLeftRight },
                     { id: "leaderboard", label: t("nav.leaderboard"), icon: Trophy },
                     { id: "mail", label: language === "id" ? "SURAT & PESAN 📬" : "MAILBOX 📬", icon: Mail, badge: mailUnreadCount },
@@ -2111,6 +2136,7 @@ export default function App() {
                         setActiveSpotToCapture(spot);
                         setMobileTab("camera");
                       }}
+                      onNavigateToRaid={() => handleTabChange("raid")}
                       userPoints={user.points}
                       token={token || ""}
                     />
@@ -2137,6 +2163,47 @@ export default function App() {
                         }
                       }}
                     />
+                  </motion.div>
+                )}
+
+                {mobileTab === "raid" && (
+                  <motion.div
+                    key="raid-view"
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="w-full"
+                  >
+                    {activeRaidRoom ? (
+                      <RaidBattleArena
+                        initialRoom={activeRaidRoom}
+                        currentUser={user}
+                        currentLanguage={language}
+                        onExit={() => {
+                          setActiveRaidRoom(null);
+                          if (token) {
+                            fetchProfile(token);
+                            fetchGallery(token);
+                          }
+                        }}
+                        onRefreshUserData={() => {
+                          if (token) {
+                            fetchProfile(token);
+                            fetchGallery(token);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <RaidBossHub
+                        user={user}
+                        userCards={cards}
+                        currentLanguage={language}
+                        userCoordinates={userCoordinates}
+                        onEnterBattle={(room) => setActiveRaidRoom(room)}
+                        onNavigateToMap={() => handleTabChange("spot_map")}
+                      />
+                    )}
                   </motion.div>
                 )}
 

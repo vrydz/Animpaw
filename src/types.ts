@@ -296,5 +296,107 @@ export interface WarResetCountdown {
   remainingSeconds: number;
 }
 
+export type BossSpeciesType = "kucing" | "tikus" | "anjing";
+export type NekomonElement = "Api" | "Air" | "Tanah" | "Angin" | "Petir";
+
+export interface BossSkill {
+  name: string;
+  nameEn: string;
+  description: string;
+  descriptionEn: string;
+  element: NekomonElement;
+  powerMultiplier: number;
+  effectType?: "damage" | "aoe" | "critical" | "leech" | "rage";
+}
+
+export interface RaidBoss {
+  id: string;
+  name: string;
+  nameEn: string;
+  title: string;
+  titleEn: string;
+  speciesType: BossSpeciesType;
+  level: number; // 5 - 30
+  element: NekomonElement;
+  buffElement: NekomonElement; // Boss has resistance/defense buff against this
+  debuffElement: NekomonElement; // Boss is weak against this element (+75% extra dmg taken)
+  buffDescription: string;
+  buffDescriptionEn: string;
+  debuffDescription: string;
+  debuffDescriptionEn: string;
+  hp: number;
+  maxHp: number;
+  atk: number;
+  def: number;
+  spd: number;
+  imageUrl: string;
+  locationName: string;
+  latitude: number;
+  longitude: number;
+  spawnRadiusKm: number; // 10 km
+  distanceMeters?: number;
+  inRadius?: boolean;
+  skills: BossSkill[];
+  rewards: {
+    cores: number;
+    points: number;
+    energyRefill: number;
+    cardXp: number;
+  };
+  isActive: boolean;
+  expiresAt: string;
+  createdAt: string;
+  loreId?: string;
+  loreEn?: string;
+}
+
+export interface RaidCombatSlot {
+  slotIndex: number; // 0, 1, 2 (3 slots total)
+  userId: string;
+  username: string;
+  faction?: "Sentinel" | "Vanguard" | null;
+  card: Card;
+  currentHp: number;
+  maxHp: number;
+  isReady: boolean;
+  damageDealt: number;
+}
+
+export interface RaidLobbyRoom {
+  id: string;
+  roomCode: string;
+  bossId: string;
+  bossSnapshot: RaidBoss;
+  hostUserId: string;
+  hostUsername: string;
+  isSinglePlayer: boolean;
+  slots: (RaidCombatSlot | null)[];
+  status: "waiting" | "in_battle" | "victory" | "defeat";
+  currentTurn: number;
+  bossCurrentHp: number;
+  bossMaxHp: number;
+  battleLogs: RaidBattleLog[];
+  sharedRewardsClaimed?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RaidBattleLog {
+  turn: number;
+  actor: string;
+  actorType: "player" | "boss";
+  cardName?: string;
+  skillName?: string;
+  element?: NekomonElement;
+  damage: number;
+  isCritical?: boolean;
+  isSuperEffective?: boolean;
+  isResisted?: boolean;
+  messageId: string;
+  messageEn: string;
+  timestamp: string;
+}
+
+
 
 

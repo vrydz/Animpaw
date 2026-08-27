@@ -7,6 +7,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { initWebSocket } from "./server/websocket";
 import { syncToFirestore, loadFromFirestore } from "./server/firestoreDb";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./server/mailer";
+import { RAID_BOSS_TEMPLATES, createRaidBossInstance, generateBossArtwork } from "./src/data/raidBossData";
 
 dotenv.config();
 
@@ -217,7 +218,7 @@ const DEFAULT_OFFICIAL_MAILS = [
 function readDBRaw() {
   try {
     if (!fs.existsSync(DB_PATH)) {
-      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: DEFAULT_OFFICIAL_MAILS, directMessages: [] };
+      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: DEFAULT_OFFICIAL_MAILS, directMessages: [], raidBosses: [], raidLobbies: [] };
       fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2));
       return initial;
     }
@@ -231,9 +232,11 @@ function readDBRaw() {
     if (!parsed.cards) parsed.cards = [];
     if (!parsed.officialMails) parsed.officialMails = [];
     if (!parsed.directMessages) parsed.directMessages = [];
+    if (!parsed.raidBosses) parsed.raidBosses = [];
+    if (!parsed.raidLobbies) parsed.raidLobbies = [];
     return parsed;
   } catch (err) {
-    return { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: [], directMessages: [] };
+    return { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: [], directMessages: [], raidBosses: [], raidLobbies: [] };
   }
 }
 
@@ -241,7 +244,7 @@ function readDBRaw() {
 function readDB() {
   try {
     if (!fs.existsSync(DB_PATH)) {
-      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: DEFAULT_OFFICIAL_MAILS, directMessages: [] };
+      const initial = { users: [], captures: [], cards: [], trades: [], communitySpots: [], battleHistory: [], transactions: [], officialMails: DEFAULT_OFFICIAL_MAILS, directMessages: [], raidBosses: [], raidLobbies: [] };
       fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2));
       return initial;
     }
@@ -255,6 +258,8 @@ function readDB() {
     if (!parsed.cards) parsed.cards = [];
     if (!parsed.officialMails) parsed.officialMails = [];
     if (!parsed.directMessages) parsed.directMessages = [];
+    if (!parsed.raidBosses) parsed.raidBosses = [];
+    if (!parsed.raidLobbies) parsed.raidLobbies = [];
 
     let modified = false;
 
@@ -6290,6 +6295,771 @@ app.delete("/api/developer/events/:id", (req, res) => {
   res.json({
     success: true,
     message: "Event sponsor berhasil dihapus."
+  });
+});
+
+// ----------------------------------------------------------------
+// RAID BOSS SYSTEM ROUTES (LEVEL 5-30, BUFF/DEBUFF, 3 SLOTS, 10KM)
+// ----------------------------------------------------------------
+
+// Haversine distance calculator
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+// Seed default bosses around coordinates
+function seedDefaultRaidBosses(userLat = -6.1754, userLng = 106.8272): any[] {
+  const bosses: any[] = [];
+  const configs = [
+    { dLat: 0.015, dLng: 0.012, tplIdx: 0, level: 6 },   // Oyen Berserker Purba (Lv 6, Api, Kucing)
+    { dLat: -0.020, dLng: 0.018, tplIdx: 10, level: 7 }, // Ironfang Cyber-Rat Swarm (Lv 7, Petir, Tikus)
+    { dLat: 0.025, dLng: -0.022, tplIdx: 5, level: 9 },  // Glacial Frosthound Howler (Lv 9, Air, Anjing)
+    { dLat: -0.012, dLng: -0.028, tplIdx: 1, level: 12 }, // Bastet Mecha-Sphynx (Lv 12, Tanah, Kucing)
+    { dLat: 0.035, dLng: 0.030, tplIdx: 11, level: 15 },  // Abyssal Rat Titan Behemoth (Lv 15, Tanah, Tikus)
+    { dLat: 0.018, dLng: -0.012, tplIdx: 2, level: 16 },  // Oceanus Bastet Tidal Queen (Lv 16, Air, Kucing)
+    { dLat: -0.025, dLng: 0.035, tplIdx: 6, level: 18 },  // Cyber-Anubis High Sentinel (Lv 18, Tanah, Anjing)
+    { dLat: 0.022, dLng: 0.015, tplIdx: 12, level: 19 }, // Pyro-Rodent Magma King (Lv 19, Api, Tikus)
+    { dLat: -0.038, dLng: 0.025, tplIdx: 7, level: 20 },  // Thunderfang Fenrir Direwolf (Lv 20, Petir, Anjing)
+    { dLat: 0.045, dLng: -0.035, tplIdx: 3, level: 22 },  // Celestial Zephyr Felis (Lv 22, Angin, Kucing)
+    { dLat: -0.030, dLng: -0.018, tplIdx: 13, level: 23 }, // Radioactive Sewer Behemoth (Lv 23, Air, Tikus)
+    { dLat: -0.015, dLng: 0.040, tplIdx: 8, level: 24 },  // Tempest Howler Direhound (Lv 24, Angin, Anjing)
+    { dLat: 0.028, dLng: -0.045, tplIdx: 14, level: 27 }, // Sovereign Plague Rodent (Lv 27, Angin, Tikus)
+    { dLat: -0.048, dLng: -0.040, tplIdx: 9, level: 28 },  // Cerberus Infernal Hellhound (Lv 28, Api, Anjing)
+    { dLat: 0.010, dLng: -0.015, tplIdx: 4, level: 30 },  // Emperor Spark Raijin Cat (Lv 30, Petir, Kucing)
+  ];
+
+  configs.forEach(cfg => {
+    const lat = Number((userLat + cfg.dLat).toFixed(6));
+    const lng = Number((userLng + cfg.dLng).toFixed(6));
+    const boss = createRaidBossInstance(cfg.tplIdx, lat, lng, cfg.level);
+    bosses.push(boss);
+  });
+
+  return bosses;
+}
+
+function getInitializedRaidBosses(db: any, userLat?: number, userLng?: number): any[] {
+  if (!db.raidBosses) db.raidBosses = [];
+  
+  const now = Date.now();
+  // Filter out expired bosses
+  db.raidBosses = db.raidBosses.filter((b: any) => {
+    if (!b || !b.expiresAt) return false;
+    return new Date(b.expiresAt).getTime() > now;
+  });
+
+  // If no active bosses remain, seed new ones
+  if (db.raidBosses.length === 0) {
+    const lat = userLat && !isNaN(userLat) ? userLat : -6.1754;
+    const lng = userLng && !isNaN(userLng) ? userLng : 106.8272;
+    db.raidBosses = seedDefaultRaidBosses(lat, lng);
+    writeDB(db);
+  }
+
+  return db.raidBosses;
+}
+
+// 1. Get Active Raid Bosses (with 10 km distance calculation)
+app.get("/api/raid/bosses", (req, res) => {
+  const db = readDB();
+  const latQuery = parseFloat(req.query.lat as string);
+  const lngQuery = parseFloat(req.query.lng as string);
+
+  const hasCoords = !isNaN(latQuery) && !isNaN(lngQuery);
+  const userLat = hasCoords ? latQuery : -6.1754;
+  const userLng = hasCoords ? lngQuery : 106.8272;
+
+  const bosses = getInitializedRaidBosses(db, userLat, userLng);
+
+  // Calculate distance in meters and 10 km radius check
+  const decoratedBosses = bosses.map((boss: any) => {
+    const distMeters = calculateDistanceMeters(userLat, userLng, boss.latitude, boss.longitude);
+    const inRadius = distMeters <= (boss.spawnRadiusKm || 10) * 1000;
+    const distKm = (distMeters / 1000).toFixed(1);
+
+    return {
+      ...boss,
+      distanceMeters: distMeters,
+      distanceKm: distKm,
+      inRadius: hasCoords ? inRadius : true // if no coords yet, allow preview
+    };
+  });
+
+  res.json({
+    success: true,
+    userLocation: { lat: userLat, lng: userLng, hasGps: hasCoords },
+    radiusLimitKm: 10,
+    bosses: decoratedBosses
+  });
+});
+
+// 2. Get Single Raid Boss Details
+app.get("/api/raid/bosses/:id", (req, res) => {
+  const db = readDB();
+  const { id } = req.params;
+  const bosses = getInitializedRaidBosses(db);
+  const boss = bosses.find((b: any) => b.id === id);
+
+  if (!boss) {
+    return res.status(404).json({ error: "Raid Boss tidak ditemukan atau telah kadaluarsa." });
+  }
+
+  res.json({ success: true, boss });
+});
+
+// 3. Get Active Raid Lobby Rooms
+app.get("/api/raid/lobbies", (req, res) => {
+  const db = readDB();
+  if (!db.raidLobbies) db.raidLobbies = [];
+  
+  // Return recent active rooms (waiting or in_battle within last 30 minutes)
+  const now = Date.now();
+  const activeLobbies = db.raidLobbies.filter((room: any) => {
+    if (!room || !room.createdAt) return false;
+    const isRecent = (now - new Date(room.createdAt).getTime()) < 30 * 60 * 1000;
+    return isRecent && (room.status === "waiting" || room.status === "in_battle");
+  });
+
+  res.json({ success: true, lobbies: activeLobbies });
+});
+
+// 4. Get Single Raid Lobby Room State
+app.get("/api/raid/lobby/:id", (req, res) => {
+  const db = readDB();
+  const { id } = req.params;
+  if (!db.raidLobbies) db.raidLobbies = [];
+  
+  const room = db.raidLobbies.find((r: any) => r.id === id || r.roomCode === id);
+  if (!room) {
+    return res.status(404).json({ error: "Raid Room tidak ditemukan." });
+  }
+
+  res.json({ success: true, room });
+});
+
+// 5. Create Raid Lobby (Single Player with 3 slots or Multiplayer Room)
+app.post("/api/raid/lobby/create", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Silakan login terlebih dahulu untuk membuat Raid Room." });
+  }
+
+  const { bossId, isSinglePlayer, cardIds, roomCode: customCode, userLat, userLng } = req.body;
+  const bosses = getInitializedRaidBosses(db, userLat, userLng);
+  const boss = bosses.find((b: any) => b.id === bossId);
+
+  if (!boss) {
+    return res.status(404).json({ error: "Raid Boss tidak ditemukan atau sudah berakhir." });
+  }
+
+  // Radius Check (10 km limit)
+  if (userLat && userLng && !isNaN(userLat) && !isNaN(userLng)) {
+    const distM = calculateDistanceMeters(userLat, userLng, boss.latitude, boss.longitude);
+    if (distM > 10000) {
+      return res.status(400).json({
+        error: `Anda berada ${ (distM / 1000).toFixed(1) } km dari titik Boss. Anda harus berada dalam radius 10 km untuk memulai Raid.`
+      });
+    }
+  }
+
+  if (!db.cards) db.cards = [];
+  const userCards = db.cards.filter((c: any) => c.userId === user.id);
+
+  if (userCards.length === 0) {
+    return res.status(400).json({ error: "Anda belum memiliki kartu Nekomon. Tempa kartu terlebih dahulu dari hasil foto kucing!" });
+  }
+
+  if (!db.raidLobbies) db.raidLobbies = [];
+
+  const roomId = `raid_room_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const roomCode = customCode && customCode.trim() ? customCode.trim().toUpperCase() : `RAID-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const slots: any[] = [null, null, null];
+
+  if (isSinglePlayer) {
+    // Single player: equip up to 3 cards from user's selection or inventory
+    const selectedIds = Array.isArray(cardIds) && cardIds.length > 0 
+      ? cardIds 
+      : userCards.slice(0, 3).map((c: any) => c.id);
+
+    selectedIds.slice(0, 3).forEach((cId: string, idx: number) => {
+      const card = userCards.find((c: any) => c.id === cId) || userCards[idx % userCards.length];
+      if (card) {
+        slots[idx] = {
+          slotIndex: idx,
+          userId: user.id,
+          username: user.username,
+          faction: user.faction || "Sentinel",
+          card,
+          currentHp: card.hp || (card.level ? card.level * 30 + 150 : 200),
+          maxHp: card.hp || (card.level ? card.level * 30 + 150 : 200),
+          isReady: true,
+          damageDealt: 0
+        };
+      }
+    });
+  } else {
+    // Multiplayer: Host takes Slot 0, Slots 1 and 2 remain open for other players
+    const hostCardId = Array.isArray(cardIds) && cardIds.length > 0 ? cardIds[0] : userCards[0].id;
+    const hostCard = userCards.find((c: any) => c.id === hostCardId) || userCards[0];
+
+    slots[0] = {
+      slotIndex: 0,
+      userId: user.id,
+      username: user.username,
+      faction: user.faction || "Sentinel",
+      card: hostCard,
+      currentHp: hostCard.hp || (hostCard.level ? hostCard.level * 30 + 150 : 200),
+      maxHp: hostCard.hp || (hostCard.level ? hostCard.level * 30 + 150 : 200),
+      isReady: true,
+      damageDealt: 0
+    };
+  }
+
+  const initialLogs = [
+    {
+      turn: 0,
+      actor: "System",
+      actorType: "player",
+      damage: 0,
+      messageId: `🚨 Raid Lobby dibuka untuk menghadapi ${boss.name} (LV. ${boss.level})!`,
+      messageEn: `🚨 Raid Lobby opened against ${boss.nameEn || boss.name} (LV. ${boss.level})!`,
+      timestamp: new Date().toISOString()
+    }
+  ];
+
+  const newRoom = {
+    id: roomId,
+    roomCode,
+    bossId: boss.id,
+    bossSnapshot: boss,
+    hostUserId: user.id,
+    hostUsername: user.username,
+    isSinglePlayer: !!isSinglePlayer,
+    slots,
+    status: "waiting",
+    currentTurn: 1,
+    bossCurrentHp: boss.hp,
+    bossMaxHp: boss.hp,
+    battleLogs: initialLogs,
+    sharedRewardsClaimed: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  db.raidLobbies.unshift(newRoom);
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: isSinglePlayer ? "Single-Player Raid Battle siap dimulai! ⚔️" : "Multiplayer Raid Lobby berhasil dibuat! Bagikan Kode Room ke temanmu. 👥",
+    room: newRoom
+  });
+});
+
+// 6. Join Multiplayer Raid Lobby (Equip Card into Slot 1, 2, or 3)
+app.post("/api/raid/lobby/join", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Silakan login terlebih dahulu untuk bergabung." });
+  }
+
+  const { roomId, roomCode, cardId, slotIndex, userLat, userLng } = req.body;
+  if (!db.raidLobbies) db.raidLobbies = [];
+
+  const room = db.raidLobbies.find((r: any) => 
+    (roomId && r.id === roomId) || (roomCode && r.roomCode === roomCode.trim().toUpperCase())
+  );
+
+  if (!room) {
+    return res.status(404).json({ error: "Room tidak ditemukan. Pastikan Kode Room benar." });
+  }
+
+  if (room.status !== "waiting") {
+    return res.status(400).json({ error: "Pertarungan Raid di room ini sudah berlangsung atau selesai." });
+  }
+
+  // Radius check if coordinates provided
+  if (userLat && userLng && !isNaN(userLat) && !isNaN(userLng) && room.bossSnapshot) {
+    const distM = calculateDistanceMeters(userLat, userLng, room.bossSnapshot.latitude, room.bossSnapshot.longitude);
+    if (distM > 10000) {
+      return res.status(400).json({
+        error: `Anda berada ${ (distM / 1000).toFixed(1) } km dari lokasi Boss. Harus dalam radius 10 km.`
+      });
+    }
+  }
+
+  if (!db.cards) db.cards = [];
+  const userCards = db.cards.filter((c: any) => c.userId === user.id);
+  if (userCards.length === 0) {
+    return res.status(400).json({ error: "Anda belum memiliki kartu Nekomon." });
+  }
+
+  const cardToEquip = userCards.find((c: any) => c.id === cardId) || userCards[0];
+
+  // Find open slot
+  let targetSlot = -1;
+  if (typeof slotIndex === "number" && slotIndex >= 0 && slotIndex <= 2) {
+    if (!room.slots[slotIndex] || room.slots[slotIndex].userId === user.id) {
+      targetSlot = slotIndex;
+    }
+  }
+
+  if (targetSlot === -1) {
+    targetSlot = room.slots.findIndex((s: any) => s === null);
+  }
+
+  if (targetSlot === -1) {
+    // Check if user already occupied a slot
+    const existingSlot = room.slots.findIndex((s: any) => s && s.userId === user.id);
+    if (existingSlot !== -1) {
+      targetSlot = existingSlot;
+    } else {
+      return res.status(400).json({ error: "Room sudah penuh! 3 Slot petarung telah terisi." });
+    }
+  }
+
+  const cardHp = cardToEquip.hp || (cardToEquip.level ? cardToEquip.level * 30 + 150 : 200);
+
+  room.slots[targetSlot] = {
+    slotIndex: targetSlot,
+    userId: user.id,
+    username: user.username,
+    faction: user.faction || "Sentinel",
+    card: cardToEquip,
+    currentHp: cardHp,
+    maxHp: cardHp,
+    isReady: true,
+    damageDealt: 0
+  };
+
+  room.battleLogs.push({
+    turn: 0,
+    actor: user.username,
+    actorType: "player",
+    cardName: cardToEquip.name,
+    damage: 0,
+    messageId: `🎮 ${user.username} bergabung ke Slot ${targetSlot + 1} dengan ${cardToEquip.name}!`,
+    messageEn: `🎮 ${user.username} joined Slot ${targetSlot + 1} with ${cardToEquip.name}!`,
+    timestamp: new Date().toISOString()
+  });
+
+  room.updatedAt = new Date().toISOString();
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: `Berhasil bergabung ke Slot ${targetSlot + 1}! 🛡️`,
+    room
+  });
+});
+
+// 7. Update Card in Slot (Single Player or Host)
+app.post("/api/raid/lobby/slot", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) return res.status(401).json({ error: "Unauthorized." });
+
+  const { roomId, slotIndex, cardId } = req.body;
+  if (!db.raidLobbies) db.raidLobbies = [];
+  const room = db.raidLobbies.find((r: any) => r.id === roomId);
+
+  if (!room) return res.status(404).json({ error: "Room tidak ditemukan." });
+  if (room.status !== "waiting") return res.status(400).json({ error: "Room sedang bertarung." });
+
+  if (slotIndex < 0 || slotIndex > 2) return res.status(400).json({ error: "Slot tidak valid." });
+
+  const isHost = room.hostUserId === user.id;
+  const currentSlot = room.slots[slotIndex];
+
+  if (!isHost && currentSlot && currentSlot.userId !== user.id) {
+    return res.status(403).json({ error: "Anda tidak memiliki izin mengubah slot pemain lain." });
+  }
+
+  if (!cardId) {
+    // Empty slot
+    room.slots[slotIndex] = null;
+  } else {
+    const card = db.cards.find((c: any) => c.id === cardId && (c.userId === user.id || isHost));
+    if (!card) return res.status(404).json({ error: "Kartu tidak ditemukan." });
+
+    const cardHp = card.hp || (card.level ? card.level * 30 + 150 : 200);
+    room.slots[slotIndex] = {
+      slotIndex,
+      userId: user.id,
+      username: user.username,
+      faction: user.faction || "Sentinel",
+      card,
+      currentHp: cardHp,
+      maxHp: cardHp,
+      isReady: true,
+      damageDealt: currentSlot ? currentSlot.damageDealt || 0 : 0
+    };
+  }
+
+  room.updatedAt = new Date().toISOString();
+  writeDB(db);
+
+  res.json({ success: true, room });
+});
+
+// 8. Start Raid Battle
+app.post("/api/raid/lobby/start", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) return res.status(401).json({ error: "Unauthorized." });
+
+  const { roomId } = req.body;
+  if (!db.raidLobbies) db.raidLobbies = [];
+  const room = db.raidLobbies.find((r: any) => r.id === roomId);
+
+  if (!room) return res.status(404).json({ error: "Room tidak ditemukan." });
+  if (room.hostUserId !== user.id) return res.status(403).json({ error: "Hanya Host yang dapat memulai pertarungan." });
+
+  const filledSlots = room.slots.filter((s: any) => s !== null);
+  if (filledSlots.length === 0) {
+    return res.status(400).json({ error: "Setidaknya 1 Slot kartu harus terisi untuk memulai." });
+  }
+
+  room.status = "in_battle";
+  room.currentTurn = 1;
+  room.updatedAt = new Date().toISOString();
+  writeDB(db);
+
+  res.json({ success: true, message: "Pertarungan Raid dimulai! Serang Boss sekarang! ⚔️🔥", room });
+});
+
+// 9. Execute Raid Battle Turn (Attack, Skills, Elemental Buff/Debuff, Shared Rewards)
+app.post("/api/raid/lobby/turn", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) return res.status(401).json({ error: "Unauthorized." });
+
+  const { roomId, action } = req.body;
+  if (!db.raidLobbies) db.raidLobbies = [];
+  const room = db.raidLobbies.find((r: any) => r.id === roomId);
+
+  if (!room) return res.status(404).json({ error: "Room tidak ditemukan." });
+  if (room.status !== "in_battle") {
+    return res.status(400).json({ error: "Pertarungan tidak aktif atau telah selesai." });
+  }
+
+  const boss = room.bossSnapshot;
+  const turnNum = room.currentTurn;
+  const roundLogs: any[] = [];
+
+  // PHASE 1: PLAYER SLOTS ATTACK THE BOSS
+  const aliveSlots = room.slots.filter((s: any) => s && s.currentHp > 0);
+
+  if (aliveSlots.length === 0) {
+    room.status = "defeat";
+    room.updatedAt = new Date().toISOString();
+    writeDB(db);
+    return res.json({ success: true, room, defeat: true });
+  }
+
+  let totalRoundPlayerDamage = 0;
+
+  aliveSlots.forEach((slot: any) => {
+    const card = slot.card;
+    const cardLevel = card.level || 1;
+    const cardAtk = card.atk || (cardLevel * 25 + 40);
+    const bossDef = boss.def || (boss.level * 18 + 30);
+
+    let rawDamage = Math.max(25, Math.floor(cardAtk * (120 / (100 + bossDef * 0.35))));
+
+    // Elemental Buff / Debuff Multipliers
+    let elementMult = 1.0;
+    let isSuperEffective = false;
+    let isResisted = false;
+
+    if (card.element === boss.debuffElement) {
+      elementMult = 1.75; // Weakness (+75% extra damage!)
+      isSuperEffective = true;
+    } else if (card.element === boss.buffElement) {
+      elementMult = 0.50; // Resistance (-50% damage reduction)
+      isResisted = true;
+    }
+
+    const isCrit = Math.random() < 0.20;
+    const critMult = isCrit ? 1.5 : 1.0;
+    const variance = 0.9 + Math.random() * 0.2;
+
+    const damageDealt = Math.round(rawDamage * elementMult * critMult * variance);
+    totalRoundPlayerDamage += damageDealt;
+    slot.damageDealt = (slot.damageDealt || 0) + damageDealt;
+
+    let effTextId = "";
+    let effTextEn = "";
+    if (isSuperEffective) {
+      effTextId = " 💥 SANGAT EFEKTIF (+75% Kerusakan Debuff Elemen!)";
+      effTextEn = " 💥 SUPER EFFECTIVE (+75% Element Weakness!)";
+    } else if (isResisted) {
+      effTextId = " 🛡️ DITAHAN (-50% Resistensi Buff Boss)";
+      effTextEn = " 🛡️ RESISTED (-50% Boss Buff Resistance)";
+    }
+
+    const critTextId = isCrit ? " [CRITICAL HIT!]" : "";
+    const critTextEn = isCrit ? " [CRITICAL HIT!]" : "";
+
+    roundLogs.push({
+      turn: turnNum,
+      actor: slot.username,
+      actorType: "player",
+      cardName: card.name,
+      element: card.element,
+      damage: damageDealt,
+      isCritical: isCrit,
+      isSuperEffective,
+      isResisted,
+      messageId: `[Ronde ${turnNum}] Slot ${slot.slotIndex + 1}: ${card.name} (${card.element}) melancarkan "${card.skillName || 'Serangan Elemen'}" menghasilkan ${damageDealt} DMG ke ${boss.name}!${effTextId}${critTextId}`,
+      messageEn: `[Round ${turnNum}] Slot ${slot.slotIndex + 1}: ${card.name} (${card.element}) used "${card.skillName || 'Elemental Strike'}" dealing ${damageDealt} DMG to ${boss.nameEn || boss.name}!${effTextEn}${critTextEn}`,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Apply damage to Boss
+  room.bossCurrentHp = Math.max(0, room.bossCurrentHp - totalRoundPlayerDamage);
+
+  // CHECK VICTORY
+  if (room.bossCurrentHp <= 0) {
+    room.status = "victory";
+    room.bossCurrentHp = 0;
+
+    // Distribute Shared Rewards to all participating distinct players
+    const uniqueUserIds = Array.from(new Set(room.slots.filter((s: any) => s !== null).map((s: any) => s.userId)));
+    const rewards = boss.rewards;
+
+    uniqueUserIds.forEach((uId: string) => {
+      const pUser = db.users.find((u: any) => u.id === uId);
+      if (pUser) {
+        pUser.points = (pUser.points || 0) + rewards.points;
+        pUser.cores = (pUser.cores || 0) + rewards.cores;
+      }
+    });
+
+    // Refill energy and add XP to participating cards
+    room.slots.forEach((slot: any) => {
+      if (slot && slot.card) {
+        const cIdx = db.cards.findIndex((c: any) => c.id === slot.card.id);
+        if (cIdx !== -1) {
+          const c = db.cards[cIdx];
+          c.energy = Math.min(c.maxEnergy || 5, (c.energy || 0) + rewards.energyRefill);
+          c.xp = (c.xp || 0) + rewards.cardXp;
+          let maxXp = (c.level || 1) * 100;
+          while (c.xp >= maxXp) {
+            c.xp -= maxXp;
+            c.level = (c.level || 1) + 1;
+            c.hp = (c.hp || 100) + 15;
+            c.atk = (c.atk || 20) + 8;
+            c.def = (c.def || 15) + 6;
+            c.spd = (c.spd || 10) + 3;
+            maxXp = c.level * 100;
+          }
+          c.maxXp = maxXp;
+        }
+      }
+    });
+
+    roundLogs.push({
+      turn: turnNum,
+      actor: "Victory",
+      actorType: "player",
+      damage: 0,
+      messageId: `🎉🏆 KEMENANGAN RAID! ${boss.name} berhasil ditumbangkan! Seluruh ${uniqueUserIds.length} pemain menerima hadiah bersama: +${rewards.cores} Nekomon Cores, +${rewards.points} Poin, +${rewards.energyRefill} Energi, +${rewards.cardXp} Card XP!`,
+      messageEn: `🎉🏆 RAID VICTORY! ${boss.nameEn || boss.name} has been defeated! All ${uniqueUserIds.length} players receive shared rewards: +${rewards.cores} Nekomon Cores, +${rewards.points} Points, +${rewards.energyRefill} Energy, +${rewards.cardXp} Card XP!`,
+      timestamp: new Date().toISOString()
+    });
+
+    // Save to battle history
+    if (!db.battleHistory) db.battleHistory = [];
+    db.battleHistory.unshift({
+      id: `raid_win_${Date.now()}`,
+      opponentName: `[RAID BOSS] ${boss.name} (LV. ${boss.level})`,
+      opponentCardName: boss.name,
+      opponentCardImageUrl: boss.imageUrl,
+      opponentCardLevel: boss.level,
+      opponentCardElement: boss.element,
+      myCardName: room.slots[0]?.card?.name || "Raid Team",
+      myCardImageUrl: room.slots[0]?.card?.imageUrl || "",
+      myCardLevel: room.slots[0]?.card?.level || 1,
+      myCardElement: room.slots[0]?.card?.element || "Api",
+      result: "WIN",
+      isBotMatch: false,
+      createdAt: new Date().toISOString()
+    });
+
+    room.battleLogs.push(...roundLogs);
+    room.sharedRewardsClaimed = true;
+    room.updatedAt = new Date().toISOString();
+    writeDB(db);
+
+    return res.json({
+      success: true,
+      victory: true,
+      room,
+      sharedRewards: {
+        cores: rewards.cores,
+        points: rewards.points,
+        energyRefill: rewards.energyRefill,
+        cardXp: rewards.cardXp,
+        playersCount: uniqueUserIds.length
+      }
+    });
+  }
+
+  // PHASE 2: BOSS COUNTERATTACK
+  const skills = boss.skills || [];
+  const chosenSkill = skills.length > 0 ? skills[Math.floor(Math.random() * skills.length)] : {
+    name: "Serangan Brutal Boss",
+    nameEn: "Boss Savage Strike",
+    element: boss.element,
+    powerMultiplier: 1.2,
+    effectType: "damage"
+  };
+
+  const isAoe = chosenSkill.effectType === "aoe";
+
+  if (isAoe) {
+    // Hits all alive slots
+    aliveSlots.forEach((slot: any) => {
+      const card = slot.card;
+      const cardDef = card.def || (card.level ? card.level * 15 + 20 : 30);
+      const bossAtk = boss.atk || (boss.level * 22 + 50);
+      const skillMult = chosenSkill.powerMultiplier || 1.0;
+
+      const bossDmg = Math.max(20, Math.round(bossAtk * skillMult * (85 / (85 + cardDef * 0.4))));
+      slot.currentHp = Math.max(0, slot.currentHp - bossDmg);
+
+      roundLogs.push({
+        turn: turnNum,
+        actor: boss.name,
+        actorType: "boss",
+        skillName: chosenSkill.name,
+        element: chosenSkill.element,
+        damage: bossDmg,
+        messageId: `⚡ ${boss.name} melancarkan skill area "${chosenSkill.name}" menghasilkan ${bossDmg} DMG ke ${card.name} (Slot ${slot.slotIndex + 1})! [HP Sisa: ${slot.currentHp}/${slot.maxHp}]`,
+        messageEn: `⚡ ${boss.nameEn || boss.name} unleashed AOE skill "${chosenSkill.nameEn || chosenSkill.name}" dealing ${bossDmg} DMG to ${card.name} (Slot ${slot.slotIndex + 1})! [Remaining HP: ${slot.currentHp}/${slot.maxHp}]`,
+        timestamp: new Date().toISOString()
+      });
+    });
+  } else {
+    // Target 1 alive slot randomly
+    const targetSlot = aliveSlots[Math.floor(Math.random() * aliveSlots.length)];
+    const card = targetSlot.card;
+    const cardDef = card.def || (card.level ? card.level * 15 + 20 : 30);
+    const bossAtk = boss.atk || (boss.level * 22 + 50);
+    const skillMult = chosenSkill.powerMultiplier || 1.35;
+
+    const bossDmg = Math.max(30, Math.round(bossAtk * skillMult * (90 / (90 + cardDef * 0.4))));
+    targetSlot.currentHp = Math.max(0, targetSlot.currentHp - bossDmg);
+
+    roundLogs.push({
+      turn: turnNum,
+      actor: boss.name,
+      actorType: "boss",
+      skillName: chosenSkill.name,
+      element: chosenSkill.element,
+      damage: bossDmg,
+      messageId: `🔥 ${boss.name} memfokuskan serangan "${chosenSkill.name}" menghantam ${card.name} (Slot ${targetSlot.slotIndex + 1}) sebesar ${bossDmg} DMG! [HP Sisa: ${targetSlot.currentHp}/${targetSlot.maxHp}]`,
+      messageEn: `🔥 ${boss.nameEn || boss.name} focused strike "${chosenSkill.nameEn || chosenSkill.name}" smashing ${card.name} (Slot ${targetSlot.slotIndex + 1}) for ${bossDmg} DMG! [Remaining HP: ${targetSlot.currentHp}/${targetSlot.maxHp}]`,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Check Defeat (all slots reach 0 HP)
+  const remainingAlive = room.slots.filter((s: any) => s && s.currentHp > 0);
+  if (remainingAlive.length === 0) {
+    room.status = "defeat";
+    roundLogs.push({
+      turn: turnNum,
+      actor: "System",
+      actorType: "boss",
+      damage: 0,
+      messageId: `💀 Seluruh kartu penyerang telah tumbang! Tim Raid kalah dalam menghadapi ${boss.name}.`,
+      messageEn: `💀 All combatant cards have fallen! The raid team was defeated by ${boss.nameEn || boss.name}.`,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  room.currentTurn = turnNum + 1;
+  room.battleLogs.push(...roundLogs);
+  room.updatedAt = new Date().toISOString();
+  writeDB(db);
+
+  res.json({
+    success: true,
+    room,
+    defeated: remainingAlive.length === 0
+  });
+});
+
+// 10. Developer Only: Spawn Custom Raid Boss (verydiaz@gmail.com, nekomaster@nekomon.online, support@nekomon.online)
+app.post("/api/developer/raid/spawn", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer Nekomon." });
+  }
+
+  const { speciesType, level, element, name, lat, lng, locationName } = req.body;
+  const targetLevel = Math.max(5, Math.min(30, Number(level) || 15));
+  const targetLat = !isNaN(Number(lat)) ? Number(lat) : -6.1754;
+  const targetLng = !isNaN(Number(lng)) ? Number(lng) : 106.8272;
+
+  // Find template matching species or level
+  const tplIdx = RAID_BOSS_TEMPLATES.findIndex(
+    (t: any) => t.speciesType === speciesType || (element && t.element === element)
+  );
+  const boss = createRaidBossInstance(tplIdx !== -1 ? tplIdx : 0, targetLat, targetLng, targetLevel);
+
+  if (name && name.trim()) {
+    boss.name = name.trim();
+    boss.nameEn = name.trim();
+  }
+  if (locationName && locationName.trim()) {
+    boss.locationName = locationName.trim();
+  }
+
+  if (!db.raidBosses) db.raidBosses = [];
+  db.raidBosses.unshift(boss);
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: `Raid Boss [LV. ${targetLevel}] ${boss.name} (${boss.speciesType.toUpperCase()}) berhasil di-spawn! 🐾⚡`,
+    boss
+  });
+});
+
+// 11. Developer Only: Reset All Raid Bosses & Lobbies
+app.post("/api/developer/raid/reset", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer." });
+  }
+
+  db.raidBosses = seedDefaultRaidBosses();
+  db.raidLobbies = [];
+  writeDB(db);
+
+  res.json({
+    success: true,
+    message: "Seluruh data Raid Boss dan Lobby berhasil direset ke kondisi default.",
+    bosses: db.raidBosses
   });
 });
 

@@ -28,7 +28,8 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Swords
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NekomonSpot, SpotCategory } from "../types";
@@ -40,6 +41,7 @@ import L from "leaflet";
 
 interface NekomonSpotMapProps {
   onSelectSpotToCapture: (spot: NekomonSpot) => void;
+  onNavigateToRaid?: () => void;
   userPoints: number;
   token?: string;
 }
@@ -49,6 +51,7 @@ const DEFAULT_CENTER = { lat: -6.1754, lng: 106.8272 };
 
 export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
   onSelectSpotToCapture,
+  onNavigateToRaid,
   userPoints,
   token
 }) => {
@@ -653,7 +656,7 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
       {/* LEAFLET MAP CONTAINER */}
       <div ref={mapContainerRef} className="w-full flex-1 z-0 bg-slate-900" />
 
-      {/* RIGHT SIDE FLOATING MAP CONTROLS (Recenter) */}
+      {/* RIGHT SIDE FLOATING MAP CONTROLS (Recenter & Raid Boss) */}
       <div className="absolute right-2 top-16 z-[1000] flex flex-col items-end gap-2 pointer-events-auto">
         <button
           onClick={handleRecenter}
@@ -662,6 +665,19 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
         >
           <Crosshair className="w-5 h-5" />
         </button>
+
+        {onNavigateToRaid && (
+          <button
+            onClick={() => {
+              haptics.tap();
+              onNavigateToRaid();
+            }}
+            title={language === "id" ? "Buka Raid Boss Co-op Arena (10 KM)" : "Open Co-op Raid Boss Arena (10 KM)"}
+            className="p-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white hover:from-red-500 hover:to-rose-500 border border-red-500/50 rounded-2xl shadow-xl shadow-red-950/60 backdrop-blur-md transition-all active:scale-95 flex items-center justify-center animate-pulse"
+          >
+            <Swords className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* SELECTED SPOT DYNAMIC BOTTOM SHEET / CARDS */}

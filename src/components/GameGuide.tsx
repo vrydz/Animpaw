@@ -232,6 +232,28 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-red-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                    <Swords className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">12. Fitur Raid Boss Co-op (Level 5-30 & Radius 10 KM) ⚔️🐾</h4>
+                    <p className="leading-relaxed">
+                      Hadapi Boss raksasa dari 3 spesies (<span className="text-amber-400 font-bold font-mono">Kucing, Tikus, dan Anjing</span>) dengan versi yang telah ditempa (<span className="text-cyan-300 font-bold font-mono">Forged</span>) dalam 5 elemen dasar (<span className="text-rose-400 font-mono">Api</span>, <span className="text-sky-400 font-mono">Air</span>, <span className="text-emerald-400 font-mono">Tanah</span>, <span className="text-teal-400 font-mono">Angin</span>, <span className="text-yellow-400 font-mono">Petir</span>) dengan tingkat kesulitan <span className="text-red-400 font-bold font-mono">Level 5 hingga 30</span>!
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Visual Forged Boss Otentik:</span> Setiap Boss menampilkan karya seni tempaan elemen yang garang berzirah mecha, kristal mistik, dan aura runic kosmik.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Konfigurasi 3 Slot Pasukan:</span> Pertarungan Raid menyediakan minimal 3 slot kartu yang dapat diisi secara <span className="text-cyan-300 font-bold font-mono">Single Player</span> (memasang 3 kartu milikmu sendiri) atau <span className="text-indigo-300 font-bold font-mono">Multiplayer Co-op</span> (membuka room dan bertarung bersama 2 Trainer lain).
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Buff & Debuff Elemen:</span> Setiap Boss memiliki kelemahan <span className="text-emerald-300 font-bold font-mono">Debuff Elemen (+75% Bonus Kerusakan)</span> dan pertahanan <span className="text-red-400 font-bold font-mono">Buff Elemen (-50% Resistensi)</span>. Gunakan 5 elemen dasar secara taktis!
+                      <br/>
+                      <span className="text-purple-400 font-bold font-mono">• Hadiah Bersama (Shared Rewards):</span> Kemenangan Raid membagikan hadiah rata ke semua pemain yang berpartisipasi: <span className="text-amber-300 font-bold font-mono">Nekomon Cores</span>, <span className="text-indigo-300 font-bold font-mono">Poin</span>, <span className="text-yellow-300 font-bold font-mono">Pemulihan Energi</span>, dan <span className="text-rose-300 font-bold font-mono">Card XP</span>.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Batas Jarak 10 KM:</span> Pemain harus berada dalam radius 10 km dari koordinat Boss spawn untuk menantang Raid.
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -385,6 +407,28 @@ export const GameGuide: React.FC = () => {
                       <span className="text-rose-400 font-bold font-mono">• Real Shelter Food Drives:</span> Support shelter food campaigns providing meals for rescued stray cats through partner activities.
                       <br/>
                       <span className="text-cyan-400 font-bold font-mono">• Developer Access:</span> Verified Developer accounts (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span>, <span className="text-amber-300 font-mono">nekomaster@nekomon.online</span>, <span className="text-amber-300 font-mono">support@nekomon.online</span>) can publish and manage events directly in-game without code editing!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-red-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                    <Swords className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">12. Co-op Raid Boss Feature (Level 5-30 & 10 KM Radius) ⚔️🐾</h4>
+                    <p className="leading-relaxed">
+                      Encounter colossal Bosses from 3 species (<span className="text-amber-400 font-bold font-mono">Cat, Rat, and Dog</span>) forged across the 5 core elements (<span className="text-rose-400 font-mono">Fire</span>, <span className="text-sky-400 font-mono">Water</span>, <span className="text-emerald-400 font-mono">Earth</span>, <span className="text-teal-400 font-mono">Wind</span>, <span className="text-yellow-400 font-mono">Thunder</span>) ranging from <span className="text-red-400 font-bold font-mono">Level 5 to 30</span>!
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Authentic Forged Artwork:</span> Every Boss features specialized elemental forged artwork complete with cyber-armor, mythical crystal horns, and cosmic runic auras.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• 3-Slot Combat Squad:</span> Raid battles feature a 3-slot combat formation available in <span className="text-cyan-300 font-bold font-mono">Single Player</span> (equip 3 cards from your deck) or <span className="text-indigo-300 font-bold font-mono">Multiplayer Co-op</span> (create room and battle with 2 other trainers).
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Elemental Buffs & Debuffs:</span> Each Boss has an elemental vulnerability <span className="text-emerald-300 font-bold font-mono">Debuff (+75% Weakness Damage)</span> and a defensive <span className="text-red-400 font-bold font-mono">Buff (-50% Resistance)</span>. Exploit elemental counters strategically!
+                      <br/>
+                      <span className="text-purple-400 font-bold font-mono">• Shared Rewards:</span> Victorious Raids distribute shared rewards to all participating players: <span className="text-amber-300 font-bold font-mono">Nekomon Cores</span>, <span className="text-indigo-300 font-bold font-mono">Points</span>, <span className="text-yellow-300 font-bold font-mono">Energy Refill</span>, and <span className="text-rose-300 font-bold font-mono">Card XP</span>.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• 10 KM Range Restriction:</span> Players must be within a 10 km radius of the Boss spawn location to participate in the Raid.
                     </p>
                   </div>
                 </div>
