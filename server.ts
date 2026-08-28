@@ -290,6 +290,12 @@ function readDB() {
         modified = true;
       }
     }
+
+    // Ensure demo account demo1 & starter deck exist
+    if (ensureDemoUserAndDeck(parsed)) {
+      modified = true;
+    }
+
     if (modified) {
       fs.writeFileSync(DB_PATH, JSON.stringify(parsed, null, 2));
     }
@@ -537,6 +543,187 @@ function generateFallbackImage(name: string, element: string, style: string, rar
   </svg>`;
 
   return "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64");
+}
+
+// Helper to ensure demo account demo1 & starter deck are always available
+function ensureDemoUserAndDeck(db: any): boolean {
+  if (!db) return false;
+  if (!Array.isArray(db.users)) db.users = [];
+  if (!Array.isArray(db.cards)) db.cards = [];
+
+  let modified = false;
+  let demoUser = db.users.find((u: any) => u.username?.toLowerCase() === "demo1" || u.email?.toLowerCase() === "demo1@nekomon.online");
+  
+  if (!demoUser) {
+    demoUser = {
+      id: "user_demo1_tcg",
+      username: "demo1",
+      email: "demo1@nekomon.online",
+      password: "n3komontcg",
+      points: 1000,
+      cores: 50,
+      faction: "Sentinel",
+      captureStreak: 3,
+      createdAt: "2026-08-28T00:00:00.000Z",
+      lastDailyBonusAt: new Date().toISOString(),
+      isBot: false
+    };
+    db.users.push(demoUser);
+    modified = true;
+  } else {
+    if (demoUser.password !== "n3komontcg") {
+      demoUser.password = "n3komontcg";
+      modified = true;
+    }
+    if ((demoUser.points || 0) < 500) {
+      demoUser.points = 1000;
+      modified = true;
+    }
+    if ((demoUser.cores || 0) < 20) {
+      demoUser.cores = 50;
+      modified = true;
+    }
+    if (!demoUser.faction) {
+      demoUser.faction = "Sentinel";
+      modified = true;
+    }
+  }
+
+  // Ensure demo1 has 5 elemental starter cards ready for battle
+  const demoCards = db.cards.filter((c: any) => c.userId === demoUser.id);
+  if (demoCards.length < 5) {
+    const starterDeck = [
+      {
+        id: "card_demo1_air_01",
+        userId: demoUser.id,
+        captureId: "",
+        name: "Cyber Aquafox Kai",
+        element: "Air",
+        style: "Sentinel",
+        rarity: "Epic",
+        hp: 920,
+        atk: 220,
+        def: 180,
+        spd: 160,
+        skillName: "Gelombang Hydro Cyber",
+        skillDesc: "Menerjang musuh dengan arus pusaran air bertekanan tinggi.",
+        imageUrl: generateFallbackImage("Cyber Aquafox Kai", "Air", "Sentinel", "Epic", undefined),
+        geminiUsed: false,
+        level: 5,
+        xp: 120,
+        maxXp: 500,
+        energy: 5,
+        maxEnergy: 5,
+        lastEnergyRefillAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "card_demo1_api_02",
+        userId: demoUser.id,
+        captureId: "",
+        name: "Flamewing Flare Neko",
+        element: "Api",
+        style: "Sentinel",
+        rarity: "Epic",
+        hp: 880,
+        atk: 260,
+        def: 150,
+        spd: 175,
+        skillName: "Cakaran Api Plasma",
+        skillDesc: "Serangan cakar api yang membakar pertahanan musuh.",
+        imageUrl: generateFallbackImage("Flamewing Flare Neko", "Api", "Sentinel", "Epic", undefined),
+        geminiUsed: false,
+        level: 5,
+        xp: 180,
+        maxXp: 500,
+        energy: 5,
+        maxEnergy: 5,
+        lastEnergyRefillAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "card_demo1_tanah_03",
+        userId: demoUser.id,
+        captureId: "",
+        name: "Gaia Aegis Claw",
+        element: "Tanah",
+        style: "Sentinel",
+        rarity: "Rare",
+        hp: 1100,
+        atk: 180,
+        def: 250,
+        spd: 120,
+        skillName: "Perisai Batu Kristal",
+        skillDesc: "Membentengi diri dengan lempengan kristal bumi kokoh.",
+        imageUrl: generateFallbackImage("Gaia Aegis Claw", "Tanah", "Sentinel", "Rare", undefined),
+        geminiUsed: false,
+        level: 4,
+        xp: 80,
+        maxXp: 400,
+        energy: 5,
+        maxEnergy: 5,
+        lastEnergyRefillAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "card_demo1_angin_04",
+        userId: demoUser.id,
+        captureId: "",
+        name: "Zephyr Storm Shadow",
+        element: "Angin",
+        style: "Sentinel",
+        rarity: "Epic",
+        hp: 840,
+        atk: 230,
+        def: 160,
+        spd: 210,
+        skillName: "Tornado Bayangan Angin",
+        skillDesc: "Menebas lawan dengan kecepatan angin puting beliung.",
+        imageUrl: generateFallbackImage("Zephyr Storm Shadow", "Angin", "Sentinel", "Epic", undefined),
+        geminiUsed: false,
+        level: 5,
+        xp: 220,
+        maxXp: 500,
+        energy: 5,
+        maxEnergy: 5,
+        lastEnergyRefillAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "card_demo1_petir_05",
+        userId: demoUser.id,
+        captureId: "",
+        name: "Raijin Bolt Saber",
+        element: "Petir",
+        style: "Sentinel",
+        rarity: "Legend",
+        hp: 1050,
+        atk: 310,
+        def: 190,
+        spd: 205,
+        skillName: "Kilat Petir Megavolt",
+        skillDesc: "Sambaran kilat berdaya 1.000.000 volt melumpuhkan musuh seketika.",
+        imageUrl: generateFallbackImage("Raijin Bolt Saber", "Petir", "Sentinel", "Legend", undefined),
+        geminiUsed: false,
+        level: 6,
+        xp: 350,
+        maxXp: 600,
+        energy: 5,
+        maxEnergy: 5,
+        lastEnergyRefillAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    starterDeck.forEach(card => {
+      if (!db.cards.some((c: any) => c.id === card.id)) {
+        db.cards.push(card);
+        modified = true;
+      }
+    });
+  }
+
+  return modified;
 }
 
 // ----------------------------------------------------------------
@@ -3480,7 +3667,7 @@ app.post("/api/shop/midtrans-finish", async (req, res) => {
 
     return res.json({
       success: true,
-      message: `Pembayaran Midtrans Berhasil! ${pointsToAdd} Poin ditambahkan ke akun Anda!`,
+      message: `Pembayaran Berhasil! ${pointsToAdd} Poin ditambahkan ke akun Anda!`,
       user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
       transaction: tx
     });
@@ -3560,7 +3747,7 @@ app.post("/api/shop/midtrans-finish", async (req, res) => {
 
     return res.json({
       success: true,
-      message: `Pembayaran Midtrans Berhasil! Anda mendapatkan ${generatedCards.length} kartu dari ${packName}!`,
+      message: `Pembayaran Berhasil! Anda mendapatkan ${generatedCards.length} kartu dari ${packName}!`,
       user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
       cards: generatedCards,
       coresEarned: totalCoresEarned,
@@ -3568,7 +3755,7 @@ app.post("/api/shop/midtrans-finish", async (req, res) => {
     });
   }
 
-  res.status(400).json({ error: "Transaksi Midtrans tidak dapat diselesaikan." });
+  res.status(400).json({ error: "Transaksi tidak dapat diselesaikan." });
 });
 
 // 3. Midtrans Webhook Notification

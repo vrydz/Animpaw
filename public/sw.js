@@ -67,7 +67,6 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/api/") ||
     url.hostname.includes("midtrans.com") ||
     url.hostname.includes("googlesyndication.com") ||
-    url.hostname.includes("effectivecpmnetwork.com") ||
     url.hostname.includes("firestore.googleapis.com")
   ) {
     return;

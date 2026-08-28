@@ -212,9 +212,9 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal mendapatkan token transaksi Midtrans");
+      if (!res.ok) throw new Error(data.error || (language === "id" ? "Gagal mendapatkan sesi gateway pembayaran" : "Failed to initialize payment gateway session"));
 
-      // Dynamically ensure the correct Snap JS script (Sandbox vs Production) is loaded
+      // Dynamically ensure the correct Gateway JS script is loaded if needed
       let snapObj = (window as any).snap;
       if (data.clientKey) {
         const isSandbox = data.clientKey.startsWith("SB-");
@@ -242,17 +242,17 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
       if (snapObj && data.token && !data.isSimulation) {
         snapObj.pay(data.token, {
           onSuccess: async (result: any) => {
-            console.log("Midtrans payment success:", result);
+            console.log("Payment success:", result);
             await completeMidtransOrder(data.orderId);
           },
           onPending: async (result: any) => {
-            console.log("Midtrans payment pending:", result);
+            console.log("Payment pending:", result);
             await completeMidtransOrder(data.orderId);
           },
           onError: (result: any) => {
-            console.error("Midtrans payment error:", result);
+            console.error("Payment error:", result);
             setPaymentStatus("error");
-            setErrorMsg("Pembayaran dibatalkan atau terjadi kesalahan pada Gateway Midtrans.");
+            setErrorMsg(language === "id" ? "Pembayaran dibatalkan atau terjadi kesalahan pada Gateway." : "Payment was cancelled or encountered a gateway error.");
           },
           onClose: () => {
             setPaymentStatus("pending");
@@ -263,9 +263,9 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
         await completeMidtransOrder(data.orderId);
       }
     } catch (err: any) {
-      console.error("Midtrans Payment Error:", err);
+      console.error("Payment Error:", err);
       setPaymentStatus("error");
-      setErrorMsg(err.message || "Gagal memproses pembayaran Midtrans.");
+      setErrorMsg(err.message || (language === "id" ? "Gagal memproses gateway pembayaran." : "Failed to process payment gateway."));
     }
   };
 
@@ -915,7 +915,7 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1.5 bg-pink-500/20 text-pink-300 border border-pink-500/40 text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase">
                   <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-                  GOOGLE ADSENSE & ADSTERRA NETWORK
+                  GOOGLE ADSENSE OFFICIAL PARTNER
                 </span>
                 <span className="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold font-mono px-2.5 py-1 rounded-full">
                   <Clock className="w-3 h-3 text-amber-400" />
@@ -1287,21 +1287,26 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                         className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl font-mono tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
                       >
                         <ShieldCheck className="w-4 h-4" />
-                        {language === "id" ? "BAYAR DENGAN MIDTRANS SNAP 💳" : "PAY VIA MIDTRANS SNAP 💳"}
+                        {language === "id" ? "BAYAR DENGAN GATEWAY PEMBAYARAN 💳" : "PAY VIA SECURE PAYMENT GATEWAY 💳"}
                       </button>
                     </div>
 
-                    <div className="text-[9px] font-mono text-slate-500 bg-slate-900/60 p-2 rounded-xl border border-slate-800 flex flex-col gap-0.5">
+                    <div className="text-[9px] font-mono text-slate-500 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 flex flex-col gap-1">
                       <div className="flex justify-between">
-                        <span>Merchant ID:</span>
-                        <span className="text-slate-300 font-bold">M008936459</span>
+                        <span>Gateway Security:</span>
+                        <span className="text-slate-300 font-bold">256-Bit SSL Encrypted</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Client Key:</span>
-                        <span className="text-slate-300 font-bold">Mid-client-32UI...</span>
+                        <span>Payment Channels:</span>
+                        <span className="text-slate-300 font-bold">QRIS, E-Wallet & VA Bank</span>
                       </div>
                       <div className="text-[8px] text-emerald-400/80 mt-0.5 text-center font-bold">
-                        ✓ Midtrans Snap Engine Connected
+                        ✓ Secure Payment Gateway Connected
+                      </div>
+                      <div className="text-[8px] text-amber-400/90 text-center font-bold pt-1 border-t border-slate-800/80">
+                        {language === "id" 
+                          ? "🛡️ Dilindungi Kebijakan Refund Resmi: Hubungi support@nekomon.online / WA 085624089327" 
+                          : "🛡️ Official Refund Policy Protection: Support via support@nekomon.online / WA 085624089327"}
                       </div>
                     </div>
                   </div>

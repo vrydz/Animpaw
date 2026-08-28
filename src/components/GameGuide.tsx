@@ -20,7 +20,9 @@ import {
   Target,
   ZoomIn,
   Mail,
-  Smartphone
+  Smartphone,
+  RotateCcw,
+  Phone
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -254,6 +256,22 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-yellow-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Kebijakan Refund & Transaksi Aman Payment Gateway 🛡️💳</h4>
+                    <p className="leading-relaxed">
+                      Nekomon Online menerapkan standar transparansi pembayaran resmi dengan gateway pembayaran terpercaya (QRIS, E-Wallet, Virtual Account) dan perlindungan Google AdSense.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Perlindungan Pembayaran Ganda & Item Belum Masuk:</span> Jika terjadi kegagalan sistem atau potongan ganda, Trainer dapat mengajukan klaim pengembalian dana dalam waktu 7 hari ke email resmi pengembang: <span className="text-amber-300 font-mono">support@nekomon.online</span> atau <span className="text-amber-300 font-mono">verydiaz@gmail.com</span>.
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Akses Legal Kapan Saja:</span> Baca ketentuan lengkap melalui tombol <span className="text-yellow-400 font-mono font-bold">Kebijakan Refund</span> pada footer landing page atau halaman Shop.
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -432,6 +450,22 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-yellow-500/30 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Refund Policy & Secure Payment Gateway Transactions 🛡️💳</h4>
+                    <p className="leading-relaxed">
+                      Nekomon Online maintains transparent consumer protection policies in compliance with official secure payment gateways (QRIS, E-Wallet, Virtual Account) and Google AdSense guidelines.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Double Billing & Non-Delivery Protection:</span> In cases of verified payment anomalies or undelivered digital items, Trainers can submit a refund claim within 7 calendar days to: <span className="text-amber-300 font-mono">support@nekomon.online</span> or <span className="text-amber-300 font-mono">verydiaz@gmail.com</span>.
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Instant Policy Access:</span> Review complete legal terms via the <span className="text-yellow-400 font-mono font-bold">Refund Policy</span> button in the landing page footer or Shop page.
+                    </p>
+                  </div>
+                </div>
               </>
             )
 }
@@ -572,20 +606,54 @@ export const GameGuide: React.FC = () => {
         )}
       </div>
 
-      {/* Developer Credits - AS REQUESTED */}
-      <div className="mt-6 pt-6 border-t border-slate-800 text-center flex flex-col items-center justify-center gap-2">
+      {/* Developer Credits & Official Business Info */}
+      <div className="mt-6 pt-6 border-t border-slate-800 text-center flex flex-col items-center justify-center gap-3">
         <div className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-full select-none">
-          <span className="text-[10px] text-yellow-500 font-extrabold uppercase font-mono tracking-widest">Lead Developer</span>
+          <span className="text-[10px] text-yellow-500 font-extrabold uppercase font-mono tracking-widest">
+            {language === "id" ? "Pengembang & Kontak Usaha" : "Lead Developer & Business Contact"}
+          </span>
         </div>
-        <p className="text-sm font-black text-slate-100 tracking-wider">astronian22</p>
-        <a 
-          href="https://www.instagram.com/nekomontcg/" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer shadow-sm"
-        >
-          <span className="text-sm">💬</span> Instagram: NekomonTCG
-        </a>
+        <p className="text-sm font-black text-slate-100 tracking-wider">astronian22 • Nekomon Online Studio</p>
+        
+        {/* Contact Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg">
+          <a 
+            href="https://wa.me/6285624089327" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer shadow-sm"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>085624089327</span>
+          </a>
+
+          <a 
+            href="mailto:support@nekomon.online" 
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-mono text-xs font-bold hover:bg-yellow-500/20 transition-all cursor-pointer shadow-sm"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>support@nekomon.online</span>
+          </a>
+
+          <a 
+            href="https://www.instagram.com/nekomontcg/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-500/10 border border-pink-500/30 text-pink-400 font-mono text-xs font-bold hover:bg-pink-500/20 transition-all cursor-pointer shadow-sm"
+          >
+            <span>💬</span>
+            <span>Instagram: @astronian22</span>
+          </a>
+        </div>
+
+        {/* Business Address */}
+        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 flex items-center justify-center gap-2 max-w-md w-full">
+          <MapPin className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span>
+            <strong>{language === "id" ? "Alamat Usaha:" : "Address:"}</strong> Pasir Putih Residence B7
+          </span>
+        </div>
+
         <p className="text-[11px] text-slate-400 font-mono max-w-md mx-auto">
           {language === "id"
             ? "Dibuat dengan dedikasi penuh untuk seluruh komunitas Trainer Nekomon di seluruh dunia. Selamat berburu kucing asli! 🐾"

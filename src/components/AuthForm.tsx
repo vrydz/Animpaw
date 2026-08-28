@@ -634,6 +634,24 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                   </svg>
                   <span>{isEn ? "Sign in with Google" : "Masuk dengan Google"}</span>
                 </button>
+
+                {/* Quick Demo Account Helper */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername("demo1");
+                    setPassword("n3komontcg");
+                  }}
+                  className="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[11px] py-2 px-3 rounded-xl flex items-center justify-between transition-all cursor-pointer"
+                >
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    {isEn ? "Demo Account:" : "Akun Demo:"} <span className="text-white underline">demo1</span>
+                  </span>
+                  <span className="text-[10px] text-amber-400 font-bold bg-amber-500/20 px-2 py-0.5 rounded-md">
+                    {isEn ? "1-Click Autofill" : "Isi Otomatis"}
+                  </span>
+                </button>
               </div>
             )}
           </form>

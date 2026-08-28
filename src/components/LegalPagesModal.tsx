@@ -9,12 +9,19 @@ import {
   Eye, 
   HelpCircle,
   Gamepad2,
-  Instagram
+  Instagram,
+  RotateCcw,
+  AlertTriangle,
+  CreditCard,
+  CheckCircle2,
+  Phone,
+  MapPin,
+  MessageCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
 
-export type LegalTabType = "privacy" | "terms" | "about" | "contact" | "disclaimer";
+export type LegalTabType = "privacy" | "terms" | "refund" | "about" | "contact" | "disclaimer";
 
 interface LegalPagesModalProps {
   isOpen: boolean;
@@ -36,6 +43,7 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
   const tabLabels: Record<LegalTabType, { label: string; icon: any }> = {
     privacy: { label: isEn ? "Privacy Policy" : "Kebijakan Privasi", icon: Lock },
     terms: { label: isEn ? "Terms of Service" : "Syarat & Ketentuan", icon: FileText },
+    refund: { label: isEn ? "Refund Policy" : "Kebijakan Refund", icon: RotateCcw },
     about: { label: isEn ? "About Nekomon" : "Tentang Nekomon", icon: Info },
     contact: { label: isEn ? "Contact Us" : "Hubungi Kami", icon: Mail },
     disclaimer: { label: isEn ? "Disclaimer & Ads" : "Penafian & AdSense", icon: Eye },
@@ -263,6 +271,112 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
               </div>
             )}
 
+            {/* REFUND POLICY TAB */}
+            {activeTab === "refund" && (
+              <div className="space-y-5">
+                <div className="border-b border-slate-800 pb-3">
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <RotateCcw className="w-4 h-4 text-yellow-500" />
+                    {isEn ? "Cancellation & Refund Policy" : "Kebijakan Pembatalan & Pengembalian Dana (Refund Policy)"}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 font-mono">
+                    {isEn ? "Clear & Transparent Refund Standards for Digital Goods & Midtrans Transactions" : "Standar Pengembalian Dana Transparan untuk Produk Digital & Pembayaran Midtrans"}
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-yellow-500/30 space-y-3">
+                  <h4 className="font-bold text-yellow-400 text-xs font-mono uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-yellow-400" />
+                    {isEn ? "General Principle for Digital Goods" : "Prinsip Umum Produk Digital"}
+                  </h4>
+                  <p className="text-slate-300 text-xs leading-relaxed">
+                    {isEn ? (
+                      <>All purchases made on Nekomon Online (including In-game Points, Nekomon Cores, Booster Packs, and Energy Potions) are digital in nature and delivered instantly upon payment confirmation. Consequently, digital items that have been delivered and partially or fully consumed are generally non-refundable.</>
+                    ) : (
+                      <>Semua transaksi pembelian di Nekomon Online (termasuk Poin Game, Nekomon Cores, Booster Pack Kartu, dan Ramuan Energi) merupakan produk digital yang dikirimkan seketika setelah pembayaran terverifikasi. Oleh karena itu, produk digital yang telah diterima dan digunakan/dikonsumsi pada prinsipnya bersifat final dan tidak dapat dibatalkan.</>
+                    )}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-emerald-400" />
+                    {isEn ? "1. Eligible Refund Circumstances" : "1. Syarat dan Kondisi Pengembalian Dana yang Berhak (Eligible)"}
+                  </h4>
+                  <p>
+                    {isEn 
+                      ? "You may request a full refund or system balance correction under the following specific circumstances:" 
+                      : "Pengguna berhak mengajukan permohonan refund penuh atau penyesuaian saldo sistem dalam situasi berikut:"}
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-slate-300 text-xs pl-2">
+                    {isEn ? (
+                      <>
+                        <li><strong>Duplicate Payment / Double Charge:</strong> Multiple charges deducted from your payment method for a single order ID due to network glitches or gateway lag.</li>
+                        <li><strong>Item Non-Delivery:</strong> The payment was successfully captured and settled via Midtrans, but the digital points/cores/packs failed to credit to your player account within 24 hours after contacting support.</li>
+                        <li><strong>Technical System Glitch:</strong> A confirmed server-side error occurred during payment processing that prevented normal delivery of purchased assets.</li>
+                      </>
+                    ) : (
+                      <>
+                        <li><strong>Pembayaran Ganda (Double Billing):</strong> Terjadi pemotongan saldo lebih dari satu kali untuk ID pesanan yang sama akibat gangguan jaringan gateway perbankan.</li>
+                        <li><strong>Item Tidak Diterima (Non-Delivery):</strong> Pembayaran telah terpotong dan berstatus <em>Settlement / Success</em> di Midtrans, namun item poin/cores/kartu belum masuk ke akun pemain dalam waktu 1x24 jam setelah melapor ke bantuan.</li>
+                        <li><strong>Gangguan Teknis Server:</strong> Terjadi error sistem internal yang menyebabkan kegagalan pencatatan item secara permanen pada database akun.</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-400" />
+                    {isEn ? "2. Non-Refundable Situations" : "2. Kondisi yang Tidak Memenuhi Syarat Refund"}
+                  </h4>
+                  <ul className="list-disc list-inside space-y-1 text-slate-300 text-xs pl-2">
+                    {isEn ? (
+                      <>
+                        <li>Purchased digital points or cores that have already been partially or fully spent on card forging, gacha booster packs, or marketplace trading.</li>
+                        <li>Dissatisfaction with randomized gacha card draw results (rarity drop rates are publicly specified in the Game Guide).</li>
+                        <li>Account suspension or banning resulting from violations of Terms of Service, cheating, botting, or game exploit abuse.</li>
+                        <li>Accidental purchases made due to user error without unauthorized access proof.</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Poin atau Nekomon Cores yang telah digunakan/dibelanjakan untuk penempaan kartu anime, membuka booster gacha, atau jual beli pasar P2P.</li>
+                        <li>Ketidakpuasan terhadap hasil gacha kartu acak (probabilitas rarity telah dicantumkan secara transparan di Buku Panduan).</li>
+                        <li>Akun yang dibekukan atau diblokir akibat pelanggaran Syarat & Ketentuan (penggunaan bot, kecurangan battle, atau eksploitasi bug).</li>
+                        <li>Kekeliruan pembelian yang disebabkan oleh kelalaian pengguna sendiri tanpa bukti adanya akses tidak sah.</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider">
+                    {isEn ? "3. How to Submit a Refund Claim" : "3. Prosedur & Tata Cara Pengajuan Refund"}
+                  </h4>
+                  <p>
+                    {isEn ? (
+                      <>To request a refund review, please contact our official developer support team within <strong className="text-yellow-400 font-mono">7 days</strong> of the transaction date with the following details:</>
+                    ) : (
+                      <>Untuk mengajukan klaim pengembalian dana, hubungi tim pengembang resmi kami selambat-lambatnya dalam waktu <strong className="text-yellow-400 font-mono">7 hari kalender</strong> sejak transaksi dilakukan dengan menyertakan:</>
+                    )}
+                  </p>
+                  <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 font-mono text-xs space-y-1 text-slate-300">
+                    <p>• {isEn ? "Player Username & Registered Email" : "Username Pemain & Email Terdaftar"}</p>
+                    <p>• {isEn ? "Transaction / Order ID (e.g. NEKO-ORDER-...)" : "ID Transaksi / Order ID (contoh: NEKO-ORDER-...)"}</p>
+                    <p>• {isEn ? "Proof of Payment / Bank Transfer Slip" : "Bukti Pembayaran / Mutasi Bank / Struk E-Wallet"}</p>
+                    <p>• {isEn ? "Clear description of the issue" : "Deskripsi kendala yang dialami"}</p>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    {isEn ? (
+                      <>Send your claim to: <span className="text-yellow-400 font-mono">support@nekomon.online</span> or <span className="text-yellow-400 font-mono">verydiaz@gmail.com</span>. Valid refund requests will be processed within 3-5 business days back to the original payment source or via bank transfer.</>
+                    ) : (
+                      <>Kirimkan klaim Anda ke: <span className="text-yellow-400 font-mono">support@nekomon.online</span> atau <span className="text-yellow-400 font-mono">verydiaz@gmail.com</span>. Permintaan refund yang valid akan diproses dalam waktu 3-5 hari kerja melalui pengembalian metode bayar asal atau transfer bank resmi.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* ABOUT US TAB */}
             {activeTab === "about" && (
               <div className="space-y-5">
@@ -334,6 +448,26 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                     </p>
                   </div>
                 </div>
+
+                {/* Studio & Address Info Box */}
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
+                  <div>
+                    <span className="text-yellow-400 font-bold block mb-0.5">
+                      {isEn ? "🏢 Developer Studio & Operations" : "🏢 Studio Pengembang & Operasional"}
+                    </span>
+                    <span className="text-slate-300">
+                      Nekomon Studio • Pasir Putih Residence B7, Indonesia
+                    </span>
+                  </div>
+                  <div className="text-right sm:text-right w-full sm:w-auto">
+                    <span className="text-[10px] text-slate-500 block uppercase">
+                      {isEn ? "Hotline / WhatsApp" : "Hotline / WhatsApp"}
+                    </span>
+                    <a href="https://wa.me/6285624089327" target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-bold hover:underline">
+                      085624089327
+                    </a>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -365,9 +499,49 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                       <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">
                         {isEn ? "Official Support Email" : "Email Dukungan Resmi"}
                       </span>
-                      <a href="mailto:support@nekomon.online" className="font-bold text-yellow-400 hover:underline font-mono text-xs sm:text-sm">
+                      <a href="mailto:support@nekomon.online" className="font-bold text-yellow-400 hover:underline font-mono text-xs sm:text-sm block">
                         support@nekomon.online
                       </a>
+                      <span className="text-[10px] text-slate-400 font-mono">CC: verydiaz@gmail.com</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                      <Phone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">
+                        {isEn ? "Customer Hotline & WhatsApp" : "Nomor Telepon & WhatsApp"}
+                      </span>
+                      <a 
+                        href="https://wa.me/6285624089327" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="font-bold text-emerald-400 hover:underline font-mono text-xs sm:text-sm block"
+                      >
+                        085624089327
+                      </a>
+                      <span className="text-[10px] text-emerald-500/80 font-mono">
+                        {isEn ? "Direct Chat & Voice Call" : "Layanan Chat & Panggilan"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">
+                        {isEn ? "Business Address" : "Alamat Usaha & Kantor"}
+                      </span>
+                      <span className="font-bold text-slate-200 font-mono text-xs sm:text-sm block">
+                        Pasir Putih Residence B7
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {isEn ? "Headquarters • Indonesia" : "Studio Utama • Indonesia"}
+                      </span>
                     </div>
                   </div>
 
@@ -387,21 +561,29 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                       >
                         <span>@astronian22</span>
                       </a>
+                      <span className="text-[10px] text-slate-400 font-mono">Community Updates</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <h4 className="font-bold text-xs text-slate-200 font-mono">
-                    {isEn ? "Developer Studio & Service Hours:" : "Alamat Pengembang & Jam Operasional:"}
+                  <h4 className="font-bold text-xs text-slate-200 font-mono flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-yellow-500" />
+                    {isEn ? "Studio Location & Support Hours:" : "Lokasi Usaha & Jam Operasional Dukungan:"}
                   </h4>
-                  <p className="text-xs text-slate-400">
-                    {isEn ? (
-                      <>Nekomon Studio Online • Jakarta, Indonesia.<br />Support Hours: Monday - Friday, 08:00 - 18:00 WIB (UTC+7). Average response time: 24 hours.</>
-                    ) : (
-                      <>Nekomon Studio Online • Jakarta, Indonesia.<br />Jam Layanan: Senin - Jumat, 08:00 - 18:00 WIB. Waktu respon rata-rata: 1x24 jam.</>
-                    )}
-                  </p>
+                  <div className="text-xs text-slate-300 font-mono space-y-1">
+                    <p>
+                      <strong className="text-amber-400">{isEn ? "Studio Address:" : "Alamat Usaha:"}</strong> Pasir Putih Residence B7, Indonesia.
+                    </p>
+                    <p>
+                      <strong className="text-emerald-400">{isEn ? "Hotline / Mobile:" : "Telepon / WhatsApp:"}</strong> 085624089327
+                    </p>
+                    <p className="text-slate-400">
+                      {isEn 
+                        ? "Support Hours: Monday - Friday, 08:00 - 18:00 WIB (UTC+7). Average response time: 1-24 hours." 
+                        : "Jam Layanan: Senin - Jumat, 08:00 - 18:00 WIB. Waktu respon rata-rata: 1-24 jam."}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

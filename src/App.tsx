@@ -77,7 +77,9 @@ import {
   Mail,
   Shield,
   Target,
-  Download
+  Download,
+  RotateCcw,
+  Phone
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
@@ -1887,6 +1889,14 @@ export default function App() {
                     </button>
                     <button 
                       type="button"
+                      onClick={() => openLandingLegalModal("refund")} 
+                      className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-yellow-500" /> 
+                      {language === "id" ? "Kebijakan Refund" : "Refund Policy"}
+                    </button>
+                    <button 
+                      type="button"
                       onClick={() => openLandingLegalModal("about")} 
                       className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
                     >
@@ -1912,13 +1922,39 @@ export default function App() {
                   </div>
                 </div>
 
+                <div className="pt-2 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-400 font-mono">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1">
+                    <span className="flex items-center gap-1 text-slate-300">
+                      <MapPin className="w-3 h-3 text-cyan-400" />
+                      <span>Pasir Putih Residence B7</span>
+                    </span>
+                    <a 
+                      href="https://wa.me/6285624089327" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span>085624089327</span>
+                    </a>
+                    <a 
+                      href="mailto:support@nekomon.online" 
+                      className="flex items-center gap-1 text-yellow-400 hover:text-yellow-300 transition-colors"
+                    >
+                      <Mail className="w-3 h-3" />
+                      <span>support@nekomon.online</span>
+                    </a>
+                  </div>
+                  <span className="text-amber-500/80">Instagram: @astronian22</span>
+                </div>
+
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-500 text-center sm:text-left">
                   <span>
                     {language === "id" 
                       ? "© 2026 Nekomon Online. All rights reserved. Game Kartu Berburu Foto Kucing Real-time & AR Forge." 
                       : "© 2026 Nekomon Online. All rights reserved. Real-time Cat Photo Hunting & AR Forge Card Game."}
                   </span>
-                  <span className="text-amber-500/70 font-mono">Instagram Developer: @astronian22</span>
+                  <span className="text-slate-600 font-mono">Studio: Nekomon Online</span>
                 </div>
               </div>
             </footer>
@@ -2057,10 +2093,10 @@ export default function App() {
                       setShowInterstitialAd(true);
                     }}
                     className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-[10px] transition-all border border-slate-800 cursor-pointer"
-                    title="Simulasi Iklan Interstitial (AdMob/Unity Ads)"
+                    title="Iklan Interstitial Google AdSense"
                   >
                     <Tv className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Tes Interstitial</span>
+                    <span>Google AdSense Interstitial</span>
                   </button>
                 </div>
               </div>

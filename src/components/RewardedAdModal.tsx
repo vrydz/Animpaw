@@ -5,12 +5,10 @@ import {
   Gift, 
   Sparkles, 
   CheckCircle2, 
-  ExternalLink,
   Award,
   Loader2,
   AlertCircle,
-  ShieldCheck,
-  Globe
+  ShieldCheck
 } from "lucide-react";
 import { audio } from "../lib/audio";
 import { useLanguage } from "../context/LanguageContext";
@@ -22,8 +20,6 @@ interface RewardedAdModalProps {
   rewardType?: "points_50" | "cores_5" | "standard";
   onRewardClaimed: (updatedUser: any, rewardMsg: string) => void;
 }
-
-const ADSTERRA_SMARTLINK_URL = "https://www.effectivecpmnetwork.com/ztq3ewy6?key=2d94eee8c23563828aaaffbdfba18e46";
 
 export function RewardedAdModal({
   isOpen,
@@ -143,13 +139,6 @@ export function RewardedAdModal({
     }
   };
 
-  const handleSponsorClick = () => {
-    window.open(ADSTERRA_SMARTLINK_URL, "_blank", "noopener,noreferrer");
-    setIsCompleted(true);
-    setTimeLeft(0);
-    setProgress(100);
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -166,7 +155,7 @@ export function RewardedAdModal({
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded font-black text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest">
                 <Gift className="w-3.5 h-3.5" />
-                {language === "id" ? "Iklan Sponsor Berhadiah" : "Rewarded Sponsor Ad"}
+                {language === "id" ? "Iklan Berhadiah Google AdSense" : "Google AdSense Rewarded Ad"}
               </span>
             </div>
 
@@ -195,7 +184,7 @@ export function RewardedAdModal({
             </div>
 
             {/* Real Google AdSense Unit Container */}
-            <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center min-h-[180px] text-center shadow-inner">
+            <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center min-h-[220px] text-center shadow-inner">
               <div className="text-[10px] text-slate-500 font-mono uppercase mb-2 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                 <span>Google AdSense Unit</span>
@@ -204,7 +193,7 @@ export function RewardedAdModal({
               <ins
                 ref={adRef}
                 className="adsbygoogle w-full"
-                style={{ display: "block", minHeight: "140px" }}
+                style={{ display: "block", minHeight: "180px" }}
                 data-ad-client="ca-pub-2411657012211511"
                 data-ad-slot="8821940125"
                 data-ad-format="auto"
@@ -212,40 +201,23 @@ export function RewardedAdModal({
               />
             </div>
 
-            {/* Adsterra Sponsor Offer & Interaction */}
-            <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-300 font-mono flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                  Adsterra Sponsor Network
-                </span>
-                <span className="text-[10px] text-emerald-400 font-mono font-bold">
-                  {isCompleted ? (
-                    <span className="flex items-center gap-1 text-emerald-400">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {language === "id" ? "Selesai" : "Completed"}
-                    </span>
-                  ) : (
-                    <span className="text-amber-400">
-                      {Math.ceil(timeLeft)}s {language === "id" ? "tersisa" : "left"}
-                    </span>
-                  )}
-                </span>
-              </div>
-
-              <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                {language === "id"
-                  ? "Tonton sponsor atau kunjungi tautan penawaran untuk menyelesaikan syarat perolehan poin dan core gratis."
-                  : "Watch sponsor or visit offer link to complete requirements for free points and cores."}
-              </p>
-
-              <button
-                onClick={handleSponsorClick}
-                className="w-full py-2.5 px-3 rounded-lg font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-              >
-                <span>{language === "id" ? "Kunjungi Tautan Sponsor" : "Visit Sponsor Link"}</span>
-                <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-              </button>
+            {/* Progress Status */}
+            <div className="p-3 rounded-xl bg-slate-950/90 border border-slate-800 flex items-center justify-between">
+              <span className="text-xs text-slate-300 font-medium">
+                {language === "id" ? "Status Penayangan Iklan" : "Ad Playback Status"}
+              </span>
+              <span className="text-[11px] font-mono font-bold">
+                {isCompleted ? (
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {language === "id" ? "Siap Diklaim" : "Ready to Claim"}
+                  </span>
+                ) : (
+                  <span className="text-amber-400 font-mono">
+                    {Math.ceil(timeLeft)}s {language === "id" ? "tersisa" : "remaining"}
+                  </span>
+                )}
+              </span>
             </div>
 
             {/* Video Progress Bar */}
@@ -290,14 +262,14 @@ export function RewardedAdModal({
                 disabled
                 className="w-full py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider text-slate-500 bg-slate-900 border border-slate-800 cursor-not-allowed flex items-center justify-center gap-2"
               >
-                <span>{language === "id" ? `MENUNGGU SPONSOR SELESAI (${Math.ceil(timeLeft)}s)...` : `WAITING FOR SPONSOR (${Math.ceil(timeLeft)}s)...`}</span>
+                <span>{language === "id" ? `MENUNGGU IKLAN SELESAI (${Math.ceil(timeLeft)}s)...` : `WAITING FOR AD (${Math.ceil(timeLeft)}s)...`}</span>
               </button>
             )}
 
             <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1">
               <div className="flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-teal-400" />
-                <span>Google AdSense & Adsterra</span>
+                <span>Google AdSense Official Partner</span>
               </div>
               <span>ID: ca-pub-2411657012211511</span>
             </div>
