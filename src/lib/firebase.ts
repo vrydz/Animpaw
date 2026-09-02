@@ -18,8 +18,25 @@ const databaseId = metaEnv.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDa
 
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
-export const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Safe initialization of client-side Firestore to prevent uncaught browser crashes
+let _clientDb: any = null;
+try {
+  if (databaseId) {
+    try {
+      _clientDb = getFirestore(app, databaseId);
+    } catch {
+      _clientDb = getFirestore(app);
+    }
+  } else {
+    _clientDb = getFirestore(app);
+  }
+} catch (err) {
+  console.warn("Client-side Firestore service not available, persistent storage handled via server API:", err);
+}
+
+export const db = _clientDb;
 
 // Local Storage Persistence & Backup Helpers
 const LOCAL_STORAGE_BACKUP_KEY = "nekomon_player_history_v2";

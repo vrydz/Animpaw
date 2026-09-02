@@ -8,6 +8,7 @@ import { initWebSocket } from "./server/websocket";
 import { syncToFirestore, loadFromFirestore } from "./server/firestoreDb";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./server/mailer";
 import { RAID_BOSS_TEMPLATES, createRaidBossInstance, generateBossArtwork } from "./src/data/raidBossData";
+import { resolveSeoRoute, renderSeoHtml } from "./server/seoRoutes";
 
 dotenv.config();
 
@@ -7353,23 +7354,69 @@ app.get("/ads.txt", (_req, res) => {
 });
 
 // ----------------------------------------------------------------
-// VITE AND STATIC ASSET MIDDLEWARE
+// VITE AND STATIC ASSET MIDDLEWARE WITH ADSENSE SEO VIRTUAL ROUTES
 // ----------------------------------------------------------------
+const SEO_PATHS = [
+  "/privacy-policy", "/privacy",
+  "/terms-of-service", "/terms",
+  "/refund-policy", "/refund",
+  "/about", "/about-us",
+  "/contact", "/contact-us",
+  "/disclaimer",
+  "/guide", "/game-guide", "/panduan"
+];
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
+
+    // Intercept AdSense & Googlebot Virtual SEO Routes before Vite default SPA fallback
+    app.get(SEO_PATHS, async (req, res, next) => {
+      try {
+        const routeMeta = resolveSeoRoute(req.path);
+        if (!routeMeta) return next();
+        const indexPath = path.join(process.cwd(), "index.html");
+        let html = fs.readFileSync(indexPath, "utf-8");
+        html = await vite.transformIndexHtml(req.originalUrl, html);
+        const seoHtml = renderSeoHtml(html, routeMeta);
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.send(seoHtml);
+      } catch (e) {
+        next(e);
+      }
+    });
+
     app.use(vite.middlewares);
-    console.log("Vite development middleware integrated.");
+    console.log("Vite development middleware integrated with AdSense SEO route support.");
   } else {
     const distPath = path.join(process.cwd(), "dist");
+
+    // Intercept AdSense & Googlebot Virtual SEO Routes in production
+    app.get(SEO_PATHS, (req, res, next) => {
+      try {
+        const routeMeta = resolveSeoRoute(req.path);
+        if (!routeMeta) return next();
+        const indexPath = path.join(distPath, "index.html");
+        if (fs.existsSync(indexPath)) {
+          const html = fs.readFileSync(indexPath, "utf-8");
+          const seoHtml = renderSeoHtml(html, routeMeta);
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          return res.send(seoHtml);
+        }
+        return next();
+      } catch (e) {
+        next(e);
+      }
+    });
+
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
-    console.log("Serving static production assets from dist/.");
+    console.log("Serving static production assets from dist/ with AdSense SEO route support.");
   }
 
   const server = app.listen(PORT, "0.0.0.0", () => {

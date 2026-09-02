@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   ShieldCheck, 
   FileText, 
@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
+import { navigateToRoute, LegalTabType } from "../utils/routes";
 
-export type LegalTabType = "privacy" | "terms" | "refund" | "about" | "contact" | "disclaimer";
+export type { LegalTabType };
 
 interface LegalPagesModalProps {
   isOpen: boolean;
@@ -37,6 +38,30 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
   const [activeTab, setActiveTab] = useState<LegalTabType>(initialTab);
   const { language } = useLanguage();
   const isEn = language === "en";
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, isOpen]);
+
+  const handleTabChange = (tabId: LegalTabType) => {
+    setActiveTab(tabId);
+    const routeMap: Record<LegalTabType, string> = {
+      privacy: "/privacy-policy",
+      terms: "/terms-of-service",
+      refund: "/refund-policy",
+      about: "/about",
+      contact: "/contact",
+      disclaimer: "/disclaimer"
+    };
+    navigateToRoute(routeMap[tabId] || "/privacy-policy");
+  };
+
+  const handleClose = () => {
+    onClose();
+    if (typeof window !== "undefined" && window.location.pathname !== "/") {
+      navigateToRoute("/");
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -79,7 +104,7 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-100 border border-slate-800 transition-all cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -95,7 +120,7 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
               return (
                 <button
                   key={tabId}
-                  onClick={() => setActiveTab(tabId)}
+                  onClick={() => handleTabChange(tabId)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                     isActive
                       ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-md shadow-yellow-500/10 font-extrabold"
@@ -641,7 +666,7 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
           <div className="bg-slate-950 px-6 py-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono shrink-0">
             <span className="text-slate-500">© 2026 Nekomon Online. All rights reserved.</span>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black rounded-xl transition-all cursor-pointer"
             >
               {isEn ? "Close Modal" : "Tutup Modal"}

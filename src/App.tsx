@@ -83,6 +83,7 @@ import {
   Database
 } from "lucide-react";
 import { DatabaseBackupModal } from "./components/DatabaseBackupModal";
+import { getRouteFromPath, navigateToRoute } from "./utils/routes";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
 import { PLAYER_BADGES, getTrainerLevel, getHighestBadge, PlayerBadge } from "./lib/badges";
@@ -460,9 +461,38 @@ export default function App() {
   const [landingLegalTab, setLandingLegalTab] = useState<LegalTabType>("privacy");
   const [showDatabaseBackupModal, setShowDatabaseBackupModal] = useState<boolean>(false);
 
+  // Synchronize browser URL with modal/view state on initial load and popstate
+  useEffect(() => {
+    const syncRoute = () => {
+      if (typeof window === "undefined") return;
+      const { route, legalTab, isGuide } = getRouteFromPath(window.location.pathname);
+      if (legalTab) {
+        setLandingLegalTab(legalTab);
+        setShowLandingLegalModal(true);
+      } else if (isGuide) {
+        setMobileTab("guide");
+      } else if (route === "/") {
+        setShowLandingLegalModal(false);
+      }
+    };
+
+    syncRoute();
+    window.addEventListener("popstate", syncRoute);
+    return () => window.removeEventListener("popstate", syncRoute);
+  }, []);
+
   const openLandingLegalModal = (tab: LegalTabType) => {
     setLandingLegalTab(tab);
     setShowLandingLegalModal(true);
+    const routeMap: Record<LegalTabType, string> = {
+      privacy: "/privacy-policy",
+      terms: "/terms-of-service",
+      refund: "/refund-policy",
+      about: "/about",
+      contact: "/contact",
+      disclaimer: "/disclaimer"
+    };
+    navigateToRoute(routeMap[tab] || "/privacy-policy");
   };
 
   // Achievement Share & Level Up Modal State
@@ -1872,56 +1902,56 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Policy Footer Links */}
+                  {/* Policy Footer Links (Semantic Anchor Links for Crawler & SPA Routing) */}
                   <div className="flex items-center flex-wrap gap-4 text-slate-400">
-                    <button 
-                      type="button"
-                      onClick={() => openLandingLegalModal("privacy")} 
+                    <a 
+                      href="/privacy-policy"
+                      onClick={(e) => { e.preventDefault(); openLandingLegalModal("privacy"); }} 
                       className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <Lock className="w-3.5 h-3.5 text-yellow-500" /> 
                       {language === "id" ? "Kebijakan Privasi" : "Privacy Policy"}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => openLandingLegalModal("terms")} 
+                    </a>
+                    <a 
+                      href="/terms-of-service"
+                      onClick={(e) => { e.preventDefault(); openLandingLegalModal("terms"); }} 
                       className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <FileText className="w-3.5 h-3.5" /> 
                       {language === "id" ? "Syarat & Ketentuan" : "Terms & Conditions"}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => openLandingLegalModal("refund")} 
+                    </a>
+                    <a 
+                      href="/refund-policy"
+                      onClick={(e) => { e.preventDefault(); openLandingLegalModal("refund"); }} 
                       className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-yellow-500" /> 
                       {language === "id" ? "Kebijakan Refund" : "Refund Policy"}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => openLandingLegalModal("about")} 
+                    </a>
+                    <a 
+                      href="/about"
+                      onClick={(e) => { e.preventDefault(); openLandingLegalModal("about"); }} 
                       className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <Info className="w-3.5 h-3.5 text-cyan-400" /> 
                       {language === "id" ? "Tentang Kami" : "About Us"}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => openLandingLegalModal("contact")} 
+                    </a>
+                    <a 
+                      href="/contact"
+                      onClick={(e) => { e.preventDefault(); openLandingLegalModal("contact"); }} 
                       className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <Mail className="w-3.5 h-3.5" /> 
                       {language === "id" ? "Hubungi Kami" : "Contact Us"}
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => openLandingLegalModal("disclaimer")} 
+                    </a>
+                    <a 
+                      href="/disclaimer"
+                      onClick={(e) => { e.preventDefault(); openLandingLegalModal("disclaimer"); }} 
                       className="hover:text-yellow-400 transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <ShieldCheck className="w-3.5 h-3.5 text-yellow-500" /> 
                       {language === "id" ? "AdSense Disclaimer" : "AdSense Disclaimer"}
-                    </button>
+                    </a>
                   </div>
                 </div>
 

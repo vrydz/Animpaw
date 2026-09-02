@@ -24,7 +24,8 @@ import {
   RotateCcw,
   Phone,
   Database,
-  Cloud
+  Cloud,
+  Globe
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -288,6 +289,20 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Globe className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">15. Virtual Routing & Standar Bot Crawler Google AdSense 🌐🤖</h4>
+                    <p className="leading-relaxed">
+                      Sistem routing server dan web app kini mendukung <span className="text-emerald-400 font-bold font-mono">Multi-Page Virtual Routing</span> penuh untuk memenuhi kepatuhan bot crawler Google AdSense dan Googlebot.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• URL Khusus Kebijakan & SEO:</span> Rute mandiri seperti <span className="text-amber-300 font-mono">/privacy-policy</span>, <span className="text-amber-300 font-mono">/terms-of-service</span>, <span className="text-amber-300 font-mono">/refund-policy</span>, <span className="text-amber-300 font-mono">/about</span>, <span className="text-amber-300 font-mono">/contact</span>, <span className="text-amber-300 font-mono">/disclaimer</span>, dan <span className="text-amber-300 font-mono">/guide</span> direspons dengan metadata title dinamis, Open Graph lengkap, serta konten teks kebijakan semantik yang langsung terbaca bot perayap maupun pengunjung web.
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -493,6 +508,20 @@ export const GameGuide: React.FC = () => {
                       Your account history, forged cards, community spots, and balances are securely preserved with <span className="text-cyan-400 font-bold font-mono">Google Cloud Firestore</span> architecture that automatically synchronizes and reloads data upon every server deployment or restart.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Developer DB Backup Button:</span> Verified Developer accounts (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span> & <span className="text-amber-300 font-mono">support@nekomon.online</span>) can export full <span className="text-yellow-400 font-mono font-bold">.JSON</span> backups, perform 1-Click database restores, and trigger real-time Firestore sync anytime from the top navigation bar!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Globe className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">15. Virtual Routing & Google AdSense Bot Crawler Compliance 🌐🤖</h4>
+                    <p className="leading-relaxed">
+                      The application server and front-end now feature comprehensive <span className="text-emerald-400 font-bold font-mono">Multi-Page Virtual Routing</span> specifically designed to meet Google AdSense, Mediapartners-Google, and Googlebot crawler indexing standards.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Dedicated Policy & SEO Endpoints:</span> Standalone URLs including <span className="text-amber-300 font-mono">/privacy-policy</span>, <span className="text-amber-300 font-mono">/terms-of-service</span>, <span className="text-amber-300 font-mono">/refund-policy</span>, <span className="text-amber-300 font-mono">/about</span>, <span className="text-amber-300 font-mono">/contact</span>, <span className="text-amber-300 font-mono">/disclaimer</span>, and <span className="text-amber-300 font-mono">/guide</span> are served with dynamic meta titles, canonical links, Open Graph tags, and pre-rendered semantic HTML readable by web indexers and users alike.
                     </p>
                   </div>
                 </div>
