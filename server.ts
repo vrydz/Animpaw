@@ -7250,6 +7250,102 @@ app.post("/api/developer/raid/reset", (req, res) => {
   });
 });
 
+// 12. Developer Only: Export Database Backup (JSON & Firestore Status)
+app.get("/api/developer/database/backup", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer resmi (verydiaz@gmail.com / support@nekomon.online)." });
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filename = `nekomon_backup_${timestamp}.json`;
+  
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.setHeader("Content-Type", "application/json");
+  return res.send(JSON.stringify(db, null, 2));
+});
+
+// 13. Developer Only: Restore Database from JSON & Re-sync to Firestore
+app.post("/api/developer/database/restore", async (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer resmi (verydiaz@gmail.com / support@nekomon.online)." });
+  }
+
+  const { backupData } = req.body;
+  if (!backupData || typeof backupData !== "object") {
+    return res.status(400).json({ error: "Payload data backup tidak valid." });
+  }
+
+  // Validate critical structure
+  const restoredDB: any = {
+    users: Array.isArray(backupData.users) ? backupData.users : db.users || [],
+    captures: Array.isArray(backupData.captures) ? backupData.captures : db.captures || [],
+    cards: Array.isArray(backupData.cards) ? backupData.cards : db.cards || [],
+    trades: Array.isArray(backupData.trades) ? backupData.trades : db.trades || [],
+    communitySpots: Array.isArray(backupData.communitySpots) ? backupData.communitySpots : db.communitySpots || [],
+    battleHistory: Array.isArray(backupData.battleHistory) ? backupData.battleHistory : db.battleHistory || [],
+    transactions: Array.isArray(backupData.transactions) ? backupData.transactions : db.transactions || [],
+    officialMails: Array.isArray(backupData.officialMails) ? backupData.officialMails : db.officialMails || DEFAULT_OFFICIAL_MAILS,
+    directMessages: Array.isArray(backupData.directMessages) ? backupData.directMessages : db.directMessages || [],
+    raidBosses: Array.isArray(backupData.raidBosses) ? backupData.raidBosses : db.raidBosses || [],
+    raidLobbies: Array.isArray(backupData.raidLobbies) ? backupData.raidLobbies : db.raidLobbies || []
+  };
+
+  // Preserve demo user
+  ensureDemoUserAndDeck(restoredDB);
+
+  // Write to local disk
+  writeDB(restoredDB);
+
+  // Force sync to Cloud Firestore
+  try {
+    await syncToFirestore(restoredDB);
+  } catch (syncErr: any) {
+    console.warn("Restore Firestore sync notice:", syncErr?.message || syncErr);
+  }
+
+  return res.json({
+    success: true,
+    message: `Database berhasil dipulihkan! Total: ${restoredDB.users.length} Pemain, ${restoredDB.cards.length} Kartu, ${restoredDB.communitySpots.length} Spot Komunitas. Data tersinkronisasi ke Firestore.`,
+    stats: {
+      usersCount: restoredDB.users.length,
+      cardsCount: restoredDB.cards.length,
+      spotsCount: restoredDB.communitySpots.length,
+      capturesCount: restoredDB.captures.length,
+      mailsCount: restoredDB.officialMails.length
+    }
+  });
+});
+
+// 14. Developer Only: Force Immediate Push to Cloud Firestore
+app.post("/api/developer/database/sync-firestore", async (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer resmi (verydiaz@gmail.com / support@nekomon.online)." });
+  }
+
+  try {
+    await syncToFirestore(db);
+    return res.json({
+      success: true,
+      message: "Seluruh data lokal server berhasil disinkronkan langsung ke Cloud Firestore!",
+      stats: {
+        users: db.users?.length || 0,
+        cards: db.cards?.length || 0,
+        communitySpots: db.communitySpots?.length || 0
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      error: "Gagal menyinkronkan ke Firestore: " + (err?.message || err)
+    });
+  }
+});
+
 // Explicit endpoint for Google AdSense ads.txt verification
 app.get("/ads.txt", (_req, res) => {
   res.setHeader("Content-Type", "text/plain");

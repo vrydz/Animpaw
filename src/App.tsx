@@ -79,8 +79,10 @@ import {
   Target,
   Download,
   RotateCcw,
-  Phone
+  Phone,
+  Database
 } from "lucide-react";
+import { DatabaseBackupModal } from "./components/DatabaseBackupModal";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
 import { PLAYER_BADGES, getTrainerLevel, getHighestBadge, PlayerBadge } from "./lib/badges";
@@ -456,6 +458,7 @@ export default function App() {
   // Landing Page Legal Pages Modal State
   const [showLandingLegalModal, setShowLandingLegalModal] = useState<boolean>(false);
   const [landingLegalTab, setLandingLegalTab] = useState<LegalTabType>("privacy");
+  const [showDatabaseBackupModal, setShowDatabaseBackupModal] = useState<boolean>(false);
 
   const openLandingLegalModal = (tab: LegalTabType) => {
     setLandingLegalTab(tab);
@@ -2098,6 +2101,18 @@ export default function App() {
                     <Tv className="w-3.5 h-3.5 text-amber-400" />
                     <span>Google AdSense Interstitial</span>
                   </button>
+
+                  {/* Developer Database Backup & Firestore Recovery Button */}
+                  {user && user.email && ["verydiaz@gmail.com", "support@nekomon.online", "nekomaster@nekomon.online"].includes(user.email.toLowerCase().trim()) && (
+                    <button
+                      onClick={() => setShowDatabaseBackupModal(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-extrabold text-[10px] transition-all border border-yellow-500/30 cursor-pointer"
+                      title={language === "id" ? "Panel Backup & Restore Database Firestore" : "Database Backup & Restore Panel"}
+                    >
+                      <Database className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+                      <span className="font-mono">DB BACKUP</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -3219,6 +3234,25 @@ export default function App() {
 
       {/* Floating Audio Soundtrack Controller Widget */}
       <AudioPlayerWidget />
+
+      {/* Developer Database Backup & Firestore Recovery Modal */}
+      <DatabaseBackupModal
+        isOpen={showDatabaseBackupModal}
+        onClose={() => setShowDatabaseBackupModal(false)}
+        user={user}
+        onDataRestored={() => {
+          if (user?.id) {
+            fetch(`/api/user/${user.id}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.user) setUser(data.user);
+                if (data.cards) setCards(data.cards);
+                if (data.captures) setCaptures(data.captures);
+              })
+              .catch(() => {});
+          }
+        }}
+      />
 
     </div>
   );

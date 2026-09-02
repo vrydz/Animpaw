@@ -22,7 +22,9 @@ import {
   Mail,
   Smartphone,
   RotateCcw,
-  Phone
+  Phone,
+  Database,
+  Cloud
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -272,6 +274,20 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-cyan-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                    <Database className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-cyan-300 font-mono text-xs uppercase mb-1">14. Ketahanan Data Cloud Firestore & Backup Database 1-Klik ☁️💾</h4>
+                    <p className="leading-relaxed">
+                      Histori akun, kartu tempaan, spot kucing komunitas, dan saldo Anda tersimpan aman dengan arsitektur <span className="text-cyan-400 font-bold font-mono">Google Cloud Firestore</span> yang otomatis memulihkan data setiap kali server di-deploy atau restart.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Tombol DB Backup Khusus Developer:</span> Akun Developer resmi (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span> & <span className="text-amber-300 font-mono">support@nekomon.online</span>) dapat mengunduh salinan cadangan lengkap format <span className="text-yellow-400 font-mono font-bold">.JSON</span>, memulihkan database secara instan (*1-Click Restore*), serta memaksa sinkronisasi real-time ke Cloud Firestore kapan saja dari bilah navigasi atas!
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -463,6 +479,20 @@ export const GameGuide: React.FC = () => {
                       <span className="text-yellow-400 font-bold font-mono">• Double Billing & Non-Delivery Protection:</span> In cases of verified payment anomalies or undelivered digital items, Trainers can submit a refund claim within 7 calendar days to: <span className="text-amber-300 font-mono">support@nekomon.online</span> or <span className="text-amber-300 font-mono">verydiaz@gmail.com</span>.
                       <br/>
                       <span className="text-emerald-400 font-bold font-mono">• Instant Policy Access:</span> Review complete legal terms via the <span className="text-yellow-400 font-mono font-bold">Refund Policy</span> button in the landing page footer or Shop page.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-cyan-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                    <Database className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-cyan-300 font-mono text-xs uppercase mb-1">14. Cloud Firestore Persistence & 1-Click Database Backup ☁️💾</h4>
+                    <p className="leading-relaxed">
+                      Your account history, forged cards, community spots, and balances are securely preserved with <span className="text-cyan-400 font-bold font-mono">Google Cloud Firestore</span> architecture that automatically synchronizes and reloads data upon every server deployment or restart.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Developer DB Backup Button:</span> Verified Developer accounts (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span> & <span className="text-amber-300 font-mono">support@nekomon.online</span>) can export full <span className="text-yellow-400 font-mono font-bold">.JSON</span> backups, perform 1-Click database restores, and trigger real-time Firestore sync anytime from the top navigation bar!
                     </p>
                   </div>
                 </div>
