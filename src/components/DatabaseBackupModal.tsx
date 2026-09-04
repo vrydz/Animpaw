@@ -49,9 +49,12 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
       setErrorMsg(null);
       setSuccessMsg(null);
 
+      const token = localStorage.getItem("nekomon_token");
       const res = await fetch("/api/developer/database/backup", {
         headers: {
-          "x-user-id": user?.id || ""
+          Authorization: token ? `Bearer ${token}` : "",
+          "x-user-id": user?.id || "",
+          "x-user-email": user?.email || ""
         }
       });
 
@@ -95,11 +98,14 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
         const content = event.target?.result as string;
         const backupData = JSON.parse(content);
 
+        const token = localStorage.getItem("nekomon_token");
         const res = await fetch("/api/developer/database/restore", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-user-id": user?.id || ""
+            Authorization: token ? `Bearer ${token}` : "",
+            "x-user-id": user?.id || "",
+            "x-user-email": user?.email || ""
           },
           body: JSON.stringify({ backupData })
         });
@@ -135,11 +141,14 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
       setErrorMsg(null);
       setSuccessMsg(null);
 
+      const token = localStorage.getItem("nekomon_token");
       const res = await fetch("/api/developer/database/sync-firestore", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": user?.id || ""
+          Authorization: token ? `Bearer ${token}` : "",
+          "x-user-id": user?.id || "",
+          "x-user-email": user?.email || ""
         }
       });
 
@@ -200,8 +209,8 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
                 </div>
                 <p className="text-xs">
                   {isEn
-                    ? "This menu is restricted to authorized developer accounts (verydiaz@gmail.com / support@nekomon.online)."
-                    : "Menu ini hanya dapat diakses oleh akun pengembang resmi (verydiaz@gmail.com / support@nekomon.online)."}
+                    ? "This menu is restricted to authorized developer accounts (verydiaz@gmail.com, nekomaster@nekomon.online, support@nekomon.online)."
+                    : "Menu ini hanya dapat diakses oleh akun pengembang resmi (verydiaz@gmail.com, nekomaster@nekomon.online, support@nekomon.online)."}
                 </p>
               </div>
             ) : (

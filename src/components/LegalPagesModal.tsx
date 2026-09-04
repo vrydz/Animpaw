@@ -228,9 +228,9 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                   </h4>
                   <p>
                     {isEn ? (
-                      <>Players have the full right to request account deletion, username modification, or data copy requests at any time by contacting our support team at <span className="text-yellow-400 font-mono">support@nekomon.online</span> or Instagram <span className="text-yellow-400 font-mono">@astronian22</span>.</>
+                      <>Players have the full right to request account deletion, username modification, or data copy requests at any time by contacting our support team at <span className="text-yellow-400 font-mono">support@nekomon.online</span> or Instagram <a href="https://www.instagram.com/nekomontcg/" target="_blank" rel="noopener noreferrer" className="text-pink-400 font-mono hover:underline">@nekomontcg</a>.</>
                     ) : (
-                      <>Pengguna memiliki hak penuh untuk meminta penghapusan akun, pengeditan username, atau permintaan salinan data aktivitas akun kapan saja dengan menghubungi tim kami melalui <span className="text-yellow-400 font-mono">support@nekomon.online</span> atau Instagram <span className="text-yellow-400 font-mono">@astronian22</span>.</>
+                      <>Pengguna memiliki hak penuh untuk meminta penghapusan akun, pengeditan username, atau permintaan salinan data aktivitas akun kapan saja dengan menghubungi tim kami melalui <span className="text-yellow-400 font-mono">support@nekomon.online</span> atau Instagram <a href="https://www.instagram.com/nekomontcg/" target="_blank" rel="noopener noreferrer" className="text-pink-400 font-mono hover:underline">@nekomontcg</a>.</>
                     )}
                   </p>
                 </div>
@@ -481,15 +481,15 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                       {isEn ? "🏢 Developer Studio & Operations" : "🏢 Studio Pengembang & Operasional"}
                     </span>
                     <span className="text-slate-300">
-                      Nekomon Studio • Pasir Putih Residence B7, Indonesia
+                      Nekomon Studio • Indonesia
                     </span>
                   </div>
                   <div className="text-right sm:text-right w-full sm:w-auto">
                     <span className="text-[10px] text-slate-500 block uppercase">
-                      {isEn ? "Hotline / WhatsApp" : "Hotline / WhatsApp"}
+                      {isEn ? "Official Support" : "Layanan Resmi"}
                     </span>
-                    <a href="https://wa.me/6285624089327" target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-bold hover:underline">
-                      085624089327
+                    <a href="mailto:support@nekomon.online" className="text-yellow-400 font-bold hover:underline">
+                      support@nekomon.online
                     </a>
                   </div>
                 </div>
@@ -511,8 +511,8 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
 
                 <p>
                   {isEn 
-                    ? "Have questions about the game, account assistance, payment queries, or partnership and monetization inquiries? Contact the Nekomon Online developer team via the following channels:" 
-                    : "Punya pertanyaan tentang game, masalah akun, kendala pembayaran shop, atau penawaran kerjasama monetisasi dan iklan? Hubungi tim pengembang Nekomon Online melalui saluran berikut:"}
+                    ? "Have questions about the game, account assistance, payment queries, or partnership and monetization inquiries? Contact the Nekomon Online developer team via the following official channels:" 
+                    : "Punya pertanyaan tentang game, masalah akun, kendala pembayaran shop, atau penawaran kerjasama monetisasi dan iklan? Hubungi tim pengembang Nekomon Online melalui saluran resmi berikut:"}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -527,46 +527,7 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                       <a href="mailto:support@nekomon.online" className="font-bold text-yellow-400 hover:underline font-mono text-xs sm:text-sm block">
                         support@nekomon.online
                       </a>
-                      <span className="text-[10px] text-slate-400 font-mono">CC: verydiaz@gmail.com</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                      <Phone className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">
-                        {isEn ? "Customer Hotline & WhatsApp" : "Nomor Telepon & WhatsApp"}
-                      </span>
-                      <a 
-                        href="https://wa.me/6285624089327" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-bold text-emerald-400 hover:underline font-mono text-xs sm:text-sm block"
-                      >
-                        085624089327
-                      </a>
-                      <span className="text-[10px] text-emerald-500/80 font-mono">
-                        {isEn ? "Direct Chat & Voice Call" : "Layanan Chat & Panggilan"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
-                      <MapPin className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">
-                        {isEn ? "Business Address" : "Alamat Usaha & Kantor"}
-                      </span>
-                      <span className="font-bold text-slate-200 font-mono text-xs sm:text-sm block">
-                        Pasir Putih Residence B7
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {isEn ? "Headquarters • Indonesia" : "Studio Utama • Indonesia"}
-                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">24/7 Player Helpdesk</span>
                     </div>
                   </div>
 
@@ -576,32 +537,36 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-mono font-bold block">
-                        Developer Instagram
+                        Official Instagram
                       </span>
                       <a 
-                        href="https://instagram.com/astronian22" 
+                        href="https://www.instagram.com/nekomontcg/" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="font-bold text-pink-400 hover:underline font-mono text-xs sm:text-sm flex items-center gap-1"
                       >
-                        <span>@astronian22</span>
+                        <span>@nekomontcg</span>
                       </a>
-                      <span className="text-[10px] text-slate-400 font-mono">Community Updates</span>
+                      <span className="text-[10px] text-slate-400 font-mono">https://www.instagram.com/nekomontcg/</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-2">
                   <h4 className="font-bold text-xs text-slate-200 font-mono flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-yellow-500" />
-                    {isEn ? "Studio Location & Support Hours:" : "Lokasi Usaha & Jam Operasional Dukungan:"}
+                    <Mail className="w-3.5 h-3.5 text-yellow-500" />
+                    {isEn ? "Official Communication Channels:" : "Saluran Komunikasi Resmi:"}
                   </h4>
                   <div className="text-xs text-slate-300 font-mono space-y-1">
                     <p>
-                      <strong className="text-amber-400">{isEn ? "Studio Address:" : "Alamat Usaha:"}</strong> Pasir Putih Residence B7, Indonesia.
+                      <strong className="text-yellow-400">{isEn ? "Official Email:" : "Email Resmi:"}</strong>{" "}
+                      <a href="mailto:support@nekomon.online" className="hover:underline text-slate-200">support@nekomon.online</a>
                     </p>
                     <p>
-                      <strong className="text-emerald-400">{isEn ? "Hotline / Mobile:" : "Telepon / WhatsApp:"}</strong> 085624089327
+                      <strong className="text-pink-400">Instagram:</strong>{" "}
+                      <a href="https://www.instagram.com/nekomontcg/" target="_blank" rel="noopener noreferrer" className="hover:underline text-slate-200">
+                        https://www.instagram.com/nekomontcg/ (@nekomontcg)
+                      </a>
                     </p>
                     <p className="text-slate-400">
                       {isEn 

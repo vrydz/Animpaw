@@ -1957,19 +1957,6 @@ export default function App() {
 
                 <div className="pt-2 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-400 font-mono">
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1">
-                    <span className="flex items-center gap-1 text-slate-300">
-                      <MapPin className="w-3 h-3 text-cyan-400" />
-                      <span>Pasir Putih Residence B7</span>
-                    </span>
-                    <a 
-                      href="https://wa.me/6285624089327" 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
-                    >
-                      <Phone className="w-3 h-3" />
-                      <span>085624089327</span>
-                    </a>
                     <a 
                       href="mailto:support@nekomon.online" 
                       className="flex items-center gap-1 text-yellow-400 hover:text-yellow-300 transition-colors"
@@ -1977,8 +1964,15 @@ export default function App() {
                       <Mail className="w-3 h-3" />
                       <span>support@nekomon.online</span>
                     </a>
+                    <a
+                      href="https://www.instagram.com/nekomontcg/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-pink-400 hover:text-pink-300 transition-colors"
+                    >
+                      <span>Instagram: @nekomontcg</span>
+                    </a>
                   </div>
-                  <span className="text-amber-500/80">Instagram: @astronian22</span>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-500 text-center sm:text-left">

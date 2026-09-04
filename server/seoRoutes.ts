@@ -137,11 +137,9 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
       </p>
 
       <div style="background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-top: 16px;">
-        <p style="color: #f8fafc; margin-bottom: 10px;"><strong>📧 Email Dukungan:</strong> <a href="mailto:support@nekomon.online" style="color: #38bdf8;">support@nekomon.online</a></p>
-        <p style="color: #f8fafc; margin-bottom: 10px;"><strong>📧 Email Pengembang:</strong> <a href="mailto:verydiaz@gmail.com" style="color: #38bdf8;">verydiaz@gmail.com</a></p>
-        <p style="color: #f8fafc; margin-bottom: 10px;"><strong>📱 WhatsApp Bantuan:</strong> <a href="https://wa.me/6285624089327" style="color: #4ade80;" target="_blank">+62 856-2408-9327</a></p>
-        <p style="color: #f8fafc; margin-bottom: 10px;"><strong>🏢 Lokasi Operasional:</strong> Pasir Putih Residence B7, Indonesia</p>
-        <p style="color: #f8fafc; margin-bottom: 0;"><strong>📸 Instagram Komunitas:</strong> @astronian22</p>
+        <p style="color: #f8fafc; margin-bottom: 10px;"><strong>📧 Email Resmi:</strong> <a href="mailto:support@nekomon.online" style="color: #38bdf8;">support@nekomon.online</a></p>
+        <p style="color: #f8fafc; margin-bottom: 10px;"><strong>🏢 Studio:</strong> Nekomon Online Studio (Indonesia)</p>
+        <p style="color: #f8fafc; margin-bottom: 0;"><strong>📸 Akun Instagram Resmi:</strong> <a href="https://www.instagram.com/nekomontcg/" style="color: #ec4899;" target="_blank">https://www.instagram.com/nekomontcg/ (@nekomontcg)</a></p>
       </div>
       <p style="color: #94a3b8; font-size: 13px; margin-top: 16px;">Jam Operasional Dukungan: Senin - Minggu (08:00 - 22:00 WIB).</p>
     `

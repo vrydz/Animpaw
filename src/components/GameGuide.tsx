@@ -267,9 +267,9 @@ export const GameGuide: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Kebijakan Refund & Transaksi Aman Payment Gateway 🛡️💳</h4>
                     <p className="leading-relaxed">
-                      Nekomon Online menerapkan standar transparansi pembayaran resmi dengan gateway pembayaran terpercaya (QRIS, E-Wallet, Virtual Account) dan perlindungan Google AdSense.
+                      Nekomon Online menerapkan standar transparansi pembayaran resmi dengan gateway pembayaran terpercaya (iPaymu & Midtrans) dan perlindungan Google AdSense.
                       <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Perlindungan Pembayaran Ganda & Item Belum Masuk:</span> Jika terjadi kegagalan sistem atau potongan ganda, Trainer dapat mengajukan klaim pengembalian dana dalam waktu 7 hari ke email resmi pengembang: <span className="text-amber-300 font-mono">support@nekomon.online</span> atau <span className="text-amber-300 font-mono">verydiaz@gmail.com</span>.
+                      <span className="text-yellow-400 font-bold font-mono">• Perlindungan Pembayaran Ganda & Item Belum Masuk:</span> Jika terjadi kegagalan sistem atau kendala transfer, Trainer dapat mengajukan klaim pengembalian dana dalam waktu 7 hari ke email resmi pengembang: <span className="text-amber-300 font-mono">support@nekomon.online</span> atau Instagram <span className="text-amber-300 font-mono">@nekomontcg</span>.
                       <br/>
                       <span className="text-emerald-400 font-bold font-mono">• Akses Legal Kapan Saja:</span> Baca ketentuan lengkap melalui tombol <span className="text-yellow-400 font-mono font-bold">Kebijakan Refund</span> pada footer landing page atau halaman Shop.
                     </p>
@@ -285,7 +285,7 @@ export const GameGuide: React.FC = () => {
                     <p className="leading-relaxed">
                       Histori akun, kartu tempaan, spot kucing komunitas, dan saldo Anda tersimpan aman dengan arsitektur <span className="text-cyan-400 font-bold font-mono">Google Cloud Firestore</span> yang otomatis memulihkan data setiap kali server di-deploy atau restart.
                       <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Tombol DB Backup Khusus Developer:</span> Akun Developer resmi (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span> & <span className="text-amber-300 font-mono">support@nekomon.online</span>) dapat mengunduh salinan cadangan lengkap format <span className="text-yellow-400 font-mono font-bold">.JSON</span>, memulihkan database secara instan (*1-Click Restore*), serta memaksa sinkronisasi real-time ke Cloud Firestore kapan saja dari bilah navigasi atas!
+                      <span className="text-yellow-400 font-bold font-mono">• Tombol DB Backup Khusus Developer:</span> Akun Developer resmi (<span className="text-amber-300 font-mono">support@nekomon.online</span>) dapat mengunduh salinan cadangan lengkap format <span className="text-yellow-400 font-mono font-bold">.JSON</span>, memulihkan database secara instan (*1-Click Restore*), serta memaksa sinkronisasi real-time ke Cloud Firestore kapan saja dari bilah navigasi atas!
                     </p>
                   </div>
                 </div>
@@ -300,6 +300,20 @@ export const GameGuide: React.FC = () => {
                       Sistem routing server dan web app kini mendukung <span className="text-emerald-400 font-bold font-mono">Multi-Page Virtual Routing</span> penuh untuk memenuhi kepatuhan bot crawler Google AdSense dan Googlebot.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• URL Khusus Kebijakan & SEO:</span> Rute mandiri seperti <span className="text-amber-300 font-mono">/privacy-policy</span>, <span className="text-amber-300 font-mono">/terms-of-service</span>, <span className="text-amber-300 font-mono">/refund-policy</span>, <span className="text-amber-300 font-mono">/about</span>, <span className="text-amber-300 font-mono">/contact</span>, <span className="text-amber-300 font-mono">/disclaimer</span>, dan <span className="text-amber-300 font-mono">/guide</span> direspons dengan metadata title dinamis, Open Graph lengkap, serta konten teks kebijakan semantik yang langsung terbaca bot perayap maupun pengunjung web.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">16. Integrasi Payment Gateway iPaymu (VA & QRIS Resmi) 💳⚡</h4>
+                    <p className="leading-relaxed">
+                      Nekomon Shop telah resmi terintegrasi dengan <span className="text-emerald-400 font-bold font-mono">iPaymu Payment Gateway</span> untuk pembelian Nekomon Points dan Booster Pack secara instan dan aman.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Virtual Account & Saluran Resmi:</span> Didukung saluran pembayaran QRIS Instan (GoPay, OVO, Dana, ShopeePay, LinkAja) serta Virtual Account Bank resmi (<span className="text-emerald-300 font-mono font-bold">No. VA iPaymu: 1179005624089327</span>). Pembayaran diverifikasi otomatis dan item langsung masuk ke akun Trainer dalam hitungan detik!
                     </p>
                   </div>
                 </div>
@@ -489,9 +503,9 @@ export const GameGuide: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Refund Policy & Secure Payment Gateway Transactions 🛡️💳</h4>
                     <p className="leading-relaxed">
-                      Nekomon Online maintains transparent consumer protection policies in compliance with official secure payment gateways (QRIS, E-Wallet, Virtual Account) and Google AdSense guidelines.
+                      Nekomon Online maintains transparent consumer protection policies in compliance with official secure payment gateways (iPaymu & Midtrans) and Google AdSense guidelines.
                       <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Double Billing & Non-Delivery Protection:</span> In cases of verified payment anomalies or undelivered digital items, Trainers can submit a refund claim within 7 calendar days to: <span className="text-amber-300 font-mono">support@nekomon.online</span> or <span className="text-amber-300 font-mono">verydiaz@gmail.com</span>.
+                      <span className="text-yellow-400 font-bold font-mono">• Double Billing & Non-Delivery Protection:</span> In cases of verified payment anomalies or undelivered digital items, Trainers can submit a refund claim within 7 calendar days to: <span className="text-amber-300 font-mono">support@nekomon.online</span> or Instagram <span className="text-amber-300 font-mono">@nekomontcg</span>.
                       <br/>
                       <span className="text-emerald-400 font-bold font-mono">• Instant Policy Access:</span> Review complete legal terms via the <span className="text-yellow-400 font-mono font-bold">Refund Policy</span> button in the landing page footer or Shop page.
                     </p>
@@ -507,7 +521,7 @@ export const GameGuide: React.FC = () => {
                     <p className="leading-relaxed">
                       Your account history, forged cards, community spots, and balances are securely preserved with <span className="text-cyan-400 font-bold font-mono">Google Cloud Firestore</span> architecture that automatically synchronizes and reloads data upon every server deployment or restart.
                       <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Developer DB Backup Button:</span> Verified Developer accounts (<span className="text-amber-300 font-mono">verydiaz@gmail.com</span> & <span className="text-amber-300 font-mono">support@nekomon.online</span>) can export full <span className="text-yellow-400 font-mono font-bold">.JSON</span> backups, perform 1-Click database restores, and trigger real-time Firestore sync anytime from the top navigation bar!
+                      <span className="text-yellow-400 font-bold font-mono">• Developer DB Backup Button:</span> Verified Developer accounts (<span className="text-amber-300 font-mono">support@nekomon.online</span>) can export full <span className="text-yellow-400 font-mono font-bold">.JSON</span> backups, perform 1-Click database restores, and trigger real-time Firestore sync anytime from the top navigation bar!
                     </p>
                   </div>
                 </div>
@@ -522,6 +536,20 @@ export const GameGuide: React.FC = () => {
                       The application server and front-end now feature comprehensive <span className="text-emerald-400 font-bold font-mono">Multi-Page Virtual Routing</span> specifically designed to meet Google AdSense, Mediapartners-Google, and Googlebot crawler indexing standards.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Dedicated Policy & SEO Endpoints:</span> Standalone URLs including <span className="text-amber-300 font-mono">/privacy-policy</span>, <span className="text-amber-300 font-mono">/terms-of-service</span>, <span className="text-amber-300 font-mono">/refund-policy</span>, <span className="text-amber-300 font-mono">/about</span>, <span className="text-amber-300 font-mono">/contact</span>, <span className="text-amber-300 font-mono">/disclaimer</span>, and <span className="text-amber-300 font-mono">/guide</span> are served with dynamic meta titles, canonical links, Open Graph tags, and pre-rendered semantic HTML readable by web indexers and users alike.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">16. iPaymu Payment Gateway Integration (Official VA & QRIS) 💳⚡</h4>
+                    <p className="leading-relaxed">
+                      Nekomon Shop is officially connected to <span className="text-emerald-400 font-bold font-mono">iPaymu Payment Gateway</span> for secure, seamless digital microtransactions (Nekomon Points & Booster Packs).
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Official Virtual Account & Channels:</span> Supports Instant QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja) and Bank Virtual Accounts (<span className="text-emerald-300 font-mono font-bold">Official iPaymu VA: 1179005624089327</span>). Transactions are instantly verified, crediting purchased points and booster packs to your Trainer vault within seconds!
                     </p>
                   </div>
                 </div>

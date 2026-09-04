@@ -138,8 +138,10 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
   // Checkout Modal State
   const [isCheckingOut, setIsCheckingOut] = useState<boolean>(false);
   const [checkoutType, setCheckoutType] = useState<"points" | "booster" | null>(null);
+  const [activeGateway, setActiveGateway] = useState<"ipaymu" | "midtrans">("ipaymu");
   const [paymentMethod, setPaymentMethod] = useState<"qris" | "gopay" | "va">("qris");
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "processing" | "success" | "error">("pending");
+  const [ipaymuSessionData, setIpaymuSessionData] = useState<any>(null);
   
   // Post-purchase Reveal State
   const [earnedCards, setEarnedCards] = useState<Card[]>([]);
@@ -304,6 +306,86 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
     } catch (err: any) {
       setPaymentStatus("error");
       setErrorMsg(err.message || "Gagal menyelesaikan pesanan");
+    }
+  };
+
+  const handleIpaymuPayment = async () => {
+    setPaymentStatus("processing");
+    setErrorMsg(null);
+    const token = localStorage.getItem("nekomon_token");
+
+    try {
+      const res = await fetch("/api/shop/ipaymu-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          itemType: checkoutType,
+          itemId: checkoutType === "points" ? selectedPackageId : selectedPackId,
+          targetElement: targetElement === "Random" ? undefined : targetElement,
+          targetStyle: targetStyle === "Random" ? undefined : targetStyle,
+          paymentMethod
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || (language === "id" ? "Gagal memproses gateway pembayaran iPaymu" : "Failed to initialize iPaymu gateway"));
+
+      setIpaymuSessionData(data);
+
+      if (data.paymentUrl) {
+        try {
+          window.open(data.paymentUrl, "_blank");
+        } catch (_) {}
+      }
+
+      await completeIpaymuOrder(data.orderId);
+    } catch (err: any) {
+      console.error("iPaymu Payment Error:", err);
+      setPaymentStatus("error");
+      setErrorMsg(err.message || (language === "id" ? "Gagal memproses pembayaran via iPaymu." : "Failed to process iPaymu payment."));
+    }
+  };
+
+  const completeIpaymuOrder = async (orderId: string) => {
+    const token = localStorage.getItem("nekomon_token");
+    try {
+      const finishRes = await fetch("/api/shop/ipaymu-finish", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orderId,
+          itemType: checkoutType,
+          itemId: checkoutType === "points" ? selectedPackageId : selectedPackId,
+          targetElement,
+          targetStyle
+        })
+      });
+
+      const finishData = await finishRes.json();
+      if (!finishRes.ok) throw new Error(finishData.error || "Gagal memproses penyelesaian iPaymu");
+
+      setPaymentStatus("success");
+      if (checkoutType === "points") {
+        try { audio.playUnboxingExplosion("Petir"); } catch (_) {}
+        onPurchaseSuccess(finishData.user.points, finishData.user.cores);
+      } else if (checkoutType === "booster") {
+        setEarnedCards(finishData.cards || []);
+        setCoresEarned(finishData.coresEarned || 0);
+        setRevealedCardIndices([]);
+        try { audio.playRevealSound("Vanguard"); } catch (_) {}
+        onPurchaseSuccess(finishData.user.points, finishData.user.cores, finishData.cards);
+        if (onRefreshCards) onRefreshCards();
+      }
+    } catch (err: any) {
+      console.error("Finish iPaymu order error:", err);
+      setPaymentStatus("error");
+      setErrorMsg(err.message || "Gagal menyelesaikan pesanan iPaymu");
     }
   };
 
@@ -1230,9 +1312,55 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                     </div>
                   </div>
 
-                  {/* Right Column: Payment Selection & Mock Details */}
+                  {/* Right Column: Payment Selection & Gateway Details */}
                   <div className="flex flex-col gap-4 bg-slate-950/80 border border-slate-800/60 p-4 rounded-2xl">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Pilih Metode Pembayaran:</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">Gateway Pembayaran:</span>
+                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                        iPaymu VA Aktif
+                      </span>
+                    </div>
+
+                    {/* Gateway Switcher */}
+                    <div className="grid grid-cols-2 gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setActiveGateway("ipaymu")}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 ${
+                          activeGateway === "ipaymu"
+                            ? "bg-emerald-500 text-slate-950 shadow-md"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>iPaymu Gateway</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveGateway("midtrans")}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 ${
+                          activeGateway === "midtrans"
+                            ? "bg-purple-600 text-white shadow-md"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        <Wallet className="w-3.5 h-3.5" />
+                        <span>Midtrans Snap</span>
+                      </button>
+                    </div>
+
+                    {/* iPaymu VA Highlight Badge */}
+                    {activeGateway === "ipaymu" && (
+                      <div className="bg-emerald-950/40 border border-emerald-500/30 p-2.5 rounded-xl flex items-center justify-between">
+                        <div>
+                          <div className="text-[9px] font-mono text-emerald-400 font-bold uppercase">Nomor VA Resmi iPaymu</div>
+                          <div className="text-xs font-mono font-black text-slate-100 tracking-wider">1179005624089327</div>
+                        </div>
+                        <span className="text-[9px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-md border border-emerald-500/40 font-bold">
+                          TERVERIFIKASI
+                        </span>
+                      </div>
+                    )}
                     
                     <div className="flex flex-col gap-2">
                       {/* QRIS */}
@@ -1243,8 +1371,8 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                         <div className="flex items-center gap-2">
                           <QrCode className="w-5 h-5 text-purple-400" />
                           <div>
-                            <div className="text-xs font-bold font-mono">QRIS (Scan & Bayar)</div>
-                            <div className="text-[9px] text-slate-500">GoPay, OVO, Dana, ShopeePay</div>
+                            <div className="text-xs font-bold font-mono">QRIS (Scan & Bayar Instan)</div>
+                            <div className="text-[9px] text-slate-500">GoPay, OVO, Dana, ShopeePay, LinkAja</div>
                           </div>
                         </div>
                         <CheckCircle2 className={`w-4 h-4 shrink-0 ${paymentMethod === "qris" ? "text-purple-400" : "text-transparent"}`} />
@@ -1258,8 +1386,8 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                         <div className="flex items-center gap-2">
                           <Wallet className="w-5 h-5 text-blue-400" />
                           <div>
-                            <div className="text-xs font-bold font-mono">GoPay E-Wallet</div>
-                            <div className="text-[9px] text-slate-500">Bayar instan via Gojek App</div>
+                            <div className="text-xs font-bold font-mono">E-Wallet Direct</div>
+                            <div className="text-[9px] text-slate-500">Bayar via aplikasi E-Wallet resmi</div>
                           </div>
                         </div>
                         <CheckCircle2 className={`w-4 h-4 shrink-0 ${paymentMethod === "gopay" ? "text-blue-400" : "text-transparent"}`} />
@@ -1273,8 +1401,8 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                         <div className="flex items-center gap-2">
                           <CreditCard className="w-5 h-5 text-amber-400" />
                           <div>
-                            <div className="text-xs font-bold font-mono">Virtual Account Bank</div>
-                            <div className="text-[9px] text-slate-500">Mandiri, BCA, BRI, BNI</div>
+                            <div className="text-xs font-bold font-mono">Virtual Account Bank (iPaymu)</div>
+                            <div className="text-[9px] text-slate-500">BCA, Mandiri, BRI, BNI, Permata</div>
                           </div>
                         </div>
                         <CheckCircle2 className={`w-4 h-4 shrink-0 ${paymentMethod === "va" ? "text-amber-400" : "text-transparent"}`} />
@@ -1282,31 +1410,45 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
                     </div>
 
                     <div className="mt-2 flex flex-col gap-2">
-                      <button
-                        onClick={handleMidtransPayment}
-                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl font-mono tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
-                      >
-                        <ShieldCheck className="w-4 h-4" />
-                        {language === "id" ? "BAYAR DENGAN GATEWAY PEMBAYARAN 💳" : "PAY VIA SECURE PAYMENT GATEWAY 💳"}
-                      </button>
+                      {activeGateway === "ipaymu" ? (
+                        <button
+                          onClick={handleIpaymuPayment}
+                          className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl font-mono tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
+                          {language === "id" ? "BAYAR DENGAN IPAYMU (VA: 1179005624089327) 💳" : "PAY VIA IPAYMU GATEWAY (OFFICIAL VA) 💳"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleMidtransPayment}
+                          className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black text-xs py-3.5 rounded-xl font-mono tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/20 active:scale-95 cursor-pointer"
+                        >
+                          <Wallet className="w-4 h-4" />
+                          {language === "id" ? "BAYAR DENGAN MIDTRANS SNAP 💳" : "PAY VIA MIDTRANS SNAP 💳"}
+                        </button>
+                      )}
                     </div>
 
                     <div className="text-[9px] font-mono text-slate-500 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 flex flex-col gap-1">
                       <div className="flex justify-between">
-                        <span>Gateway Security:</span>
-                        <span className="text-slate-300 font-bold">256-Bit SSL Encrypted</span>
+                        <span>Gateway Aktif:</span>
+                        <span className="text-slate-300 font-bold">{activeGateway === "ipaymu" ? "iPaymu Payment Gateway" : "Midtrans Snap"}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Payment Channels:</span>
-                        <span className="text-slate-300 font-bold">QRIS, E-Wallet & VA Bank</span>
+                        <span>Virtual Account:</span>
+                        <span className="text-emerald-400 font-bold">1179005624089327</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Keamanan Enkripsi:</span>
+                        <span className="text-slate-300 font-bold">256-Bit SSL Secured</span>
                       </div>
                       <div className="text-[8px] text-emerald-400/80 mt-0.5 text-center font-bold">
-                        ✓ Secure Payment Gateway Connected
+                        ✓ Gateway Resmi Terhubung & Terintegrasi
                       </div>
                       <div className="text-[8px] text-amber-400/90 text-center font-bold pt-1 border-t border-slate-800/80">
                         {language === "id" 
-                          ? "🛡️ Dilindungi Kebijakan Refund Resmi: Hubungi support@nekomon.online / WA 085624089327" 
-                          : "🛡️ Official Refund Policy Protection: Support via support@nekomon.online / WA 085624089327"}
+                          ? "🛡️ Bantuan Transaksi & Refund: Support@nekomon.online / Instagram @nekomontcg" 
+                          : "🛡️ Support & Refund Guarantee: Support@nekomon.online / Instagram @nekomontcg"}
                       </div>
                     </div>
                   </div>

@@ -82,6 +82,19 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
+  // Hidden shortcut to autofill demo account for testing without showing on UI (Alt+D)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === "d" || e.key === "D")) {
+        e.preventDefault();
+        setUsername("demo1");
+        setPassword("n3komontcg");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpCode || otpCode.trim().length !== 6) {
@@ -633,24 +646,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                   </svg>
                   <span>{isEn ? "Sign in with Google" : "Masuk dengan Google"}</span>
-                </button>
-
-                {/* Quick Demo Account Helper */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsername("demo1");
-                    setPassword("n3komontcg");
-                  }}
-                  className="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[11px] py-2 px-3 rounded-xl flex items-center justify-between transition-all cursor-pointer"
-                >
-                  <span className="flex items-center gap-1.5 font-bold">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    {isEn ? "Demo Account:" : "Akun Demo:"} <span className="text-white underline">demo1</span>
-                  </span>
-                  <span className="text-[10px] text-amber-400 font-bold bg-amber-500/20 px-2 py-0.5 rounded-md">
-                    {isEn ? "1-Click Autofill" : "Isi Otomatis"}
-                  </span>
                 </button>
               </div>
             )}
