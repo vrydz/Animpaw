@@ -17,7 +17,7 @@ import { NekomonDex } from "./components/NekomonDex";
 import { InterstitialAdModal } from "./components/InterstitialAdModal";
 import { RewardedAdModal } from "./components/RewardedAdModal";
 import { AchievementShareModal } from "./components/AchievementShareModal";
-import { AudioPlayerWidget } from "./components/AudioPlayerWidget";
+import { SettingsView } from "./components/SettingsView";
 import { NekomonCard } from "./components/NekomonCard";
 import { AdSenseBanner } from "./components/AdSenseBanner";
 import { LegalPagesModal, LegalTabType } from "./components/LegalPagesModal";
@@ -80,15 +80,41 @@ import {
   Download,
   RotateCcw,
   Phone,
-  Database
+  Database,
+  ChevronDown,
+  ChevronUp,
+  Menu,
+  Settings as SettingsIcon
 } from "lucide-react";
 import { DatabaseBackupModal } from "./components/DatabaseBackupModal";
+import { NavigationCarousel, getCategoryForTab, getNavCategories } from "./components/NavigationCarousel";
 import { getRouteFromPath, navigateToRoute } from "./utils/routes";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
 import { PLAYER_BADGES, getTrainerLevel, getHighestBadge, PlayerBadge } from "./lib/badges";
 
 // Smooth mobile native-feel tab transition variants
+export type NavigationTab =
+  | "camera"
+  | "spot_map"
+  | "territory"
+  | "events"
+  | "raid"
+  | "gallery"
+  | "dex"
+  | "profile"
+  | "missions"
+  | "arena"
+  | "leaderboard"
+  | "trading"
+  | "mail"
+  | "guide"
+  | "shop"
+  | "settings"
+  | "settings_audio"
+  | "settings_language"
+  | "settings_install";
+
 const tabMotionVariants = {
   initial: {
     opacity: 0,
@@ -239,6 +265,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
+  const isDeveloper = Boolean(user && user.email && ["verydiaz@gmail.com", "support@nekomon.online", "nekomaster@nekomon.online"].includes(user.email.toLowerCase().trim()));
   const [mission, setMission] = useState<Mission | null>(null);
   const [resetCountdown, setResetCountdown] = useState<number>(0);
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
@@ -331,7 +358,9 @@ export default function App() {
   };
 
   // App navigation & layout toggles
-  const [mobileTab, setMobileTab] = useState<"camera" | "spot_map" | "territory" | "events" | "raid" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop">("spot_map");
+  const [mobileTab, setMobileTab] = useState<NavigationTab>("spot_map");
+  const [isMobileMenuDropdownOpen, setIsMobileMenuDropdownOpen] = useState<boolean>(false);
+  const [selectedRaidBossId, setSelectedRaidBossId] = useState<string | null>(null);
   const [desktopView, setDesktopView] = useState<"album" | "trading">("album");
   const [showForgeModal, setShowForgeModal] = useState<boolean>(false);
   const [showDailyBonusModal, setShowDailyBonusModal] = useState<boolean>(false);
@@ -550,7 +579,8 @@ export default function App() {
     }
   }, [user, currentTrainerLv, language]);
 
-  const handleTabChange = (targetTab: "camera" | "spot_map" | "territory" | "events" | "raid" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop") => {
+  const handleTabChange = (targetTab: NavigationTab) => {
+    setIsMobileMenuDropdownOpen(false);
     if (targetTab === mobileTab) return;
     setShowForgeModal(false);
 
@@ -1427,43 +1457,33 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Install PWA Button */}
-          {!isPwaInstalled && (
-            <button
-              onClick={handleInstallPwa}
-              className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black font-mono text-[10px] sm:text-xs shadow-md transition-all cursor-pointer shrink-0 active:scale-95 border border-amber-300/40"
-              title={language === "id" ? "Pasang Nekomon sebagai Aplikasi Android / PWA" : "Install Nekomon as Android / PWA App"}
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{language === "id" ? "PASANG APP 📱" : "INSTALL APP 📱"}</span>
-            </button>
+          {/* Landing Page language switcher for visitors before login */}
+          {!user && (
+            <div className="flex bg-slate-900/90 border border-slate-800 p-1 rounded-xl text-[10px] font-black font-mono shadow-md select-none shrink-0">
+              <button
+                onClick={() => setLanguage("id")}
+                className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg transition-all cursor-pointer ${
+                  language === "id"
+                    ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-xs"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Bahasa Indonesia"
+              >
+                ID
+              </button>
+              <button
+                onClick={() => setLanguage("en")}
+                className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg transition-all cursor-pointer ${
+                  language === "en"
+                    ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-xs"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="English"
+              >
+                EN
+              </button>
+            </div>
           )}
-
-          {/* Language Switcher */}
-          <div className="flex bg-slate-900/90 border border-slate-800 p-1 rounded-xl text-[10px] font-black font-mono shadow-md select-none shrink-0">
-            <button
-              onClick={() => setLanguage("id")}
-              className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg transition-all cursor-pointer ${
-                language === "id"
-                  ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-xs"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              title="Bahasa Indonesia"
-            >
-              ID
-            </button>
-            <button
-              onClick={() => setLanguage("en")}
-              className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg transition-all cursor-pointer ${
-                language === "en"
-                  ? "bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 shadow-xs"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              title="English"
-            >
-              EN
-            </button>
-          </div>
 
           {/* User login stats or general status */}
           {user ? (
@@ -2047,36 +2067,37 @@ export default function App() {
           /* Authenticated Dashboard Game Area (Simple & Dynamic Full-Width Layout) */
           <div className="w-full flex flex-col gap-6 py-4">
             
-            {/* Unified Navigation Tab Bar */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-900/60 border border-slate-800 p-4 rounded-2xl shadow-xl w-full">
-              {/* Profile Overview Card */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-lg">
-                  🎒
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-200">@{user.username}</h3>
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-400 mt-0.5">
-                    <span className="text-yellow-500 font-bold">
-                      <AnimatedCounter value={user.points} suffix={t("common.points").toUpperCase()} />
-                    </span>
-                    <span>•</span>
-                    <span className="text-teal-400 font-bold">
-                      <AnimatedCounter value={user.cores || 0} suffix={t("common.cores").toUpperCase()} />
-                    </span>
-                    <span>•</span>
-                    <span className="text-pink-400 font-bold">
-                      <AnimatedCounter value={cards.length} suffix={t("nav.gallery").toUpperCase()} />
-                    </span>
+            {/* Unified User Mini-Status Bar & Streamlined Dynamic Carousel Navigation */}
+            <div className="w-full flex flex-col gap-3">
+              {/* Top Mini Profile & Utility Bar */}
+              <div className="flex items-center justify-between gap-3 bg-slate-900/80 border border-slate-800 p-3 rounded-2xl shadow-xl w-full">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-base shrink-0">
+                    🎒
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-xs sm:text-sm text-slate-200 truncate">@{user.username}</h3>
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-mono text-slate-400 mt-0.5">
+                      <span className="text-yellow-400 font-bold">
+                        <AnimatedCounter value={user.points} suffix="PTS" />
+                      </span>
+                      <span>•</span>
+                      <span className="text-teal-400 font-bold">
+                        <AnimatedCounter value={user.cores || 0} suffix="CORE" />
+                      </span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="text-pink-400 font-bold hidden sm:inline">
+                        <AnimatedCounter value={cards.length} suffix={language === "id" ? "KARTU" : "CARDS"} />
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Quick Ad Buttons in Header */}
-                <div className="ml-auto flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     disabled={rewardedAdCooldown > 0}
                     onClick={() => handleOpenRewardedAd("standard")}
-                    className={`relative overflow-hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] tracking-wider font-black uppercase border transition-all shadow-md ${
+                    className={`relative overflow-hidden flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] tracking-wider font-black uppercase border transition-all shadow-md ${
                       rewardedAdCooldown > 0
                         ? "bg-slate-900 border-slate-700 text-slate-400 cursor-not-allowed select-none"
                         : "bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white cursor-pointer active:scale-95 border-pink-400/30"
@@ -2084,14 +2105,13 @@ export default function App() {
                     title={
                       rewardedAdCooldown > 0
                         ? (language === "id"
-                            ? `Iklan rewarded Shop siap dalam ${formatCooldownTime(rewardedAdCooldown, "id")}. (Klaim setiap 4 jam)`
-                            : `Shop rewarded ad ready in ${formatCooldownTime(rewardedAdCooldown, "en")}. (Claim every 4h)`)
+                            ? `Iklan rewarded siap dalam ${formatCooldownTime(rewardedAdCooldown, "id")}. (Klaim setiap 4 jam)`
+                            : `Rewarded ad ready in ${formatCooldownTime(rewardedAdCooldown, "en")}. (Claim every 4h)`)
                         : (language === "id"
-                            ? "Tonton video iklan berhadiah untuk klaim Poin & Cores gratis (1x setiap 4 jam)"
-                            : "Watch rewarded video ad to claim free Points & Cores (1x every 4 hours)")
+                            ? "Tonton video iklan berhadiah untuk klaim Poin & Cores gratis"
+                            : "Watch rewarded video ad to claim free Points & Cores")
                     }
                   >
-                    {/* Animated Progress Overlay */}
                     {rewardedAdCooldown > 0 && (
                       <div
                         className="absolute inset-y-0 left-0 bg-pink-500/20 border-r border-pink-400/40 transition-all duration-1000 ease-linear pointer-events-none"
@@ -2109,7 +2129,7 @@ export default function App() {
                     ) : (
                       <>
                         <Gift className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-                        <span>{language === "id" ? "Tonton Iklan (+Poin & Core)" : "Watch Ad (+Points & Core)"}</span>
+                        <span>{language === "id" ? "+POIN & CORE" : "+PTS & CORE"}</span>
                       </>
                     )}
                   </button>
@@ -2119,83 +2139,39 @@ export default function App() {
                       setPendingTab(mobileTab);
                       setShowInterstitialAd(true);
                     }}
-                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-[10px] transition-all border border-slate-800 cursor-pointer"
+                    className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-400 font-extrabold text-[10px] transition-all border border-slate-800 cursor-pointer"
                     title="Iklan Interstitial Google AdSense"
                   >
                     <Tv className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Google AdSense Interstitial</span>
+                    <span>AdSense</span>
                   </button>
 
-                  {/* Developer Database Backup & Firestore Recovery Button */}
-                  {user && user.email && ["verydiaz@gmail.com", "support@nekomon.online", "nekomaster@nekomon.online"].includes(user.email.toLowerCase().trim()) && (
+                  {isDeveloper && (
                     <button
                       onClick={() => setShowDatabaseBackupModal(true)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-extrabold text-[10px] transition-all border border-yellow-500/30 cursor-pointer"
+                      className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-extrabold text-[10px] transition-all border border-yellow-500/30 cursor-pointer"
                       title={language === "id" ? "Panel Backup & Restore Database Firestore" : "Database Backup & Restore Panel"}
                     >
                       <Database className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
-                      <span className="font-mono">DB BACKUP</span>
+                      <span className="font-mono hidden sm:inline">DB BACKUP</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Game Tab List */}
-              <div className="flex flex-wrap bg-slate-950 p-1 border border-slate-800 rounded-xl gap-1 select-none">
-                {(
-                  [
-                    { id: "spot_map", label: language === "id" ? "PETA SPOT 📍" : "SPOT MAP 📍", icon: MapPin },
-                    { id: "territory", label: language === "id" ? "DOMINASI WILAYAH 🏰" : "TERRITORY 🏰", icon: Shield },
-                    { id: "raid", label: language === "id" ? "RAID BOSS ⚔️" : "RAID BOSS ⚔️", icon: Swords },
-                    { id: "events", label: language === "id" ? "EVENT & MITRA 🐾" : "EVENTS & PARTNERS 🐾", icon: Sparkles },
-                    { id: "camera", label: t("nav.camera"), icon: Camera },
-                    { id: "gallery", label: t("nav.gallery"), icon: FolderHeart },
-                    { id: "dex", label: t("nav.dex"), icon: BookOpen },
-                    { id: "arena", label: t("nav.arena"), icon: Gamepad2 },
-                    { id: "missions", label: t("nav.missions"), icon: Target },
-                    { id: "trading", label: t("nav.trading"), icon: ArrowLeftRight },
-                    { id: "leaderboard", label: t("nav.leaderboard"), icon: Trophy },
-                    { id: "mail", label: language === "id" ? "SURAT & PESAN 📬" : "MAILBOX 📬", icon: Mail, badge: mailUnreadCount },
-                    { id: "shop", label: t("nav.shop"), icon: ShoppingBag },
-                    { id: "guide", label: t("nav.guide"), icon: HelpCircle },
-                    { id: "profile", label: t("nav.profile"), icon: UserIcon }
-                  ] as const
-                ).map((tab) => {
-                  const Icon = tab.icon;
-                  const badgeCount = (tab as any).badge;
-                  const isActive = mobileTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabChange(tab.id as any)}
-                      className={`relative flex items-center gap-1.5 py-2 px-3.5 rounded-lg font-black text-[10px] tracking-wider transition-colors cursor-pointer ${
-                        isActive
-                          ? "text-slate-950"
-                          : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeTabPill"
-                          className="absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-lg shadow-md shadow-yellow-500/20"
-                          transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                        />
-                      )}
-                      <Icon className="w-3.5 h-3.5 relative z-10" />
-                      <span className="relative z-10">{tab.label}</span>
-                      {badgeCount && badgeCount > 0 ? (
-                        <span className="w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse relative z-10">
-                          {badgeCount}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* 5 Main Menus & Dynamic Sub-Menu Carousel */}
+              <NavigationCarousel
+                currentTab={mobileTab}
+                onSelectTab={(tabId) => handleTabChange(tabId as any)}
+                language={language}
+                mailUnreadCount={mailUnreadCount}
+                isDeveloper={isDeveloper}
+                onOpenDatabaseBackup={() => setShowDatabaseBackupModal(true)}
+              />
             </div>
 
             {/* Main Content Area */}
-            <div className="w-full">
+            <div className="w-full pb-20 lg:pb-0">
               <AnimatePresence mode="wait">
                 {mobileTab === "spot_map" && (
                   <motion.div
@@ -2211,7 +2187,10 @@ export default function App() {
                         setActiveSpotToCapture(spot);
                         setMobileTab("camera");
                       }}
-                      onNavigateToRaid={() => handleTabChange("raid")}
+                      onNavigateToRaid={(bossId) => {
+                        if (bossId) setSelectedRaidBossId(bossId);
+                        handleTabChange("raid");
+                      }}
                       userPoints={user.points}
                       token={token || ""}
                     />
@@ -2275,6 +2254,7 @@ export default function App() {
                         userCards={cards}
                         currentLanguage={language}
                         userCoordinates={userCoordinates}
+                        initialBossId={selectedRaidBossId}
                         onEnterBattle={(room) => setActiveRaidRoom(room)}
                         onNavigateToMap={() => handleTabChange("spot_map")}
                       />
@@ -2948,6 +2928,29 @@ export default function App() {
                     <GameGuide />
                   </motion.div>
                 )}
+
+                {["settings", "settings_audio", "settings_language", "settings_install"].includes(mobileTab) && (
+                  <motion.div
+                    key="settings-view"
+                    variants={tabMotionVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="w-full"
+                  >
+                    <SettingsView
+                      initialSubTab={
+                        mobileTab === "settings_language"
+                          ? "language"
+                          : mobileTab === "settings_install"
+                          ? "install"
+                          : "audio"
+                      }
+                      onInstallPwa={handleInstallPwa}
+                      isPwaInstalled={isPwaInstalled}
+                    />
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
 
@@ -3256,8 +3259,62 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Floating Audio Soundtrack Controller Widget */}
-      <AudioPlayerWidget />
+      {/* Mobile & Tablet Fixed Bottom Navigation Bar (Dock) - Core Categories with Settings */}
+      {user && (
+        <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/80 px-1.5 py-1.5 shadow-2xl safe-area-bottom">
+          <div className="flex items-center justify-around max-w-xl mx-auto">
+            {[
+              { id: "exploration", label: language === "id" ? "Eksplorasi" : "Explore", icon: MapPin },
+              { id: "collection", label: language === "id" ? "Koleksi" : "Collect", icon: Camera },
+              { id: "combat", label: language === "id" ? "Tempur" : "Battle", icon: Gamepad2 },
+              { id: "community", label: language === "id" ? "Komunitas" : "Community", icon: ShoppingBag, badge: mailUnreadCount },
+              { id: "account", label: language === "id" ? "Akun" : "Account", icon: UserIcon },
+              { id: "settings", label: language === "id" ? "Pengaturan" : "Settings", icon: SettingsIcon }
+            ].map((dockCat) => {
+              const DockIcon = dockCat.icon;
+              const currentCat = getCategoryForTab(mobileTab);
+              const isCurrentActive = currentCat === dockCat.id;
+
+              return (
+                <button
+                  key={dockCat.id}
+                  onClick={() => {
+                    if (currentCat !== dockCat.id) {
+                      const catObj = getNavCategories(mailUnreadCount, isDeveloper).find((c) => c.id === dockCat.id);
+                      if (catObj && catObj.subItems[0]) {
+                        handleTabChange(catObj.subItems[0].id as any);
+                      }
+                    }
+                  }}
+                  className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-2.5 rounded-xl transition-all cursor-pointer relative ${
+                    isCurrentActive
+                      ? "text-yellow-400 font-black scale-105"
+                      : "text-slate-400 hover:text-slate-200 font-bold"
+                  }`}
+                >
+                  <div className="relative">
+                    <DockIcon className={`w-5 h-5 ${isCurrentActive ? "text-yellow-400 drop-shadow-md" : "text-slate-400"}`} />
+                    {dockCat.badge && dockCat.badge > 0 ? (
+                      <span className="absolute -top-1 -right-2 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center animate-pulse">
+                        {dockCat.badge}
+                      </span>
+                    ) : null}
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] tracking-tight font-mono mt-0.5 whitespace-nowrap">
+                    {dockCat.label}
+                  </span>
+                  {isCurrentActive && (
+                    <motion.div
+                      layoutId="mobileDockActivePill"
+                      className="absolute -bottom-1 w-5 h-0.5 bg-amber-400 rounded-full shadow-xs shadow-amber-400/50"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Developer Database Backup & Firestore Recovery Modal */}
       <DatabaseBackupModal

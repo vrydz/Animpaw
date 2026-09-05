@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { User, OfficialMail, DirectMessage, ConversationThread, OfficialMailCategory, Capture } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { audio } from "../lib/audio";
+import { formatPlayerActivity } from "../utils/timeAgo";
 
 interface MailboxViewProps {
   user: User;
@@ -93,7 +94,15 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
   const [conversations, setConversations] = useState<ConversationThread[]>([]);
   const [loadingConversations, setLoadingConversations] = useState<boolean>(true);
   const [activePartnerId, setActivePartnerId] = useState<string | null>(initialPartnerId);
-  const [activePartnerData, setActivePartnerData] = useState<{ id: string; username: string; avatar?: string; isBot?: boolean } | null>(null);
+  const [activePartnerData, setActivePartnerData] = useState<{
+    id: string;
+    username: string;
+    avatar?: string;
+    isBot?: boolean;
+    isOnline?: boolean;
+    lastSeen?: string;
+    faction?: string;
+  } | null>(null);
   const [threadMessages, setThreadMessages] = useState<DirectMessage[]>([]);
   const [loadingThread, setLoadingThread] = useState<boolean>(false);
   const [messageInput, setMessageInput] = useState<string>("");
@@ -1116,6 +1125,7 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
               <div className="flex flex-col gap-2 max-h-[480px] overflow-y-auto pr-1">
                 {conversations.map(conv => {
                   const isActive = activePartnerId === conv.partnerId;
+                  const activity = formatPlayerActivity(conv.lastSeen, conv.isOnline, language, conv.isBot);
                   return (
                     <div
                       key={conv.partnerId}
@@ -1125,7 +1135,10 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                           id: conv.partnerId,
                           username: conv.partnerUsername,
                           avatar: conv.partnerAvatar,
-                          isBot: conv.isBot
+                          isBot: conv.isBot,
+                          isOnline: conv.isOnline,
+                          lastSeen: conv.lastSeen,
+                          faction: conv.faction
                         });
                         fetchThreadMessages(conv.partnerId);
                         try { audio.playCardSelectSound(); } catch (_) {}
@@ -1139,10 +1152,13 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-base shrink-0 relative">
                           {conv.partnerAvatar || (conv.isBot ? "🤖" : "🐱")}
-                          <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
+                          <div 
+                            className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${activity.dotClass} ${activity.isOnline ? "animate-pulse" : ""}`}
+                            title={activity.statusText}
+                          />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-extrabold text-xs text-slate-200 truncate">
                               @{conv.partnerUsername}
                             </span>
@@ -1151,8 +1167,18 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                                 BOT
                               </span>
                             )}
+                            {conv.faction && (
+                              <span className={`text-[7px] px-1 rounded font-black uppercase ${
+                                conv.faction === "Sentinel" ? "bg-cyan-950 text-cyan-400 border border-cyan-800/40" : "bg-red-950 text-red-400 border border-red-800/40"
+                              }`}>
+                                {conv.faction}
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[11px] text-slate-400 truncate mt-0.5">
+                          <span className="text-[10px] font-mono text-slate-400 truncate mt-0.5">
+                            {activity.statusText}
+                          </span>
+                          <span className="text-[11px] text-slate-300 truncate mt-0.5">
                             {conv.lastMessage}
                           </span>
                         </div>
@@ -1182,26 +1208,40 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                 {/* Active Chat Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-lg relative">
-                      {activePartnerData?.avatar || (activePartnerData?.isBot ? "🤖" : "🐱")}
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
-                    </div>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-black text-sm text-slate-100">
-                          @{activePartnerData?.username || "Trainer"}
-                        </h4>
-                        {activePartnerData?.isBot && (
-                          <span className="text-[8px] bg-amber-950/60 text-amber-400 border border-amber-800/40 px-1 rounded font-black font-mono">
-                            AI TRAINER
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>Online • Trainer Nekomon</span>
-                      </span>
-                    </div>
+                    {(() => {
+                      const partnerAct = formatPlayerActivity(activePartnerData?.lastSeen, activePartnerData?.isOnline, language, activePartnerData?.isBot);
+                      return (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-lg relative">
+                            {activePartnerData?.avatar || (activePartnerData?.isBot ? "🤖" : "🐱")}
+                            <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${partnerAct.dotClass} ${partnerAct.isOnline ? "animate-pulse" : ""}`} />
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-black text-sm text-slate-100">
+                                @{activePartnerData?.username || "Trainer"}
+                              </h4>
+                              {activePartnerData?.isBot && (
+                                <span className="text-[8px] bg-amber-950/60 text-amber-400 border border-amber-800/40 px-1 rounded font-black font-mono">
+                                  AI TRAINER
+                                </span>
+                              )}
+                              {activePartnerData?.faction && (
+                                <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
+                                  activePartnerData.faction === "Sentinel" ? "bg-cyan-950 text-cyan-300 border border-cyan-800/40" : "bg-red-950 text-red-300 border border-red-800/40"
+                                }`}>
+                                  {activePartnerData.faction}
+                                </span>
+                              )}
+                            </div>
+                            <span className={`text-[10px] font-mono flex items-center gap-1 ${partnerAct.isOnline ? "text-emerald-400" : "text-slate-400"}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${partnerAct.dotClass} ${partnerAct.isOnline ? "animate-pulse" : ""}`} />
+                              <span>{partnerAct.statusText}</span>
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1466,30 +1506,40 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                         {language === "id" ? "Tidak ada trainer ditemukan." : "No trainers found."}
                       </div>
                     ) : (
-                      searchResults.map(p => (
-                        <div
-                          key={p.id}
-                          onClick={() => handleStartChatWithPlayer(p)}
-                          className="p-3 bg-slate-950/60 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/40 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-all"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm">
-                              {p.avatar || (p.isBot ? "🤖" : "🐱")}
-                            </div>
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-xs text-slate-200">@{p.username}</span>
-                                {p.isBot && (
-                                  <span className="text-[8px] bg-amber-950 text-amber-400 px-1 rounded font-mono font-bold">
-                                    BOT
-                                  </span>
-                                )}
+                      searchResults.map(p => {
+                        const pAct = formatPlayerActivity(p.lastSeen, p.isOnline, language, p.isBot);
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => handleStartChatWithPlayer(p)}
+                            className="p-3 bg-slate-950/60 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/40 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm relative">
+                                {p.avatar || (p.isBot ? "🤖" : "🐱")}
+                                <div className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-slate-900 ${pAct.dotClass} ${pAct.isOnline ? "animate-pulse" : ""}`} />
                               </div>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {p.points} Pts • {p.totalCards} {language === "id" ? "Kartu" : "Cards"}
-                              </span>
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-black text-xs text-slate-200">@{p.username}</span>
+                                  {p.isBot && (
+                                    <span className="text-[8px] bg-amber-950 text-amber-400 px-1 rounded font-mono font-bold">
+                                      BOT
+                                    </span>
+                                  )}
+                                  {p.faction && (
+                                    <span className={`text-[7px] px-1 rounded font-black uppercase ${
+                                      p.faction === "Sentinel" ? "bg-cyan-950 text-cyan-400 border border-cyan-800/40" : "bg-red-950 text-red-400 border border-red-800/40"
+                                    }`}>
+                                      {p.faction}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[9px] text-slate-400 font-mono mt-0.5">
+                                  {pAct.statusText} • {p.points} Pts
+                                </span>
+                              </div>
                             </div>
-                          </div>
 
                           <div className="flex items-center gap-2">
                             {isDeveloper && (
@@ -1512,7 +1562,8 @@ export const MailboxView: React.FC<MailboxViewProps> = ({
                             </span>
                           </div>
                         </div>
-                      ))
+                      );
+                    })
                     )}
                   </div>
                 </motion.div>

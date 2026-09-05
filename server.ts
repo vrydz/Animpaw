@@ -8,7 +8,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { initWebSocket } from "./server/websocket";
 import { syncToFirestore, loadFromFirestore } from "./server/firestoreDb";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./server/mailer";
-import { RAID_BOSS_TEMPLATES, createRaidBossInstance, generateBossArtwork } from "./src/data/raidBossData";
+import { RAID_BOSS_TEMPLATES, createRaidBossInstance, generateBossArtwork, INDONESIAN_CITIES, CITY_BOSS_CONFIGS } from "./src/data/raidBossData";
 import { resolveSeoRoute, renderSeoHtml } from "./server/seoRoutes";
 
 dotenv.config();
@@ -1386,17 +1386,35 @@ function getAuthUser(req: express.Request, db: any) {
     const id = parts[0];
     const username = parts.slice(1).join(":");
     if (!id && !username) return null;
-    return (
-      db.users.find(
-        (u: any) =>
-          (id && u.id === id) ||
-          (username && u.username && u.username.toLowerCase() === username.toLowerCase())
-      ) || null
+    const foundUser = db.users.find(
+      (u: any) =>
+        (id && u.id === id) ||
+        (username && u.username && u.username.toLowerCase() === username.toLowerCase())
     );
+    if (foundUser) {
+      const now = Date.now();
+      const lastSeenMs = foundUser.lastSeen ? new Date(foundUser.lastSeen).getTime() : 0;
+      // Refresh user activity timestamp every 30 seconds
+      if (now - lastSeenMs > 30000) {
+        foundUser.lastSeen = new Date(now).toISOString();
+        writeDB(db);
+      }
+    }
+    return foundUser || null;
   } catch (e) {
     return null;
   }
 }
+
+// User Heartbeat endpoint to maintain online status and sync activity history
+app.post("/api/user/heartbeat", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  user.lastSeen = new Date().toISOString();
+  writeDB(db);
+  res.json({ success: true, lastSeen: user.lastSeen, isOnline: true });
+});
 
 // Helper to calculate daily mission progress and reset states
 function getMissionStatus(userId: string, user: any, db: any) {
@@ -3301,6 +3319,10 @@ app.get("/api/leaderboard", async (req, res) => {
         }
       });
 
+      const isOnline = !user.isBot && user.lastSeen
+        ? (Date.now() - new Date(user.lastSeen).getTime() < 4 * 60 * 1000)
+        : false;
+
       return {
         id: user.id,
         username: user.username,
@@ -3309,7 +3331,9 @@ app.get("/api/leaderboard", async (req, res) => {
         totalCards: userCards.length,
         highestLevel: userCards.length > 0 ? highestLevel : 0,
         bestCard,
-        isBot: !!user.isBot
+        isBot: !!user.isBot,
+        isOnline,
+        lastSeen: user.lastSeen || user.createdAt || null
       };
     });
 
@@ -3317,6 +3341,45 @@ app.get("/api/leaderboard", async (req, res) => {
   } catch (err) {
     console.error("Error retrieving leaderboard:", err);
     res.status(500).json({ error: "Gagal memuat leaderboard" });
+  }
+});
+
+// Endpoint to get all trainers' activity and history (online/offline status & lastSeen)
+app.get("/api/trainers/history", (req, res) => {
+  try {
+    const db = readDB();
+    const trainers = (db.users || [])
+      .map((u: any) => {
+        const userCards = (db.cards || []).filter((c: any) => c.userId === u.id);
+        const isOnline = !u.isBot && u.lastSeen
+          ? (Date.now() - new Date(u.lastSeen).getTime() < 4 * 60 * 1000)
+          : false;
+        return {
+          id: u.id,
+          username: u.username,
+          faction: u.faction || "Sentinel",
+          points: u.points || 0,
+          cores: u.cores || 0,
+          totalCards: userCards.length,
+          avatar: u.avatar || "",
+          isBot: !!u.isBot,
+          isOnline,
+          lastSeen: u.lastSeen || u.createdAt || null,
+          createdAt: u.createdAt || null
+        };
+      })
+      .sort((a: any, b: any) => {
+        if (a.isOnline && !b.isOnline) return -1;
+        if (!a.isOnline && b.isOnline) return 1;
+        const timeA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+        const timeB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+        return timeB - timeA;
+      });
+
+    res.json({ success: true, trainers });
+  } catch (err) {
+    console.error("Error retrieving trainers history:", err);
+    res.status(500).json({ error: "Gagal memuat histori trainer" });
   }
 });
 
@@ -5089,6 +5152,9 @@ app.get("/api/players/search", (req, res) => {
     .slice(0, 20)
     .map((u: any) => {
       const userCards = (db.cards || []).filter((c: any) => c.userId === u.id);
+      const isOnline = !u.isBot && u.lastSeen
+        ? (Date.now() - new Date(u.lastSeen).getTime() < 4 * 60 * 1000)
+        : false;
       return {
         id: u.id,
         username: u.username,
@@ -5096,7 +5162,10 @@ app.get("/api/players/search", (req, res) => {
         cores: u.cores || 0,
         totalCards: userCards.length,
         avatar: u.avatar || "",
-        isBot: !!u.isBot
+        faction: u.faction || "Sentinel",
+        isBot: !!u.isBot,
+        isOnline,
+        lastSeen: u.lastSeen || u.createdAt || null
       };
     });
 
@@ -5124,11 +5193,18 @@ app.get("/api/messages/conversations", (req, res) => {
 
       if (!threadsMap.has(partnerId)) {
         const partnerUser = (db.users || []).find((u: any) => u.id === partnerId);
+        const isOnline = partnerUser && !partnerUser.isBot && partnerUser.lastSeen
+          ? (Date.now() - new Date(partnerUser.lastSeen).getTime() < 4 * 60 * 1000)
+          : false;
+
         threadsMap.set(partnerId, {
           partnerId,
           partnerUsername: partnerUser ? partnerUser.username : partnerUsername,
           partnerAvatar: partnerUser ? partnerUser.avatar : partnerAvatar,
+          faction: partnerUser?.faction || "Sentinel",
           isBot: partnerUser ? !!partnerUser.isBot : false,
+          isOnline,
+          lastSeen: partnerUser?.lastSeen || partnerUser?.createdAt || null,
           lastMessage: dm.content,
           lastMessageAt: dm.createdAt,
           unreadCount: 0
@@ -5185,14 +5261,21 @@ app.get("/api/messages/thread/:partnerId", (req, res) => {
     writeDB(db);
   }
 
+  const partnerIsOnline = partner && !partner.isBot && partner.lastSeen
+    ? (Date.now() - new Date(partner.lastSeen).getTime() < 4 * 60 * 1000)
+    : false;
+
   res.json({
     success: true,
     partner: partner ? {
       id: partner.id,
       username: partner.username,
       avatar: partner.avatar,
-      isBot: !!partner.isBot
-    } : { id: partnerId, username: "Trainer", isBot: false },
+      faction: partner.faction || "Sentinel",
+      isBot: !!partner.isBot,
+      isOnline: partnerIsOnline,
+      lastSeen: partner.lastSeen || partner.createdAt || null
+    } : { id: partnerId, username: "Trainer", isBot: false, isOnline: false, lastSeen: null },
     messages
   });
 });
@@ -6890,35 +6973,56 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   return Math.round(R * c);
 }
 
-// Seed default bosses around coordinates
-function seedDefaultRaidBosses(userLat = -6.1754, userLng = 106.8272): any[] {
+// Seed default bosses across all Indonesian cities (Levels 6 to 30)
+function seedAllCitiesRaidBosses(): any[] {
   const bosses: any[] = [];
-  const configs = [
-    { dLat: 0.015, dLng: 0.012, tplIdx: 0, level: 6 },   // Oyen Berserker Purba (Lv 6, Api, Kucing)
-    { dLat: -0.020, dLng: 0.018, tplIdx: 10, level: 7 }, // Ironfang Cyber-Rat Swarm (Lv 7, Petir, Tikus)
-    { dLat: 0.025, dLng: -0.022, tplIdx: 5, level: 9 },  // Glacial Frosthound Howler (Lv 9, Air, Anjing)
-    { dLat: -0.012, dLng: -0.028, tplIdx: 1, level: 12 }, // Bastet Mecha-Sphynx (Lv 12, Tanah, Kucing)
-    { dLat: 0.035, dLng: 0.030, tplIdx: 11, level: 15 },  // Abyssal Rat Titan Behemoth (Lv 15, Tanah, Tikus)
-    { dLat: 0.018, dLng: -0.012, tplIdx: 2, level: 16 },  // Oceanus Bastet Tidal Queen (Lv 16, Air, Kucing)
-    { dLat: -0.025, dLng: 0.035, tplIdx: 6, level: 18 },  // Cyber-Anubis High Sentinel (Lv 18, Tanah, Anjing)
-    { dLat: 0.022, dLng: 0.015, tplIdx: 12, level: 19 }, // Pyro-Rodent Magma King (Lv 19, Api, Tikus)
-    { dLat: -0.038, dLng: 0.025, tplIdx: 7, level: 20 },  // Thunderfang Fenrir Direwolf (Lv 20, Petir, Anjing)
-    { dLat: 0.045, dLng: -0.035, tplIdx: 3, level: 22 },  // Celestial Zephyr Felis (Lv 22, Angin, Kucing)
-    { dLat: -0.030, dLng: -0.018, tplIdx: 13, level: 23 }, // Radioactive Sewer Behemoth (Lv 23, Air, Tikus)
-    { dLat: -0.015, dLng: 0.040, tplIdx: 8, level: 24 },  // Tempest Howler Direhound (Lv 24, Angin, Anjing)
-    { dLat: 0.028, dLng: -0.045, tplIdx: 14, level: 27 }, // Sovereign Plague Rodent (Lv 27, Angin, Tikus)
-    { dLat: -0.048, dLng: -0.040, tplIdx: 9, level: 28 },  // Cerberus Infernal Hellhound (Lv 28, Api, Anjing)
-    { dLat: 0.010, dLng: -0.015, tplIdx: 4, level: 30 },  // Emperor Spark Raijin Cat (Lv 30, Petir, Kucing)
-  ];
+  INDONESIAN_CITIES.forEach((city) => {
+    CITY_BOSS_CONFIGS.forEach((cfg) => {
+      const lat = Number((city.lat + cfg.dLat).toFixed(6));
+      const lng = Number((city.lng + cfg.dLng).toFixed(6));
+      const landmark = city.landmarks[cfg.landmarkIdx % city.landmarks.length];
+      const boss = createRaidBossInstance(
+        cfg.tplIdx,
+        lat,
+        lng,
+        cfg.level,
+        city.id,
+        city.name,
+        landmark
+      );
+      bosses.push(boss);
+    });
+  });
+  return bosses;
+}
 
-  configs.forEach(cfg => {
-    const lat = Number((userLat + cfg.dLat).toFixed(6));
-    const lng = Number((userLng + cfg.dLng).toFixed(6));
-    const boss = createRaidBossInstance(cfg.tplIdx, lat, lng, cfg.level);
-    bosses.push(boss);
+function ensureBossesForLocation(existingBosses: any[], userLat: number, userLng: number): { bosses: any[]; hasChanges: boolean } {
+  // Check if there is already at least one active boss within 25 km of user's coordinates
+  const hasNearbyBoss = existingBosses.some((b: any) => {
+    return calculateDistanceMeters(userLat, userLng, b.latitude, b.longitude) <= 25000;
   });
 
-  return bosses;
+  if (!hasNearbyBoss) {
+    const localCityId = `local_${Math.round(Math.abs(userLat) * 100)}_${Math.round(Math.abs(userLng) * 100)}`;
+    const localCityName = "Wilayah Lokal Trainer";
+    const newLocalBosses = CITY_BOSS_CONFIGS.map((cfg) => {
+      const lat = Number((userLat + cfg.dLat).toFixed(6));
+      const lng = Number((userLng + cfg.dLng).toFixed(6));
+      const landmark = `Area Satelit GPS Spot #${cfg.landmarkIdx + 1}`;
+      return createRaidBossInstance(
+        cfg.tplIdx,
+        lat,
+        lng,
+        cfg.level,
+        localCityId,
+        localCityName,
+        landmark
+      );
+    });
+    return { bosses: [...existingBosses, ...newLocalBosses], hasChanges: true };
+  }
+
+  return { bosses: existingBosses, hasChanges: false };
 }
 
 function getInitializedRaidBosses(db: any, userLat?: number, userLng?: number): any[] {
@@ -6926,33 +7030,64 @@ function getInitializedRaidBosses(db: any, userLat?: number, userLng?: number): 
   
   const now = Date.now();
   // Filter out expired bosses
+  const beforeCount = db.raidBosses.length;
   db.raidBosses = db.raidBosses.filter((b: any) => {
     if (!b || !b.expiresAt) return false;
     return new Date(b.expiresAt).getTime() > now;
   });
 
-  // If no active bosses remain, seed new ones
-  if (db.raidBosses.length === 0) {
-    const lat = userLat && !isNaN(userLat) ? userLat : -6.1754;
-    const lng = userLng && !isNaN(userLng) ? userLng : 106.8272;
-    db.raidBosses = seedDefaultRaidBosses(lat, lng);
+  let shouldSave = db.raidBosses.length !== beforeCount;
+
+  // Verify all cities have active bosses
+  const existingCityIds = new Set(db.raidBosses.map((b: any) => b.cityId || "jakarta"));
+  const hasAllCities = INDONESIAN_CITIES.every((c) => existingCityIds.has(c.id));
+
+  // If no bosses or incomplete city coverage, seed all cities
+  if (db.raidBosses.length === 0 || !hasAllCities) {
+    const allCityBosses = seedAllCitiesRaidBosses();
+    // Keep any existing bosses that are still active
+    const existingById = new Map(db.raidBosses.map((b: any) => [b.id, b]));
+    allCityBosses.forEach((cb) => {
+      if (!existingById.has(cb.id)) {
+        db.raidBosses.push(cb);
+      }
+    });
+    shouldSave = true;
+  }
+
+  // If user provided valid coordinates, ensure their immediate region has bosses
+  if (userLat !== undefined && userLng !== undefined && !isNaN(userLat) && !isNaN(userLng)) {
+    const locResult = ensureBossesForLocation(db.raidBosses, userLat, userLng);
+    if (locResult.hasChanges) {
+      db.raidBosses = locResult.bosses;
+      shouldSave = true;
+    }
+  }
+
+  if (shouldSave) {
     writeDB(db);
   }
 
   return db.raidBosses;
 }
 
-// 1. Get Active Raid Bosses (with 10 km distance calculation)
+// 1. Get Active Raid Bosses (with city filter and 10 km distance calculation)
 app.get("/api/raid/bosses", (req, res) => {
   const db = readDB();
   const latQuery = parseFloat(req.query.lat as string);
   const lngQuery = parseFloat(req.query.lng as string);
+  const cityQuery = (req.query.city as string || "").trim().toLowerCase();
 
   const hasCoords = !isNaN(latQuery) && !isNaN(lngQuery);
   const userLat = hasCoords ? latQuery : -6.1754;
   const userLng = hasCoords ? lngQuery : 106.8272;
 
-  const bosses = getInitializedRaidBosses(db, userLat, userLng);
+  let bosses = getInitializedRaidBosses(db, hasCoords ? userLat : undefined, hasCoords ? userLng : undefined);
+
+  // Optional filter by city
+  if (cityQuery && cityQuery !== "all") {
+    bosses = bosses.filter((b: any) => (b.cityId || "").toLowerCase() === cityQuery);
+  }
 
   // Calculate distance in meters and 10 km radius check
   const decoratedBosses = bosses.map((boss: any) => {
@@ -6968,10 +7103,20 @@ app.get("/api/raid/bosses", (req, res) => {
     };
   });
 
+  // Sort by nearest distance, then by level
+  decoratedBosses.sort((a: any, b: any) => {
+    if (a.inRadius !== b.inRadius) return a.inRadius ? -1 : 1;
+    if (Math.abs(a.distanceMeters - b.distanceMeters) > 500) {
+      return a.distanceMeters - b.distanceMeters;
+    }
+    return a.level - b.level;
+  });
+
   res.json({
     success: true,
     userLocation: { lat: userLat, lng: userLng, hasGps: hasCoords },
     radiusLimitKm: 10,
+    cities: INDONESIAN_CITIES,
     bosses: decoratedBosses
   });
 });
@@ -7625,7 +7770,7 @@ app.post("/api/developer/raid/reset", (req, res) => {
     return res.status(403).json({ error: "Akses khusus Developer." });
   }
 
-  db.raidBosses = seedDefaultRaidBosses();
+  db.raidBosses = seedAllCitiesRaidBosses();
   db.raidLobbies = [];
   writeDB(db);
 

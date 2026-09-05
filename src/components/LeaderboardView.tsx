@@ -3,6 +3,7 @@ import { Trophy, Award, Crown, Loader2, Sparkles, FolderHeart, Star, MessageSqua
 import { motion } from "motion/react";
 import { User } from "../types";
 import { useLanguage } from "../context/LanguageContext";
+import { formatPlayerActivity } from "../utils/timeAgo";
 
 export interface LeaderboardEntry {
   id: string;
@@ -19,6 +20,8 @@ export interface LeaderboardEntry {
     element: string;
   } | null;
   isBot?: boolean;
+  isOnline?: boolean;
+  lastSeen?: string;
 }
 
 interface LeaderboardViewProps {
@@ -198,23 +201,37 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ currentUser, t
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <span className={`text-[11px] font-black truncate max-w-[100px] ${
-                        isMe ? "text-yellow-400" : entry.isBot ? "text-amber-500 font-bold" : "text-slate-200"
-                      }`}>
-                        @{entry.username}
-                      </span>
-                      {isMe && (
-                        <span className="text-[8px] bg-yellow-500 text-slate-950 px-1 rounded font-black uppercase">
-                          {t("common.you")}
-                        </span>
-                      )}
-                      {entry.isBot && (
-                        <span className="text-[8px] bg-amber-950/40 text-amber-400 border border-amber-900/30 px-1 rounded font-black uppercase font-mono">
-                          BOT
-                        </span>
-                      )}
-                    </div>
+                    {(() => {
+                      const activity = formatPlayerActivity(entry.lastSeen, entry.isOnline, language, entry.isBot);
+                      return (
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span 
+                              className={`w-2 h-2 rounded-full shrink-0 ${activity.dotClass} ${activity.isOnline ? "animate-pulse" : ""}`}
+                              title={activity.statusText} 
+                            />
+                            <span className={`text-[11px] font-black truncate max-w-[100px] sm:max-w-[130px] ${
+                              isMe ? "text-yellow-400" : entry.isBot ? "text-amber-500 font-bold" : "text-slate-200"
+                            }`}>
+                              @{entry.username}
+                            </span>
+                            {isMe && (
+                              <span className="text-[8px] bg-yellow-500 text-slate-950 px-1 rounded font-black uppercase">
+                                {t("common.you")}
+                              </span>
+                            )}
+                            {entry.isBot && (
+                              <span className="text-[8px] bg-amber-950/40 text-amber-400 border border-amber-900/30 px-1 rounded font-black uppercase font-mono">
+                                BOT
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[8px] font-mono text-slate-400 truncate mt-0.5">
+                            {activity.statusText}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Main Sort Metric Highlighting */}

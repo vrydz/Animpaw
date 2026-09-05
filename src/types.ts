@@ -12,6 +12,27 @@ export interface User {
   captureStreak?: number;
   lastCaptureDate?: string;
   lastRewardedAdClaim?: string;
+  lastSeen?: string;
+  isOnline?: boolean;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  username: string;
+  points: number;
+  cores: number;
+  totalCards: number;
+  highestLevel: number;
+  bestCard?: {
+    id: string;
+    name: string;
+    rarity: string;
+    level: number;
+    element: string;
+  } | null;
+  isBot?: boolean;
+  isOnline?: boolean;
+  lastSeen?: string;
 }
 
 export interface Mission {
@@ -229,6 +250,9 @@ export interface ConversationThread {
   lastMessageAt: string;
   unreadCount: number;
   isBot?: boolean;
+  isOnline?: boolean;
+  lastSeen?: string;
+  faction?: string;
 }
 
 export interface BeaconNode {
@@ -331,6 +355,8 @@ export interface RaidBoss {
   spd: number;
   imageUrl: string;
   locationName: string;
+  cityId?: string;
+  cityName?: string;
   latitude: number;
   longitude: number;
   spawnRadiusKm: number; // 10 km

@@ -28,6 +28,7 @@ interface RaidBossHubProps {
   userCards: Card[];
   currentLanguage: "id" | "en";
   userCoordinates?: { lat: number; lng: number } | null;
+  initialBossId?: string | null;
   onEnterBattle: (room: RaidLobbyRoom) => void;
   onNavigateToMap?: () => void;
 }
@@ -43,6 +44,7 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
   userCards,
   currentLanguage,
   userCoordinates,
+  initialBossId,
   onEnterBattle,
   onNavigateToMap
 }) => {
@@ -56,6 +58,7 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
   // Filters
   const [speciesFilter, setSpeciesFilter] = useState<"all" | "kucing" | "tikus" | "anjing">("all");
   const [onlyWithinRadius, setOnlyWithinRadius] = useState<boolean>(false);
+  const [cityFilter, setCityFilter] = useState<string>("all");
 
   // Modal / Action state
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -93,7 +96,12 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
       if (bossRes.ok) {
         const bData = await bossRes.json();
-        setBosses(bData.bosses || []);
+        const loadedBosses: RaidBoss[] = bData.bosses || [];
+        setBosses(loadedBosses);
+        if (initialBossId) {
+          const target = loadedBosses.find((b: RaidBoss) => b.id === initialBossId);
+          if (target) setSelectedBoss(target);
+        }
       }
       if (lobbyRes.ok) {
         const lData = await lobbyRes.json();
@@ -301,9 +309,14 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
     }
   };
 
+  const availableCities = Array.from(
+    new Set(bosses.map((b) => b.cityName).filter(Boolean) as string[])
+  ).sort();
+
   const filteredBosses = bosses.filter((b) => {
     if (speciesFilter !== "all" && b.speciesType !== speciesFilter) return false;
     if (onlyWithinRadius && b.inRadius === false) return false;
+    if (cityFilter !== "all" && b.cityName !== cityFilter) return false;
     return true;
   });
 
@@ -314,22 +327,25 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
         <div className="absolute right-0 top-0 w-96 h-full opacity-15 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-500 via-transparent to-transparent"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse">
-                <Radio size={14} className="animate-spin" /> RAID CO-OP BOSS (LV. 5 - 30)
+                <Radio size={14} className="animate-spin" /> RAID CO-OP BOSS (LV. 6 - 30)
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-700/60">
+                <MapPin size={12} /> {currentLanguage === "id" ? "Tersedia di Seluruh Kota Nusantara" : "Available in All Indonesian Cities"}
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-800 text-neutral-300 border border-neutral-700">
-                <MapPin size={12} /> Radius 10 KM
+                Radius 10 KM
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
               <Swords className="text-red-400" />
-              {currentLanguage === "id" ? "Raid Boss Co-op Arena" : "Co-op Raid Boss Arena"}
+              {currentLanguage === "id" ? "Raid Boss Co-op Arena Lintas Kota" : "Multi-City Co-op Raid Boss Arena"}
             </h1>
             <p className="text-sm text-neutral-400 mt-1 max-w-2xl">
               {currentLanguage === "id"
-                ? "Bentuk tim 3 kartu Nekomon secara Solo atau Multiplayer bersama Trainer lain dalam radius 10 km! Manfaatkan buff & debuff elemen untuk merebut Nekomon Cores, Poin & Energi bersama."
-                : "Form a 3-slot team in Solo or Multiplayer with trainers within 10 km radius! Exploit boss elemental buffs and debuffs to earn shared Nekomon Cores, Points, & Energy."}
+                ? "Raid Boss level 6-30 hadir di setiap kota Indonesia! Bentuk tim 3 kartu Nekomon secara Solo atau Multiplayer bersama Trainer di kotamu dalam radius 10 km."
+                : "Level 6-30 Raid Bosses are live in every city across Indonesia! Form a 3-slot team in Solo or Multiplayer with trainers in your city within 10 km radius."}
             </p>
           </div>
 
@@ -611,6 +627,27 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
         {/* Species & Radius Filters */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* City Filter Selector */}
+          {availableCities.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 px-2.5 py-1 rounded-lg text-xs">
+              <span className="text-neutral-400 font-medium">📍 {currentLanguage === "id" ? "Kota:" : "City:"}</span>
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+              >
+                <option value="all" className="bg-neutral-900 text-white">
+                  {currentLanguage === "id" ? "Semua Kota" : "All Cities"} ({bosses.length})
+                </option>
+                {availableCities.map((city) => (
+                  <option key={city} value={city} className="bg-neutral-900 text-white">
+                    {city}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="flex rounded-lg bg-neutral-900 border border-neutral-800 p-0.5 text-xs">
             <button
               onClick={() => setSpeciesFilter("all")}
@@ -732,10 +769,17 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
                       <h3 className="text-base font-extrabold text-white truncate">
                         {currentLanguage === "id" ? boss.name : boss.nameEn || boss.name}
                       </h3>
-                      <p className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5 truncate">
-                        <MapPin size={11} className="text-red-400 shrink-0" />
-                        {boss.locationName}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {boss.cityName && (
+                          <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-indigo-950 text-indigo-300 border border-indigo-700/60 shadow-xs">
+                            📍 {boss.cityName}
+                          </span>
+                        )}
+                        <span className="text-xs text-neutral-400 truncate flex items-center gap-1">
+                          <MapPin size={11} className="text-red-400 shrink-0" />
+                          {boss.locationName}
+                        </span>
+                      </div>
 
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] text-neutral-400">{currentLanguage === "id" ? "Elemen:" : "Element:"}</span>

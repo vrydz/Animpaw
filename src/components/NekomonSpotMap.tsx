@@ -29,10 +29,13 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
-  Swords
+  Swords,
+  Flame,
+  Shield,
+  Skull
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { NekomonSpot, SpotCategory } from "../types";
+import { NekomonSpot, SpotCategory, RaidBoss } from "../types";
 import { calculateDistanceMeters, formatDistance, generateNekomonSpots, offsetCoordinates } from "../lib/geoUtils";
 import { useLanguage } from "../context/LanguageContext";
 import { haptics } from "../lib/vibration";
@@ -41,7 +44,7 @@ import L from "leaflet";
 
 interface NekomonSpotMapProps {
   onSelectSpotToCapture: (spot: NekomonSpot) => void;
-  onNavigateToRaid?: () => void;
+  onNavigateToRaid?: (bossId?: string) => void;
   userPoints: number;
   token?: string;
 }
@@ -67,6 +70,11 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
   const [communitySpots, setCommunitySpots] = useState<NekomonSpot[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<NekomonSpot | null>(null);
   const [filterCategory, setFilterCategory] = useState<SpotCategory | "all" | "community">("all");
+  
+  // Raid Bosses Map Spawn State
+  const [raidBosses, setRaidBosses] = useState<RaidBoss[]>([]);
+  const [selectedBoss, setSelectedBoss] = useState<RaidBoss | null>(null);
+  const [loadingBosses, setLoadingBosses] = useState<boolean>(false);
   
   // Modals state
   const [showAddSpotModal, setShowAddSpotModal] = useState<boolean>(false);
@@ -121,6 +129,7 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
   const playerMarkerRef = useRef<L.Marker | null>(null);
   const playerAccuracyCircleRef = useRef<L.Circle | null>(null);
   const spotMarkersRef = useRef<{ [id: string]: { marker: L.Marker; circle: L.Circle } }>({});
+  const bossMarkersRef = useRef<{ [id: string]: { marker: L.Marker; circle: L.Circle } }>({});
 
   // Ensure Leaflet CSS is loaded
   useEffect(() => {
@@ -246,6 +255,28 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
   useEffect(() => {
     fetchCommunitySpots();
   }, []);
+
+  // Fetch Active Raid Bosses for Map Spawn Points
+  const fetchRaidBosses = async (lat: number, lng: number) => {
+    setLoadingBosses(true);
+    try {
+      const res = await fetch(`/api/raid/bosses?lat=${lat}&lng=${lng}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.bosses)) {
+          setRaidBosses(data.bosses);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch raid bosses for map:", err);
+    } finally {
+      setLoadingBosses(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRaidBosses(playerPos.lat, playerPos.lng);
+  }, [playerPos.lat, playerPos.lng]);
 
   // Initialize Spots centered around player position (overriding default template spots with community edits if present)
   useEffect(() => {
@@ -420,6 +451,7 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
       const marker = L.marker([spot.lat, spot.lng], { icon: spotIcon })
         .addTo(map)
         .on("click", () => {
+          setSelectedBoss(null);
           setSelectedSpot(spot);
           haptics.tap();
         });
@@ -435,7 +467,82 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
       spotMarkersRef.current[spot.id] = { marker, circle };
     });
 
-  }, [playerPos, spots, selectedSpot, filterCategory]);
+    // Clear old boss markers
+    Object.values(bossMarkersRef.current).forEach(({ marker, circle }) => {
+      marker.remove();
+      circle.remove();
+    });
+    bossMarkersRef.current = {};
+
+    // Draw Raid Boss markers
+    raidBosses.forEach((boss) => {
+      const dist = calculateDistanceMeters(playerPos.lat, playerPos.lng, boss.latitude, boss.longitude);
+      const inRadius = dist <= (boss.spawnRadiusKm || 10) * 1000;
+      const isSelected = selectedBoss?.id === boss.id;
+      const distKmStr = (dist / 1000).toFixed(1);
+      const elementEmoji = boss.element === "Api" ? "🔥" : boss.element === "Air" ? "💧" : boss.element === "Tanah" ? "🌿" : boss.element === "Petir" ? "⚡" : "🌪️";
+      const elementColor = boss.element === "Api" ? "#ef4444" : boss.element === "Air" ? "#06b6d4" : boss.element === "Tanah" ? "#10b981" : boss.element === "Petir" ? "#eab308" : "#8b5cf6";
+
+      const bossIcon = L.divIcon({
+        className: "custom-boss-marker",
+        html: `
+          <div class="relative flex flex-col items-center group cursor-pointer select-none">
+            <div class="px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-lg whitespace-nowrap mb-1 flex items-center gap-1 transition-transform ${
+              isSelected ? "scale-110 ring-2 ring-yellow-400" : ""
+            } ${
+              inRadius 
+                ? "bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-red-500/60 animate-pulse border border-yellow-300/80" 
+                : "bg-slate-950/95 text-rose-300 border border-rose-600/50"
+            }">
+              <span class="text-xs">⚔️</span>
+              <span>Lv.${boss.level} ${language === "id" ? boss.name : boss.nameEn}</span>
+              <span class="opacity-90 font-mono text-[9px]">(${distKmStr}km)</span>
+              ${inRadius ? '<span class="text-[8px] bg-yellow-400 text-slate-950 font-black px-1 rounded-sm">SIAP</span>' : ""}
+            </div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-2xl border-2 overflow-hidden transition-transform ${
+              isSelected ? "scale-125 ring-4 ring-rose-500 shadow-rose-500/80" : "hover:scale-110"
+            } bg-gradient-to-br from-slate-900 via-rose-950 to-slate-950 border-rose-500/90 relative">
+              ${
+                boss.imageUrl 
+                  ? `<img src="${boss.imageUrl}" class="w-full h-full object-cover" alt="${boss.name}" />`
+                  : `<span class="text-2xl">${elementEmoji}</span>`
+              }
+              <div class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-slate-950 border border-yellow-400 flex items-center justify-center text-[10px] shadow">
+                ${elementEmoji}
+              </div>
+              <div class="absolute bottom-0 inset-x-0 h-1.5 bg-red-950">
+                <div class="h-full bg-emerald-400" style="width: ${Math.max(10, Math.round((boss.hp / boss.maxHp) * 100))}%;"></div>
+              </div>
+            </div>
+            <div class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping mt-1"></div>
+          </div>
+        `,
+        iconSize: [48, 62],
+        iconAnchor: [24, 62]
+      });
+
+      const marker = L.marker([boss.latitude, boss.longitude], { icon: bossIcon, zIndexOffset: 600 })
+        .addTo(map)
+        .on("click", () => {
+          setSelectedSpot(null);
+          setSelectedBoss(boss);
+          haptics.tap();
+          try { audio.playCardSelectSound(); } catch (_) {}
+        });
+
+      const circle = L.circle([boss.latitude, boss.longitude], {
+        radius: 1000,
+        color: elementColor,
+        fillColor: elementColor,
+        fillOpacity: inRadius ? 0.20 : 0.08,
+        weight: isSelected ? 3 : 1.5,
+        dashArray: inRadius ? undefined : "6, 6"
+      }).addTo(map);
+
+      bossMarkersRef.current[boss.id] = { marker, circle };
+    });
+
+  }, [playerPos, spots, selectedSpot, filterCategory, raidBosses, selectedBoss]);
 
   // Recenter map on player
   const handleRecenter = () => {
@@ -443,6 +550,27 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
       leafletMapRef.current.flyTo([playerPos.lat, playerPos.lng], 17, { duration: 0.8 });
       haptics.tap();
     }
+  };
+
+  // Focus on Nearest Active Raid Boss
+  const handleFocusNearestBoss = () => {
+    if (raidBosses.length === 0) {
+      fetchRaidBosses(playerPos.lat, playerPos.lng);
+      return;
+    }
+    const sorted = [...raidBosses].sort((a, b) => {
+      const distA = calculateDistanceMeters(playerPos.lat, playerPos.lng, a.latitude, a.longitude);
+      const distB = calculateDistanceMeters(playerPos.lat, playerPos.lng, b.latitude, b.longitude);
+      return distA - distB;
+    });
+    const nearest = sorted[0];
+    setSelectedSpot(null);
+    setSelectedBoss(nearest);
+    if (leafletMapRef.current) {
+      leafletMapRef.current.flyTo([nearest.latitude, nearest.longitude], 15, { duration: 1 });
+    }
+    haptics.tap();
+    try { audio.playCardSelectSound(); } catch (_) {}
   };
 
   // Respawn spots around player
@@ -577,6 +705,18 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline text-[11px]">Filter</span>
             </button>
+
+            {/* Raid Boss Spawn Focus Button */}
+            {raidBosses.length > 0 && (
+              <button
+                onClick={handleFocusNearestBoss}
+                className="px-2.5 py-1 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-black rounded-xl shadow-md shadow-red-950/50 flex items-center gap-1 transition-all active:scale-95 cursor-pointer uppercase border border-red-400/50"
+                title={language === "id" ? "Lacak Spawn Raid Boss Terdekat" : "Track Nearest Raid Boss Spawn"}
+              >
+                <Flame className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
+                <span className="text-[11px]">Boss ({raidBosses.length})</span>
+              </button>
+            )}
 
             {/* Daily Quest Button */}
             <button
@@ -834,6 +974,141 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
                 </div>
               </>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SELECTED RAID BOSS SPOTLIGHT BOTTOM SHEET */}
+      <AnimatePresence>
+        {selectedBoss && (
+          <motion.div
+            initial={{ y: 60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 60, opacity: 0 }}
+            className="absolute bottom-2 left-2 right-2 z-[1000] p-4 bg-slate-950/95 backdrop-blur-xl border-2 border-red-500/80 rounded-3xl shadow-2xl shadow-red-950/80 flex flex-col gap-3"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-900 border-2 border-red-500/80 relative shrink-0 shadow-lg shadow-red-900/50">
+                  {selectedBoss.imageUrl ? (
+                    <img src={selectedBoss.imageUrl} alt={selectedBoss.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-3xl">⚔️</div>
+                  )}
+                  <div className="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase">
+                    Lv.{selectedBoss.level}
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-950 text-red-300 border border-red-700/60 rounded-full flex items-center gap-1">
+                      <Flame className="w-2.5 h-2.5 text-yellow-400" />
+                      <span>Raid Boss</span>
+                    </span>
+                    <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-full border ${
+                      selectedBoss.element === "Api" ? "bg-red-950/80 text-red-300 border-red-700" :
+                      selectedBoss.element === "Air" ? "bg-cyan-950/80 text-cyan-300 border-cyan-700" :
+                      selectedBoss.element === "Tanah" ? "bg-emerald-950/80 text-emerald-300 border-emerald-700" :
+                      selectedBoss.element === "Petir" ? "bg-yellow-950/80 text-yellow-300 border-yellow-700" :
+                      "bg-purple-950/80 text-purple-300 border-purple-700"
+                    }`}>
+                      {selectedBoss.element}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {selectedBoss.speciesType}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-white mt-1 leading-tight flex items-center gap-1.5">
+                    <span>{language === "id" ? selectedBoss.name : selectedBoss.nameEn}</span>
+                    <span className="text-xs font-normal text-slate-400">({selectedBoss.title})</span>
+                  </h3>
+                  <p className="text-[11px] text-amber-400 font-medium flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3 text-amber-400" />
+                    <span>{selectedBoss.locationName}</span>
+                    <span className="text-slate-400">• {(calculateDistanceMeters(playerPos.lat, playerPos.lng, selectedBoss.latitude, selectedBoss.longitude) / 1000).toFixed(1)} km</span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedBoss(null)}
+                className="p-1.5 bg-slate-900 text-slate-400 hover:text-white rounded-xl border border-slate-800 cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* HP Bar */}
+            <div className="bg-slate-900/90 p-2.5 rounded-2xl border border-slate-800">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Health Point (HP)</span>
+                <span className="font-mono font-black text-rose-400 text-xs">
+                  {selectedBoss.hp.toLocaleString()} / {selectedBoss.maxHp.toLocaleString()} HP
+                </span>
+              </div>
+              <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div 
+                  className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(5, Math.round((selectedBoss.hp / selectedBoss.maxHp) * 100))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Elemental Affinities & Rewards */}
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex flex-col gap-0.5">
+                <span className="text-[9px] text-slate-400 font-bold uppercase">{language === "id" ? "Kelemahan (+75% DMG)" : "Weakness (+75% DMG)"}</span>
+                <span className="font-black text-amber-400 flex items-center gap-1">
+                  ⚡ {selectedBoss.debuffElement || "Air / Petir"}
+                </span>
+              </div>
+              <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-800 flex flex-col gap-0.5">
+                <span className="text-[9px] text-slate-400 font-bold uppercase">{language === "id" ? "Hadiah Kemenangan" : "Victory Rewards"}</span>
+                <span className="font-black text-emerald-400 flex items-center gap-1">
+                  💎 {selectedBoss.rewards?.cores || 50} Cores • 🪙 {selectedBoss.rewards?.points || 200} Pts
+                </span>
+              </div>
+            </div>
+
+            {/* Action Button: Challenge / Enter Lobby */}
+            <div className="flex items-center gap-2 pt-1">
+              {(() => {
+                const distM = calculateDistanceMeters(playerPos.lat, playerPos.lng, selectedBoss.latitude, selectedBoss.longitude);
+                const inRadius = distM <= (selectedBoss.spawnRadiusKm || 10) * 1000;
+                return inRadius ? (
+                  <button
+                    onClick={() => {
+                      haptics.heavy();
+                      try { audio.playVictorySound(); } catch (_) {}
+                      if (onNavigateToRaid) {
+                        onNavigateToRaid(selectedBoss.id);
+                      }
+                    }}
+                    className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-red-900/60 flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider border border-yellow-300/40"
+                  >
+                    <Swords className="w-4 h-4 animate-bounce" />
+                    <span>{language === "id" ? "Masuk Ruang Pertempuran Raid Boss" : "Enter Raid Boss Battle Room"}</span>
+                  </button>
+                ) : (
+                  <div className="flex-1 p-2.5 bg-rose-950/50 border border-rose-800/60 rounded-2xl flex items-center justify-between text-xs text-rose-300">
+                    <span className="flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>{language === "id" ? "Di luar radius tempur 10 km. Dekati lokasi!" : "Outside 10 km combat radius. Move closer!"}</span>
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (onNavigateToRaid) onNavigateToRaid(selectedBoss.id);
+                      }}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded-xl border border-slate-700 shrink-0 ml-2 cursor-pointer"
+                    >
+                      {language === "id" ? "Lihat Info" : "View Info"}
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

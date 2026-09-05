@@ -28,6 +28,9 @@ export const haptics = {
   // Battle action / attack feedback (heavy strike impact)
   battleHit: () => vibrate([80, 30, 100]),
 
+  // Heavy tactile rumble for boss entry / big button action
+  heavy: () => vibrate([120, 40, 180]),
+
   // Level up or victory celebration
   victory: () => vibrate([100, 50, 100, 50, 100, 50, 250]),
 };

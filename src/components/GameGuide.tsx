@@ -25,7 +25,10 @@ import {
   Phone,
   Database,
   Cloud,
-  Globe
+  Globe,
+  CreditCard,
+  Settings,
+  Volume2
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -317,6 +320,88 @@ export const GameGuide: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-rose-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+                    <Flame className="w-5 h-5 text-rose-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-rose-300 font-mono text-xs uppercase mb-1">17. Spawn Raid Boss di Peta Spot GPS ⚔️📍</h4>
+                    <p className="leading-relaxed">
+                      Lokasi aktif spawn Raid Boss kini diproyeksikan langsung secara real-time pada <span className="text-amber-400 font-bold font-mono">Peta Spot Nekomon</span>.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Tombol Lacak Boss:</span> Klik tombol <span className="text-rose-400 font-mono font-bold">Boss</span> di bilah toolbar peta untuk secara instan mengarahkan kamera ke Raid Boss terdekat dari lokasi GPS Anda.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Indikator Radius Tempur 10 KM:</span> Setiap Boss memiliki radius pertarungan 10 km. Jika berada dalam radius, Anda dapat langsung masuk ke ruang pertempuran (Lobby Room) dari jendela sorotan peta!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-indigo-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-indigo-300 font-mono text-xs uppercase mb-1">18. 5 Menu Utama & Mode Carousel Dinamis 📱⚡</h4>
+                    <p className="leading-relaxed">
+                      Antarmuka navigasi game kini mengusung arsitektur <span className="text-indigo-400 font-bold font-mono">Streamlined Dual-Tier</span> yang sangat rapi dan bebas redundansi:
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• 5 Menu Utama Terpadu:</span> Hanya menampilkan kategori utama: <span className="text-amber-300">Eksplorasi & Peta</span>, <span className="text-pink-300">Koleksi & Deteksi</span>, <span className="text-purple-300">Pertempuran & Misi</span>, <span className="text-teal-300">Komunitas & Toko</span>, serta <span className="text-blue-300">Akun & Bantuan</span>.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Dynamic Sub-Menu Carousel:</span> Sub-menu hanya akan muncul saat kategori tersebut diakses atau diklik dalam mode pita carousel interaktif yang fleksibel digeser dengan tombol navigasi geser kiri-kanan.
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Action Dock Bebas Redundan:</span> Action dock bawah (mobile/tablet) selaras menampilkan 5 kategori inti, tanpa menduplikasi tombol sub-menu individual sehingga kontrol tetap bersih dan intuitif.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-teal-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-teal-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-teal-300 font-mono text-xs uppercase mb-1">19. Status Aktivitas Pemain & Riwayat Terakhir Online 🟢⏱️</h4>
+                    <p className="leading-relaxed">
+                      Di menu <span className="text-teal-400 font-bold font-mono">Surat & Pesan (Mailbox)</span>, status pemain ditampilkan secara transparan dan akurat.
+                      <br className="my-1"/>
+                      <span className="text-emerald-400 font-bold font-mono">• Online & Terakhir Dilihat:</span> Titik hijau berdenyut menandakan Trainer sedang aktif bermain, sementara saat offline sistem menampilkan catatan waktu kapan terakhir kali pemain online (misal: "Terakhir online 15m lalu" atau "1 hari lalu").
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-red-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                    <Swords className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">20. Raid Boss Lintas Kota (Level 6-30 di Seluruh Nusantara) 📍⚔️</h4>
+                    <p className="leading-relaxed">
+                      Kini pertarungan <span className="text-red-400 font-bold font-mono">Raid Boss Co-op</span> hadir di setiap kota besar di Indonesia (Jakarta, Bandung, Surabaya, Yogyakarta, Medan, Bali/Denpasar, Semarang, Makassar, Palembang, Malang, dan kota lainnya) dengan rentang kekuatan <span className="text-amber-400 font-bold font-mono">Level 6 hingga 30</span>!
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Pertarungan Lokal Setiap Kota:</span> Pemain di setiap kota dapat berpartisipasi langsung menyerang Raid Boss di kotanya masing-masing dalam radius GPS 10 km.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Filter Kota di Arena Hub:</span> Gunakan pemilih filter kota di menu Raid Boss Hub untuk melihat daftar Boss yang sedang spawn di kota tertentu di seluruh Indonesia.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-amber-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <Settings className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">21. Menu Pengaturan Terpusat (Audio, Bahasa & PWA) ⚙️🎵</h4>
+                    <p className="leading-relaxed">
+                      Fitur preferensi sistem kini disatukan rapi ke dalam menu <span className="text-amber-400 font-bold font-mono">Pengaturan (Settings)</span> yang dapat diakses langsung dari Action Dock bawah (di sebelah menu Akun):
+                      <br className="my-1"/>
+                      <span className="text-cyan-400 font-bold font-mono">• Submenu Audio:</span> Mengatur pemutar soundtrack BGM (Petualangan, Arena PvP, dan Hening), volume musik, serta tombol mute/unmute SFX. Tombol mengambang sebelumnya telah dipindahkan sehingga layar utama lebih bersih.
+                      <br/>
+                      <span className="text-yellow-400 font-bold font-mono">• Submenu Bahasa:</span> Mengganti bahasa seluruh game secara instan antara Bahasa Indonesia (ID) dan English (EN).
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Submenu Install Aplikasi:</span> Memasang Nekomon sebagai aplikasi Android / Progressive Web App (PWA) lengkap dengan panduan instalasi di Chrome dan Safari.
+                    </p>
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -550,6 +635,88 @@ export const GameGuide: React.FC = () => {
                       Nekomon Shop is officially connected to <span className="text-emerald-400 font-bold font-mono">iPaymu Payment Gateway</span> for secure, seamless digital microtransactions (Nekomon Points & Booster Packs).
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Official Virtual Account & Channels:</span> Supports Instant QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja) and Bank Virtual Accounts (<span className="text-emerald-300 font-mono font-bold">Official iPaymu VA: 1179005624089327</span>). Transactions are instantly verified, crediting purchased points and booster packs to your Trainer vault within seconds!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-rose-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+                    <Flame className="w-5 h-5 text-rose-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-rose-300 font-mono text-xs uppercase mb-1">17. Raid Boss GPS Spot Map Spawns ⚔️📍</h4>
+                    <p className="leading-relaxed">
+                      Active Raid Boss spawn points are now rendered directly in real-time onto the <span className="text-amber-400 font-bold font-mono">Nekomon Spot Map</span>.
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Boss Focus Shortcut:</span> Click the <span className="text-rose-400 font-mono font-bold">Boss</span> quick button on the map toolbar to smoothly center the camera onto the nearest active Raid Boss.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• 10 KM Combat Range:</span> Each Boss projects a 10 km encounter perimeter. If you are within range, you can immediately enter the combat lobby from the spotlight panel!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-indigo-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-indigo-300 font-mono text-xs uppercase mb-1">18. 5 Main Menus & Dynamic Sub-Menu Carousel 📱⚡</h4>
+                    <p className="leading-relaxed">
+                      The game navigation now features a streamlined <span className="text-indigo-400 font-bold font-mono">Dual-Tier Carousel</span> design that eliminates clutter and redundancy:
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• 5 Unified Main Menus:</span> Displays only the five top categories: <span className="text-amber-300">Exploration & Maps</span>, <span className="text-pink-300">Collection & Dex</span>, <span className="text-purple-300">Battle & Quests</span>, <span className="text-teal-300">Community & Shop</span>, and <span className="text-blue-300">Account & Support</span>.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• Dynamic Sub-Menu Carousel:</span> Sub-menus only appear when a category is accessed or clicked, presented in a sleek horizontal carousel with smooth left/right navigation controls.
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Non-Redundant Action Dock:</span> The bottom action dock on mobile and tablet cleanly reflects the 5 core categories without duplicating individual sub-items, keeping the interface uncluttered and ergonomic.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-teal-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-teal-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-teal-300 font-mono text-xs uppercase mb-1">19. Player Presence & Activity Status History 🟢⏱️</h4>
+                    <p className="leading-relaxed">
+                      In the <span className="text-teal-400 font-bold font-mono">Mailbox & Messaging Hub</span>, player presence is tracked accurately.
+                      <br className="my-1"/>
+                      <span className="text-emerald-400 font-bold font-mono">• Online & Last Seen:</span> A pulsing green indicator signals active trainers, while offline players display an exact timestamp of when they were last seen online (e.g. "Last seen 15m ago" or "Yesterday").
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-red-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                    <Swords className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">20. Multi-City Raid Bosses (Level 6-30 Nationwide) 📍⚔️</h4>
+                    <p className="leading-relaxed">
+                      Colossal <span className="text-red-400 font-bold font-mono">Co-op Raid Bosses</span> now spawn in major cities throughout Indonesia (Jakarta, Bandung, Surabaya, Yogyakarta, Medan, Bali/Denpasar, Semarang, Makassar, Palembang, Malang, etc.) with combat tiers ranging from <span className="text-amber-400 font-bold font-mono">Level 6 to 30</span>!
+                      <br className="my-1"/>
+                      <span className="text-yellow-400 font-bold font-mono">• Local City Raids:</span> Trainers in each city can join battles against Raid Bosses spawned in their own home city within a 10 km GPS perimeter.
+                      <br/>
+                      <span className="text-cyan-400 font-bold font-mono">• City Filter in Hub:</span> Use the city dropdown in the Raid Boss Hub to view active boss spawns across any specific city in Indonesia.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/80 p-4 rounded-xl border border-amber-500/40 flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <Settings className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-300 font-mono text-xs uppercase mb-1">21. Centralized Settings Menu (Audio, Language & PWA) ⚙️🎵</h4>
+                    <p className="leading-relaxed">
+                      All system preferences are now unified into the <span className="text-amber-400 font-bold font-mono">Settings</span> menu, accessible directly from the bottom Action Dock (next to Account):
+                      <br className="my-1"/>
+                      <span className="text-cyan-400 font-bold font-mono">• Audio Submenu:</span> Control the BGM soundtrack player (Adventure, PvP Arena, and Ambient Silence), music volume, and mute/unmute SFX effects. The previous floating widget has been retired for a cleaner main screen.
+                      <br/>
+                      <span className="text-yellow-400 font-bold font-mono">• Language Submenu:</span> Switch the entire game language instantly between Indonesian (ID) and English (EN).
+                      <br/>
+                      <span className="text-emerald-400 font-bold font-mono">• Install App Submenu:</span> Install Nekomon as an Android / Progressive Web App (PWA) with step-by-step instructions for Chrome and Safari.
                     </p>
                   </div>
                 </div>

@@ -887,11 +887,172 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
   }
 ];
 
+export interface CityRaidRegion {
+  id: string;
+  name: string;
+  nameEn: string;
+  lat: number;
+  lng: number;
+  landmarks: string[];
+}
+
+export const INDONESIAN_CITIES: CityRaidRegion[] = [
+  {
+    id: "jakarta",
+    name: "Jakarta (DKI)",
+    nameEn: "Jakarta (Metropolitan)",
+    lat: -6.1754,
+    lng: 106.8272,
+    landmarks: ["Monumen Nasional (Monas)", "Gelora Bung Karno Senayan", "Taman Impian Ancol", "Bundaran HI", "Kawasan PIK Batavia"]
+  },
+  {
+    id: "bandung",
+    name: "Bandung",
+    nameEn: "Bandung",
+    lat: -6.9025,
+    lng: 107.6186,
+    landmarks: ["Gedung Sate", "Alun-Alun Bandung", "Kawasan Dago Atas", "Jalan Braga Heritage", "Taman Hutan Raya Juanda"]
+  },
+  {
+    id: "surabaya",
+    name: "Surabaya",
+    nameEn: "Surabaya",
+    lat: -7.2575,
+    lng: 112.7521,
+    landmarks: ["Tugu Pahlawan", "Taman Bungkul", "Jembatan Nasional Suramadu", "Gubeng Heritage", "Monumen Kapal Selam"]
+  },
+  {
+    id: "yogyakarta",
+    name: "Yogyakarta",
+    nameEn: "Yogyakarta",
+    lat: -7.7956,
+    lng: 110.3695,
+    landmarks: ["Tugu Pal Putih Jogja", "Titik Nol Km Malioboro", "Kawasan Candi Prambanan", "Keraton Ngayogyakarta", "Alun-Alun Kidul"]
+  },
+  {
+    id: "semarang",
+    name: "Semarang",
+    nameEn: "Semarang",
+    lat: -6.9667,
+    lng: 110.4167,
+    landmarks: ["Simpang Lima Semarang", "Lawang Sewu Heritage", "Kawasan Kota Lama", "Sam Poo Kong", "Taman Indonesia Kaya"]
+  },
+  {
+    id: "medan",
+    name: "Medan",
+    nameEn: "Medan",
+    lat: 3.5952,
+    lng: 98.6722,
+    landmarks: ["Istana Maimun", "Lapangan Merdeka Medan", "Kawasan Kesawan Heritage", "Masjid Raya Al-Mashun", "Taman Cadika"]
+  },
+  {
+    id: "makassar",
+    name: "Makassar",
+    nameEn: "Makassar",
+    lat: -5.1477,
+    lng: 119.4327,
+    landmarks: ["Pantai Losari", "Benteng Fort Rotterdam", "Lapangan Karebosi", "Kawasan Tanjung Bunga", "Masjid 99 Kubah"]
+  },
+  {
+    id: "denpasar",
+    name: "Denpasar (Bali)",
+    nameEn: "Denpasar & Bali",
+    lat: -8.6705,
+    lng: 115.2126,
+    landmarks: ["Monumen Bajra Sandhi Renon", "Garuda Wisnu Kencana (GWK)", "Pantai Sanur Sunrise", "Kawasan Kuta Pesisir", "Pura Jagatnatha"]
+  },
+  {
+    id: "palembang",
+    name: "Palembang",
+    nameEn: "Palembang",
+    lat: -2.9761,
+    lng: 104.7754,
+    landmarks: ["Jembatan Ampera", "Benteng Kuto Besak", "Jakabaring Sport City", "Pulau Kemaro", "Taman Kambang Iwak"]
+  },
+  {
+    id: "malang",
+    name: "Malang",
+    nameEn: "Malang",
+    lat: -7.9666,
+    lng: 112.6326,
+    landmarks: ["Alun-Alun Tugu Malang", "Ijen Boulevard Heritage", "Kampung Warna-Warni Jodipan", "Kawasan Brawijaya", "Taman Rekreasi Kota"]
+  },
+  {
+    id: "solo",
+    name: "Solo (Surakarta)",
+    nameEn: "Solo (Surakarta)",
+    lat: -7.5755,
+    lng: 110.8243,
+    landmarks: ["Keraton Surakarta Hadiningrat", "Stadion Manahan Solo", "Pasar Gede Hardjonagoro", "Taman Sriwedari", "Pura Mangkunegaran"]
+  },
+  {
+    id: "balikpapan_ikn",
+    name: "Balikpapan & IKN",
+    nameEn: "Balikpapan & Nusantara IKN",
+    lat: -1.2379,
+    lng: 116.8529,
+    landmarks: ["Titik Nol Nusantara IKN", "Pantai Melawai Balikpapan", "Kawasan Mangrove Center", "Hutan Lindung Sungai Wain", "Lapangan Merdeka"]
+  },
+  {
+    id: "batam",
+    name: "Batam",
+    nameEn: "Batam",
+    lat: 1.1301,
+    lng: 104.0529,
+    landmarks: ["Jembatan Barelang", "Batam Center Mega Mall", "Kawasan Nagoya City", "Welcome to Batam Landmark", "Pantai Nongsa"]
+  },
+  {
+    id: "padang",
+    name: "Padang",
+    nameEn: "Padang",
+    lat: -0.9471,
+    lng: 100.4172,
+    landmarks: ["Pantai Padang Taplau", "Jembatan Siti Nurbaya", "Masjid Raya Sumatera Barat", "Kawasan Kota Tua Padang", "Pantai Air Manis"]
+  },
+  {
+    id: "pontianak",
+    name: "Pontianak",
+    nameEn: "Pontianak",
+    lat: -0.0263,
+    lng: 109.3425,
+    landmarks: ["Tugu Khatulistiwa Equator", "Taman Alun Kapuas Waterfront", "Kraton Kadriah", "Rumah Radakng Dayak", "Waterfront Sungai Kapuas"]
+  },
+  {
+    id: "manado",
+    name: "Manado",
+    nameEn: "Manado",
+    lat: 1.4748,
+    lng: 124.8421,
+    landmarks: ["Kawasan Megamas Manado", "Jembatan Soekarno", "Pantai Malalayang", "Patung Yesus Memberkati", "Pulau Bunaken Coral Gate"]
+  }
+];
+
+export const CITY_BOSS_CONFIGS = [
+  { dLat: 0.012, dLng: 0.010, tplIdx: 0, level: 6, landmarkIdx: 0 },   // Oyen Berserker Purba (Lv 6, Api, Kucing)
+  { dLat: -0.015, dLng: 0.014, tplIdx: 10, level: 7, landmarkIdx: 1 }, // Ironfang Cyber-Rat Swarm (Lv 7, Petir, Tikus)
+  { dLat: 0.020, dLng: -0.018, tplIdx: 5, level: 9, landmarkIdx: 2 },  // Glacial Frosthound Howler (Lv 9, Air, Anjing)
+  { dLat: -0.010, dLng: -0.022, tplIdx: 1, level: 12, landmarkIdx: 3 }, // Bastet Mecha-Sphynx (Lv 12, Tanah, Kucing)
+  { dLat: 0.025, dLng: 0.024, tplIdx: 11, level: 15, landmarkIdx: 4 },  // Abyssal Rat Titan Behemoth (Lv 15, Tanah, Tikus)
+  { dLat: 0.014, dLng: -0.010, tplIdx: 2, level: 16, landmarkIdx: 0 },  // Oceanus Bastet Tidal Queen (Lv 16, Air, Kucing)
+  { dLat: -0.018, dLng: 0.028, tplIdx: 6, level: 18, landmarkIdx: 1 },  // Cyber-Anubis High Sentinel (Lv 18, Tanah, Anjing)
+  { dLat: 0.018, dLng: 0.012, tplIdx: 12, level: 19, landmarkIdx: 2 }, // Pyro-Rodent Magma King (Lv 19, Api, Tikus)
+  { dLat: -0.028, dLng: 0.020, tplIdx: 7, level: 20, landmarkIdx: 3 },  // Thunderfang Fenrir Direwolf (Lv 20, Petir, Anjing)
+  { dLat: 0.032, dLng: -0.025, tplIdx: 3, level: 22, landmarkIdx: 4 },  // Celestial Zephyr Felis (Lv 22, Angin, Kucing)
+  { dLat: -0.022, dLng: -0.014, tplIdx: 13, level: 23, landmarkIdx: 0 }, // Radioactive Sewer Behemoth (Lv 23, Air, Tikus)
+  { dLat: -0.012, dLng: 0.030, tplIdx: 8, level: 24, landmarkIdx: 1 },  // Tempest Howler Direhound (Lv 24, Angin, Anjing)
+  { dLat: 0.022, dLng: -0.032, tplIdx: 14, level: 27, landmarkIdx: 2 }, // Sovereign Plague Rodent (Lv 27, Angin, Tikus)
+  { dLat: -0.035, dLng: -0.028, tplIdx: 9, level: 28, landmarkIdx: 3 },  // Cerberus Infernal Hellhound (Lv 28, Api, Anjing)
+  { dLat: 0.008, dLng: -0.012, tplIdx: 4, level: 30, landmarkIdx: 4 },  // Emperor Spark Raijin Cat (Lv 30, Petir, Kucing)
+];
+
 export function createRaidBossInstance(
   templateIndex: number,
   lat: number,
   lng: number,
-  customLevel?: number
+  customLevel?: number,
+  cityId?: string,
+  cityName?: string,
+  locationNameOverride?: string
 ): RaidBoss {
   const tpl = RAID_BOSS_TEMPLATES[templateIndex % RAID_BOSS_TEMPLATES.length];
   const level = customLevel && customLevel >= 5 && customLevel <= 30 ? customLevel : tpl.level;
@@ -909,10 +1070,14 @@ export function createRaidBossInstance(
   const cardXp = Math.round(level * 20) + 100;
 
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(); // 4 hours active
+  const expiresAt = new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString(); // 6 hours active
 
-  const id = `boss_${tpl.speciesType}_lv${level}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const id = `boss_${cityId || "global"}_${tpl.speciesType}_lv${level}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const imageUrl = tpl.imageUrl || generateBossArtwork(tpl.speciesType, tpl.name, tpl.element, level);
+
+  const locName = locationNameOverride 
+    ? (cityName ? `${locationNameOverride}, ${cityName}` : locationNameOverride)
+    : (cityName ? `${tpl.locationName}, ${cityName}` : tpl.locationName);
 
   return {
     id,
@@ -935,7 +1100,9 @@ export function createRaidBossInstance(
     def,
     spd,
     imageUrl,
-    locationName: tpl.locationName,
+    locationName: locName,
+    cityId: cityId || "jakarta",
+    cityName: cityName || "Jakarta (DKI)",
     latitude: lat,
     longitude: lng,
     spawnRadiusKm: 10,
