@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   MapPin,
@@ -312,7 +312,7 @@ export const NavigationCarousel: React.FC<NavigationCarouselProps> = ({
   onOpenDatabaseBackup
 }) => {
   const currentCategory = getCategoryForTab(currentTab);
-  const [activeCategory, setActiveCategory] = React.useState<NavCategoryId>(currentCategory);
+  const [activeCategory, setActiveCategory] = useState<NavCategoryId>(currentCategory);
 
   // Synchronize category with active tab
   useEffect(() => {

@@ -372,6 +372,7 @@ export interface RaidBoss {
   isActive: boolean;
   expiresAt: string;
   createdAt: string;
+  isManual?: boolean;
   loreId?: string;
   loreEn?: string;
 }

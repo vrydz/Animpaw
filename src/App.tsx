@@ -28,10 +28,6 @@ import { RaidBossHub } from "./components/RaidBossHub";
 import { RaidBattleArena } from "./components/RaidBattleArena";
 import { getAnimeNekomonSpeciesArtwork } from "./data/nekomonSpeciesData";
 import { useLanguage } from "./context/LanguageContext";
-
-const nekomonLogoImg = new URL("./assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
-const nekomonCardShowcaseImg = new URL("./assets/images/nekomon_card_showcase_banner_1786349079069.jpg", import.meta.url).href;
-const nekomonBottomBannerImg = new URL("./assets/images/bottom.png", import.meta.url).href;
 import { 
   Sparkles, 
   LogOut, 
@@ -92,6 +88,10 @@ import { getRouteFromPath, navigateToRoute } from "./utils/routes";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "./lib/audio";
 import { PLAYER_BADGES, getTrainerLevel, getHighestBadge, PlayerBadge } from "./lib/badges";
+
+const nekomonLogoImg = new URL("./assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
+const nekomonCardShowcaseImg = new URL("./assets/images/nekomon_card_showcase_banner_1786349079069.jpg", import.meta.url).href;
+const nekomonBottomBannerImg = new URL("./assets/images/bottom.png", import.meta.url).href;
 
 // Smooth mobile native-feel tab transition variants
 export type NavigationTab =
@@ -504,6 +504,12 @@ export default function App() {
         setShowLandingLegalModal(false);
       }
     };
+
+    // Hide server-injected SEO crawler container once React mounts
+    const staticSeo = document.getElementById("seo-static-content");
+    if (staticSeo) {
+      staticSeo.style.display = "none";
+    }
 
     syncRoute();
     window.addEventListener("popstate", syncRoute);
@@ -2006,13 +2012,6 @@ export default function App() {
               </div>
             </footer>
 
-            {/* Render Landing Legal Pages Modal */}
-            <LegalPagesModal
-              isOpen={showLandingLegalModal}
-              initialTab={landingLegalTab}
-              onClose={() => setShowLandingLegalModal(false)}
-            />
-
             {/* Lightbox Fullscreen Modal for Official Game Card System Image */}
             {isBottomBannerZoomed && (
               <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-8 animate-fadeIn">
@@ -3333,6 +3332,13 @@ export default function App() {
               .catch(() => {});
           }
         }}
+      />
+
+      {/* Global Virtual Routing & Legal Pages Modal (About, Privacy, Terms, Refund, Contact) */}
+      <LegalPagesModal
+        isOpen={showLandingLegalModal}
+        initialTab={landingLegalTab}
+        onClose={() => setShowLandingLegalModal(false)}
       />
 
     </div>

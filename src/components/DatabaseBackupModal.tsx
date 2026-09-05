@@ -40,7 +40,11 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isDev = user?.email && ["verydiaz@gmail.com", "support@nekomon.online", "nekomaster@nekomon.online"].includes(user.email.toLowerCase().trim());
+  const isDev =
+    user?.role === "developer" ||
+    (user?.email && ["verydiaz@gmail.com", "support@nekomon.online", "nekomaster@nekomon.online"].includes(user.email.toLowerCase().trim()));
+
+  const getDevToken = () => localStorage.getItem("token") || localStorage.getItem("nekomon_token") || "";
 
   // 1. Download full JSON backup
   const handleDownloadBackup = async () => {
@@ -49,7 +53,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
       setErrorMsg(null);
       setSuccessMsg(null);
 
-      const token = localStorage.getItem("nekomon_token");
+      const token = getDevToken();
       const res = await fetch("/api/developer/database/backup", {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
@@ -98,7 +102,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
         const content = event.target?.result as string;
         const backupData = JSON.parse(content);
 
-        const token = localStorage.getItem("nekomon_token");
+        const token = getDevToken();
         const res = await fetch("/api/developer/database/restore", {
           method: "POST",
           headers: {
@@ -141,7 +145,7 @@ export const DatabaseBackupModal: React.FC<DatabaseBackupModalProps> = ({
       setErrorMsg(null);
       setSuccessMsg(null);
 
-      const token = localStorage.getItem("nekomon_token");
+      const token = getDevToken();
       const res = await fetch("/api/developer/database/sync-firestore", {
         method: "POST",
         headers: {

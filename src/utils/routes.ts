@@ -25,9 +25,14 @@ export function getRouteFromPath(pathname: string): RouteResolution {
       return { route: "/privacy-policy", legalTab: "privacy" };
     case "/terms":
     case "/terms-of-service":
+    case "/terms-and-conditions":
+    case "/term-and-conditions":
+    case "/terms-conditions":
+    case "/terms-of-use":
       return { route: "/terms-of-service", legalTab: "terms" };
     case "/refund":
     case "/refund-policy":
+    case "/refunds":
       return { route: "/refund-policy", legalTab: "refund" };
     case "/about":
     case "/about-us":

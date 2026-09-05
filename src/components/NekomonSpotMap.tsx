@@ -474,10 +474,10 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
     });
     bossMarkersRef.current = {};
 
-    // Draw Raid Boss markers
+    // Draw Raid Boss markers (No distance limit for Raid Bosses)
     raidBosses.forEach((boss) => {
       const dist = calculateDistanceMeters(playerPos.lat, playerPos.lng, boss.latitude, boss.longitude);
-      const inRadius = dist <= (boss.spawnRadiusKm || 10) * 1000;
+      const inRadius = true; // Tidak ada batas jarak untuk menantang Raid Boss
       const isSelected = selectedBoss?.id === boss.id;
       const distKmStr = (dist / 1000).toFixed(1);
       const elementEmoji = boss.element === "Api" ? "🔥" : boss.element === "Air" ? "💧" : boss.element === "Tanah" ? "🌿" : boss.element === "Petir" ? "⚡" : "🌪️";
@@ -489,15 +489,11 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
           <div class="relative flex flex-col items-center group cursor-pointer select-none">
             <div class="px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-lg whitespace-nowrap mb-1 flex items-center gap-1 transition-transform ${
               isSelected ? "scale-110 ring-2 ring-yellow-400" : ""
-            } ${
-              inRadius 
-                ? "bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-red-500/60 animate-pulse border border-yellow-300/80" 
-                : "bg-slate-950/95 text-rose-300 border border-rose-600/50"
-            }">
+            } bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-red-500/60 animate-pulse border border-yellow-300/80">
               <span class="text-xs">⚔️</span>
               <span>Lv.${boss.level} ${language === "id" ? boss.name : boss.nameEn}</span>
               <span class="opacity-90 font-mono text-[9px]">(${distKmStr}km)</span>
-              ${inRadius ? '<span class="text-[8px] bg-yellow-400 text-slate-950 font-black px-1 rounded-sm">SIAP</span>' : ""}
+              <span class="text-[8px] bg-yellow-400 text-slate-950 font-black px-1 rounded-sm">SIAP</span>
             </div>
             <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-2xl border-2 overflow-hidden transition-transform ${
               isSelected ? "scale-125 ring-4 ring-rose-500 shadow-rose-500/80" : "hover:scale-110"
@@ -812,7 +808,7 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
               haptics.tap();
               onNavigateToRaid();
             }}
-            title={language === "id" ? "Buka Raid Boss Co-op Arena (10 KM)" : "Open Co-op Raid Boss Arena (10 KM)"}
+            title={language === "id" ? "Buka Raid Boss Co-op Arena (Lintas Kota / Bebas Jarak)" : "Open Co-op Raid Boss Arena (Global / No Limit)"}
             className="p-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white hover:from-red-500 hover:to-rose-500 border border-red-500/50 rounded-2xl shadow-xl shadow-red-950/60 backdrop-blur-md transition-all active:scale-95 flex items-center justify-center animate-pulse"
           >
             <Swords className="w-5 h-5" />
@@ -1072,42 +1068,21 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
               </div>
             </div>
 
-            {/* Action Button: Challenge / Enter Lobby */}
+            {/* Action Button: Challenge / Enter Lobby (No distance limit) */}
             <div className="flex items-center gap-2 pt-1">
-              {(() => {
-                const distM = calculateDistanceMeters(playerPos.lat, playerPos.lng, selectedBoss.latitude, selectedBoss.longitude);
-                const inRadius = distM <= (selectedBoss.spawnRadiusKm || 10) * 1000;
-                return inRadius ? (
-                  <button
-                    onClick={() => {
-                      haptics.heavy();
-                      try { audio.playVictorySound(); } catch (_) {}
-                      if (onNavigateToRaid) {
-                        onNavigateToRaid(selectedBoss.id);
-                      }
-                    }}
-                    className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-red-900/60 flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider border border-yellow-300/40"
-                  >
-                    <Swords className="w-4 h-4 animate-bounce" />
-                    <span>{language === "id" ? "Masuk Ruang Pertempuran Raid Boss" : "Enter Raid Boss Battle Room"}</span>
-                  </button>
-                ) : (
-                  <div className="flex-1 p-2.5 bg-rose-950/50 border border-rose-800/60 rounded-2xl flex items-center justify-between text-xs text-rose-300">
-                    <span className="flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                      <span>{language === "id" ? "Di luar radius tempur 10 km. Dekati lokasi!" : "Outside 10 km combat radius. Move closer!"}</span>
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (onNavigateToRaid) onNavigateToRaid(selectedBoss.id);
-                      }}
-                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded-xl border border-slate-700 shrink-0 ml-2 cursor-pointer"
-                    >
-                      {language === "id" ? "Lihat Info" : "View Info"}
-                    </button>
-                  </div>
-                );
-              })()}
+              <button
+                onClick={() => {
+                  haptics.heavy();
+                  try { audio.playVictorySound(); } catch (_) {}
+                  if (onNavigateToRaid) {
+                    onNavigateToRaid(selectedBoss.id);
+                  }
+                }}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-red-900/60 flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider border border-yellow-300/40"
+              >
+                <Swords className="w-4 h-4 animate-bounce" />
+                <span>{language === "id" ? "Masuk Ruang Pertempuran Raid Boss" : "Enter Raid Boss Battle Room"}</span>
+              </button>
             </div>
           </motion.div>
         )}

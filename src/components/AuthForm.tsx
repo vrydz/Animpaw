@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   User, 
   ShieldAlert, 
@@ -49,7 +49,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState<boolean>(false);
 
   // Background polling for email link clicks in another tab / phone
-  React.useEffect(() => {
+  useEffect(() => {
     if (mode !== "register_verifying" || !token) return;
 
     const interval = setInterval(async () => {
@@ -74,7 +74,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   }, [mode, token, isEn]);
 
   // Resend cooldown timer
-  React.useEffect(() => {
+  useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => {
       setResendCooldown((prev) => Math.max(0, prev - 1));
@@ -83,7 +83,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   }, [resendCooldown]);
 
   // Hidden shortcut to autofill demo account for testing without showing on UI (Alt+D)
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === "d" || e.key === "D")) {
         e.preventDefault();

@@ -188,7 +188,12 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
 const ROUTE_ALIASES: Record<string, string> = {
   "/privacy": "/privacy-policy",
   "/terms": "/terms-of-service",
+  "/terms-and-conditions": "/terms-of-service",
+  "/term-and-conditions": "/terms-of-service",
+  "/terms-conditions": "/terms-of-service",
+  "/terms-of-use": "/terms-of-service",
   "/refund": "/refund-policy",
+  "/refunds": "/refund-policy",
   "/about-us": "/about",
   "/contact-us": "/contact",
   "/panduan": "/guide",
@@ -229,24 +234,29 @@ export function renderSeoHtml(baseHtml: string, routeMeta: RouteMeta): string {
   // Replace Canonical Link
   html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${routeMeta.canonical}" />`);
 
-  // Inject Crawler-Visible Semantic HTML inside <div id="root">
-  const noscriptFallback = `
+  // Inject Crawler-Visible Semantic HTML container for Google Search & AdSense crawlers
+  const semanticContent = `
+    <!-- Googlebot & AdSense Crawler Semantic SEO Container -->
+    <div id="seo-static-content" style="max-width: 900px; margin: 40px auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; border-radius: 16px; border: 1px solid #334155; line-height: 1.6;">
+      ${routeMeta.contentHtml}
+      <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #334155; font-size: 13px; color: #94a3b8; display: flex; flex-wrap: wrap; gap: 12px;">
+        <a href="/" style="color: #38bdf8; text-decoration: none;">Beranda Nekomon Online</a> • 
+        <a href="/about" style="color: #38bdf8; text-decoration: none;">Tentang Kami</a> • 
+        <a href="/privacy-policy" style="color: #38bdf8; text-decoration: none;">Kebijakan Privasi</a> • 
+        <a href="/terms-and-conditions" style="color: #38bdf8; text-decoration: none;">Syarat & Ketentuan</a> • 
+        <a href="/refund-policy" style="color: #38bdf8; text-decoration: none;">Kebijakan Refund</a> • 
+        <a href="/contact-us" style="color: #38bdf8; text-decoration: none;">Hubungi Kami</a> • 
+        <a href="/guide" style="color: #38bdf8; text-decoration: none;">Panduan Game</a>
+      </div>
+    </div>
     <noscript>
-      <div style="max-width: 900px; margin: 40px auto; padding: 24px; font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; border-radius: 16px; border: 1px solid #334155;">
+      <div style="max-width: 900px; margin: 20px auto; padding: 20px; font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; border-radius: 16px; border: 1px solid #334155;">
         ${routeMeta.contentHtml}
-        <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #334155; font-size: 12px; color: #94a3b8;">
-          <a href="/" style="color: #38bdf8;">Beranda Nekomon Online</a> | 
-          <a href="/privacy-policy" style="color: #38bdf8;">Kebijakan Privasi</a> | 
-          <a href="/terms-of-service" style="color: #38bdf8;">Syarat Layanan</a> | 
-          <a href="/refund-policy" style="color: #38bdf8;">Kebijakan Refund</a> | 
-          <a href="/about" style="color: #38bdf8;">Tentang Kami</a> | 
-          <a href="/contact" style="color: #38bdf8;">Hubungi Kami</a>
-        </div>
       </div>
     </noscript>`;
 
   if (html.includes('<div id="root">')) {
-    html = html.replace('<div id="root">', `<div id="root">${noscriptFallback}`);
+    html = html.replace('<div id="root">', `<div id="root">${semanticContent}`);
   }
 
   return html;

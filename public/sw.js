@@ -62,9 +62,14 @@ self.addEventListener("fetch", (event) => {
   // 1. Skip non-GET requests and cross-origin external API requests
   if (request.method !== "GET") return;
 
-  // 2. Bypass API calls and payment gateways from cache
+  // 2. Bypass API calls, dev modules, and payment gateways from cache
   if (
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/node_modules/") ||
+    url.pathname.startsWith("/src/") ||
+    url.pathname.startsWith("/@") ||
+    url.pathname.includes(".vite/") ||
+    url.search.includes("?v=") ||
     url.hostname.includes("midtrans.com") ||
     url.hostname.includes("googlesyndication.com") ||
     url.hostname.includes("firestore.googleapis.com")

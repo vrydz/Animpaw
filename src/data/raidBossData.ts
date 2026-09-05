@@ -1028,20 +1028,53 @@ export const INDONESIAN_CITIES: CityRaidRegion[] = [
 ];
 
 export const CITY_BOSS_CONFIGS = [
+  // Standby Tier 1: Level 6, 7, 8 (Always Stand By)
   { dLat: 0.012, dLng: 0.010, tplIdx: 0, level: 6, landmarkIdx: 0 },   // Oyen Berserker Purba (Lv 6, Api, Kucing)
   { dLat: -0.015, dLng: 0.014, tplIdx: 10, level: 7, landmarkIdx: 1 }, // Ironfang Cyber-Rat Swarm (Lv 7, Petir, Tikus)
-  { dLat: 0.020, dLng: -0.018, tplIdx: 5, level: 9, landmarkIdx: 2 },  // Glacial Frosthound Howler (Lv 9, Air, Anjing)
-  { dLat: -0.010, dLng: -0.022, tplIdx: 1, level: 12, landmarkIdx: 3 }, // Bastet Mecha-Sphynx (Lv 12, Tanah, Kucing)
-  { dLat: 0.025, dLng: 0.024, tplIdx: 11, level: 15, landmarkIdx: 4 },  // Abyssal Rat Titan Behemoth (Lv 15, Tanah, Tikus)
-  { dLat: 0.014, dLng: -0.010, tplIdx: 2, level: 16, landmarkIdx: 0 },  // Oceanus Bastet Tidal Queen (Lv 16, Air, Kucing)
-  { dLat: -0.018, dLng: 0.028, tplIdx: 6, level: 18, landmarkIdx: 1 },  // Cyber-Anubis High Sentinel (Lv 18, Tanah, Anjing)
-  { dLat: 0.018, dLng: 0.012, tplIdx: 12, level: 19, landmarkIdx: 2 }, // Pyro-Rodent Magma King (Lv 19, Api, Tikus)
-  { dLat: -0.028, dLng: 0.020, tplIdx: 7, level: 20, landmarkIdx: 3 },  // Thunderfang Fenrir Direwolf (Lv 20, Petir, Anjing)
-  { dLat: 0.032, dLng: -0.025, tplIdx: 3, level: 22, landmarkIdx: 4 },  // Celestial Zephyr Felis (Lv 22, Angin, Kucing)
-  { dLat: -0.022, dLng: -0.014, tplIdx: 13, level: 23, landmarkIdx: 0 }, // Radioactive Sewer Behemoth (Lv 23, Air, Tikus)
-  { dLat: -0.012, dLng: 0.030, tplIdx: 8, level: 24, landmarkIdx: 1 },  // Tempest Howler Direhound (Lv 24, Angin, Anjing)
-  { dLat: 0.022, dLng: -0.032, tplIdx: 14, level: 27, landmarkIdx: 2 }, // Sovereign Plague Rodent (Lv 27, Angin, Tikus)
-  { dLat: -0.035, dLng: -0.028, tplIdx: 9, level: 28, landmarkIdx: 3 },  // Cerberus Infernal Hellhound (Lv 28, Api, Anjing)
+  { dLat: 0.016, dLng: -0.014, tplIdx: 5, level: 8, landmarkIdx: 2 },  // Glacial Frosthound Howler (Lv 8, Air, Anjing)
+
+  // Tier 2: Level 9 & 10 (Unlocked after Lv 8 is defeated)
+  { dLat: 0.020, dLng: -0.018, tplIdx: 1, level: 9, landmarkIdx: 3 },  // Bastet Mecha-Sphynx (Lv 9, Tanah, Kucing)
+  { dLat: -0.018, dLng: 0.022, tplIdx: 6, level: 10, landmarkIdx: 4 }, // Cyber-Anubis High Sentinel (Lv 10, Tanah, Anjing)
+
+  // Tier 3: Level 11 & 12 (Unlocked after Lv 10 is defeated)
+  { dLat: 0.018, dLng: 0.012, tplIdx: 12, level: 11, landmarkIdx: 0 }, // Pyro-Rodent Magma King (Lv 11, Api, Tikus)
+  { dLat: -0.010, dLng: -0.022, tplIdx: 2, level: 12, landmarkIdx: 1 }, // Oceanus Bastet Tidal Queen (Lv 12, Air, Kucing)
+
+  // Tier 4: Level 13 & 14 (Unlocked after Lv 12 is defeated)
+  { dLat: -0.024, dLng: 0.018, tplIdx: 7, level: 13, landmarkIdx: 2 }, // Thunderfang Fenrir Direwolf (Lv 13, Petir, Anjing)
+  { dLat: 0.028, dLng: -0.020, tplIdx: 3, level: 14, landmarkIdx: 3 }, // Celestial Zephyr Felis (Lv 14, Angin, Kucing)
+
+  // Tier 5: Level 15 & 16 (Unlocked after Lv 14 is defeated)
+  { dLat: 0.025, dLng: 0.024, tplIdx: 11, level: 15, landmarkIdx: 4 }, // Abyssal Rat Titan Behemoth (Lv 15, Tanah, Tikus)
+  { dLat: 0.014, dLng: -0.010, tplIdx: 8, level: 16, landmarkIdx: 0 },  // Tempest Howler Direhound (Lv 16, Angin, Anjing)
+
+  // Tier 6: Level 17 & 18 (Unlocked after Lv 16 is defeated)
+  { dLat: -0.022, dLng: -0.014, tplIdx: 13, level: 17, landmarkIdx: 1 }, // Radioactive Sewer Behemoth (Lv 17, Air, Tikus)
+  { dLat: -0.030, dLng: 0.024, tplIdx: 9, level: 18, landmarkIdx: 2 },  // Cerberus Infernal Hellhound (Lv 18, Api, Anjing)
+
+  // Tier 7: Level 19 & 20 (Unlocked after Lv 18 is defeated)
+  { dLat: 0.008, dLng: -0.012, tplIdx: 4, level: 19, landmarkIdx: 3 },  // Emperor Spark Raijin Cat (Lv 19, Petir, Kucing)
+  { dLat: 0.022, dLng: -0.032, tplIdx: 14, level: 20, landmarkIdx: 4 }, // Sovereign Plague Rodent (Lv 20, Angin, Tikus)
+
+  // Tier 8: Level 21 & 22 (Unlocked after Lv 20 is defeated)
+  { dLat: 0.015, dLng: 0.025, tplIdx: 0, level: 21, landmarkIdx: 0 },  // Oyen Berserker Purba (Lv 21, Api, Kucing)
+  { dLat: -0.025, dLng: -0.020, tplIdx: 5, level: 22, landmarkIdx: 1 }, // Glacial Frosthound Howler (Lv 22, Air, Anjing)
+
+  // Tier 9: Level 23 & 24 (Unlocked after Lv 22 is defeated)
+  { dLat: -0.016, dLng: 0.032, tplIdx: 10, level: 23, landmarkIdx: 2 }, // Ironfang Cyber-Rat Swarm (Lv 23, Petir, Tikus)
+  { dLat: 0.030, dLng: 0.015, tplIdx: 1, level: 24, landmarkIdx: 3 },  // Bastet Mecha-Sphynx (Lv 24, Tanah, Kucing)
+
+  // Tier 10: Level 25 & 26 (Unlocked after Lv 24 is defeated)
+  { dLat: -0.020, dLng: -0.030, tplIdx: 6, level: 25, landmarkIdx: 4 }, // Cyber-Anubis High Sentinel (Lv 25, Tanah, Anjing)
+  { dLat: 0.012, dLng: -0.025, tplIdx: 12, level: 26, landmarkIdx: 0 }, // Pyro-Rodent Magma King (Lv 26, Api, Tikus)
+
+  // Tier 11: Level 27 & 28 (Unlocked after Lv 26 is defeated)
+  { dLat: 0.024, dLng: 0.028, tplIdx: 2, level: 27, landmarkIdx: 1 },  // Oceanus Bastet Tidal Queen (Lv 27, Air, Kucing)
+  { dLat: -0.028, dLng: 0.020, tplIdx: 7, level: 28, landmarkIdx: 2 },  // Thunderfang Fenrir Direwolf (Lv 28, Petir, Anjing)
+
+  // Tier 12: Level 29 & 30 (Unlocked after Lv 28 is defeated)
+  { dLat: -0.035, dLng: -0.028, tplIdx: 9, level: 29, landmarkIdx: 3 },  // Cerberus Infernal Hellhound (Lv 29, Api, Anjing)
   { dLat: 0.008, dLng: -0.012, tplIdx: 4, level: 30, landmarkIdx: 4 },  // Emperor Spark Raijin Cat (Lv 30, Petir, Kucing)
 ];
 
@@ -1105,7 +1138,7 @@ export function createRaidBossInstance(
     cityName: cityName || "Jakarta (DKI)",
     latitude: lat,
     longitude: lng,
-    spawnRadiusKm: 10,
+    spawnRadiusKm: 99999, // Tanpa batas jarak tempur (Global/Multi-Kota)
     skills: tpl.skills,
     rewards: {
       cores,

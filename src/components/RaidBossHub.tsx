@@ -77,10 +77,14 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
   const [devLocationName, setDevLocationName] = useState<string>("Monumen Nasional, Jakarta");
   const [devLat, setDevLat] = useState<number>(userCoordinates?.lat || -6.1754);
   const [devLng, setDevLng] = useState<number>(userCoordinates?.lng || 106.8272);
+  const [maxUnlockedLevel, setMaxUnlockedLevel] = useState<number>(8);
+  const [highestDefeatedLevel, setHighestDefeatedLevel] = useState<number>(0);
 
   const isDev =
     user?.role === "developer" ||
     (user?.email && DEVELOPER_EMAILS.includes(user.email.toLowerCase().trim()));
+
+  const getDevToken = () => localStorage.getItem("token") || localStorage.getItem("nekomon_token") || "";
 
   const fetchBossesAndLobbies = async () => {
     setLoading(true);
@@ -98,6 +102,8 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
         const bData = await bossRes.json();
         const loadedBosses: RaidBoss[] = bData.bosses || [];
         setBosses(loadedBosses);
+        if (bData.maxUnlockedLevel) setMaxUnlockedLevel(bData.maxUnlockedLevel);
+        if (bData.highestDefeatedLevel !== undefined) setHighestDefeatedLevel(bData.highestDefeatedLevel);
         if (initialBossId) {
           const target = loadedBosses.find((b: RaidBoss) => b.id === initialBossId);
           if (target) setSelectedBoss(target);
@@ -241,12 +247,14 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
     setErrorMsg("");
     setSuccessMsg("");
     try {
-      const token = localStorage.getItem("token");
+      const token = getDevToken();
       const res = await fetch("/api/developer/raid/spawn", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: token ? `Bearer ${token}` : "",
+          "x-user-id": user?.id || "",
+          "x-user-email": user?.email || ""
         },
         body: JSON.stringify({
           speciesType: devSpecies,
@@ -272,13 +280,17 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
   };
 
   const handleDeveloperReset = async () => {
-    if (!confirm(currentLanguage === "id" ? "Reset seluruh Raid Boss ke default?" : "Reset all Raid Bosses to default?")) return;
+    if (!confirm(currentLanguage === "id" ? "Reset seluruh Raid Boss ke default (Standby LV 6, 7, 8)?" : "Reset all Raid Bosses to default (Standby LV 6, 7, 8)?")) return;
     setActionLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = getDevToken();
       const res = await fetch("/api/developer/raid/reset", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "x-user-id": user?.id || "",
+          "x-user-email": user?.email || ""
+        }
       });
       const data = await res.json();
       if (res.ok) {
@@ -334,8 +346,13 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-700/60">
                 <MapPin size={12} /> {currentLanguage === "id" ? "Tersedia di Seluruh Kota Nusantara" : "Available in All Indonesian Cities"}
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-800 text-neutral-300 border border-neutral-700">
-                Radius 10 KM
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-600/50">
+                <Sparkles size={12} className="text-yellow-400" />
+                {currentLanguage === "id" ? "Bebas Jarak / Multi-Kota" : "No Distance Limit"}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-600/50">
+                🏆 {currentLanguage === "id" ? `Tier Terbuka: Max LV. ${maxUnlockedLevel}` : `Tier Unlocked: Max LV. ${maxUnlockedLevel}`}
+                <span className="text-[10px] text-amber-400/80 font-sans">({currentLanguage === "id" ? "LV 6, 7, 8 Standby" : "LV 6, 7, 8 Standby"})</span>
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
@@ -344,8 +361,8 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
             </h1>
             <p className="text-sm text-neutral-400 mt-1 max-w-2xl">
               {currentLanguage === "id"
-                ? "Raid Boss level 6-30 hadir di setiap kota Indonesia! Bentuk tim 3 kartu Nekomon secara Solo atau Multiplayer bersama Trainer di kotamu dalam radius 10 km."
-                : "Level 6-30 Raid Bosses are live in every city across Indonesia! Form a 3-slot team in Solo or Multiplayer with trainers in your city within 10 km radius."}
+                ? "Raid Boss hadir tanpa syarat batas jarak! Bos level 6, 7, dan 8 selalu standby di setiap kota. Kalahkan bos level tertinggi untuk memunculkan 2 level bos berikutnya secara berurutan di spot map!"
+                : "Raid Bosses are live without any distance restrictions! Boss levels 6, 7, and 8 are always on standby. Defeat the highest tier boss to sequentially unlock and spawn the next 2 boss levels on the spot map!"}
             </p>
           </div>
 
