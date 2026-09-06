@@ -26,11 +26,13 @@ import {
 interface RaidBossHubProps {
   user: User | null;
   userCards: Card[];
+  token?: string;
   currentLanguage: "id" | "en";
   userCoordinates?: { lat: number; lng: number } | null;
   initialBossId?: string | null;
   onEnterBattle: (room: RaidLobbyRoom) => void;
   onNavigateToMap?: () => void;
+  onRefreshUserData?: () => void;
 }
 
 const DEVELOPER_EMAILS = [
@@ -42,11 +44,13 @@ const DEVELOPER_EMAILS = [
 export const RaidBossHub: React.FC<RaidBossHubProps> = ({
   user,
   userCards,
+  token,
   currentLanguage,
   userCoordinates,
   initialBossId,
   onEnterBattle,
-  onNavigateToMap
+  onNavigateToMap,
+  onRefreshUserData
 }) => {
   const [bosses, setBosses] = useState<RaidBoss[]>([]);
   const [lobbies, setLobbies] = useState<RaidLobbyRoom[]>([]);
@@ -84,7 +88,24 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
     user?.role === "developer" ||
     (user?.email && DEVELOPER_EMAILS.includes(user.email.toLowerCase().trim()));
 
-  const getDevToken = () => localStorage.getItem("token") || localStorage.getItem("nekomon_token") || "";
+  const getAuthHeaders = () => {
+    const activeToken = token || localStorage.getItem("nekomon_token") || localStorage.getItem("token") || "";
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (activeToken) {
+      headers["Authorization"] = `Bearer ${activeToken}`;
+    }
+    if (user?.id) {
+      headers["x-user-id"] = user.id;
+    }
+    if (user?.email) {
+      headers["x-user-email"] = user.email;
+    }
+    return headers;
+  };
+
+  const getDevToken = () => token || localStorage.getItem("nekomon_token") || localStorage.getItem("token") || "";
 
   const fetchBossesAndLobbies = async () => {
     setLoading(true);
@@ -118,6 +139,7 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
       setErrorMsg(currentLanguage === "id" ? "Gagal memuat data Raid Boss." : "Failed to load Raid Bosses.");
     } finally {
       setLoading(false);
+      onRefreshUserData?.();
     }
   };
 
@@ -127,23 +149,102 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
     return () => clearInterval(interval);
   }, [userCoordinates]);
 
-  // Initial card selection for single player
+  // Real-time second-by-second ticker for defeated boss respawn timers (10-15 minutes cooldown)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBosses((prev) => {
+        let hasBossRespawned = false;
+        const updated = prev.map((b) => {
+          if (b.status === "defeated" && b.secondsUntilRespawn && b.secondsUntilRespawn > 0) {
+            const nextSec = b.secondsUntilRespawn - 1;
+            if (nextSec <= 0) {
+              hasBossRespawned = true;
+              return {
+                ...b,
+                status: "active" as const,
+                secondsUntilRespawn: 0,
+                canChallenge: true,
+                hp: b.maxHp || (b.level * 2500 + 5000)
+              };
+            }
+            return { ...b, secondsUntilRespawn: nextSec };
+          }
+          return b;
+        });
+
+        // When a boss respawn timer finishes, immediately sync with backend/database
+        if (hasBossRespawned) {
+          fetchBossesAndLobbies();
+        }
+
+        return updated;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTimer = (totalSeconds?: number) => {
+    if (!totalSeconds || totalSeconds <= 0) return "00:00";
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // Initial card selection for single player (only choose eligible cards)
   useEffect(() => {
     if (userCards && userCards.length > 0 && selectedCardIds.length === 0) {
-      setSelectedCardIds(userCards.slice(0, 3).map((c) => c.id));
+      const eligible = userCards.filter((c) => !c.inRaid && (c.energy ?? 5) >= 2);
+      if (eligible.length > 0) {
+        setSelectedCardIds(eligible.slice(0, 3).map((c) => c.id));
+      }
     }
   }, [userCards]);
 
   const handleOpenCreate = (boss: RaidBoss) => {
+    if (boss.status === "defeated") {
+      setErrorMsg(
+        currentLanguage === "id"
+          ? `Boss ${boss.name} telah dikalahkan (Defeated) dan sedang cooldown respawn (${formatTimer(boss.secondsUntilRespawn)}).`
+          : `Boss ${boss.name} is Defeated and in respawn cooldown (${formatTimer(boss.secondsUntilRespawn)}).`
+      );
+      return;
+    }
     setSelectedBoss(boss);
     setIsSinglePlayer(true);
-    if (userCards && userCards.length > 0) {
-      setSelectedCardIds(userCards.slice(0, 3).map((c) => c.id));
+    setErrorMsg("");
+    const eligible = (userCards || []).filter((c) => !c.inRaid && (c.energy ?? 5) >= 2);
+    if (eligible.length > 0) {
+      setSelectedCardIds(eligible.slice(0, 3).map((c) => c.id));
+    } else {
+      setSelectedCardIds([]);
     }
     setShowCreateModal(true);
   };
 
   const handleToggleCardSelection = (cardId: string) => {
+    const card = userCards.find((c) => c.id === cardId);
+    if (!card) return;
+
+    if (card.inRaid) {
+      setErrorMsg(
+        currentLanguage === "id"
+          ? `Kartu "${card.name}" sedang digunakan dalam Boss Raid lain dan terkunci hingga raid selesai!`
+          : `Card "${card.name}" is currently participating in a Boss Raid and locked until finished!`
+      );
+      return;
+    }
+
+    if ((card.energy ?? 5) < 2) {
+      setErrorMsg(
+        currentLanguage === "id"
+          ? `Kartu "${card.name}" membutuhkan minimal 2 bar energi untuk Boss Raid (Energi saat ini: ${card.energy ?? 0}/5).`
+          : `Card "${card.name}" requires at least 2 energy bars to enter a Boss Raid (Current: ${card.energy ?? 0}/5).`
+      );
+      return;
+    }
+
+    setErrorMsg("");
+
     if (isSinglePlayer) {
       if (selectedCardIds.includes(cardId)) {
         if (selectedCardIds.length === 1) return; // Keep at least 1
@@ -164,25 +265,51 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
   const handleCreateLobby = async () => {
     if (!selectedBoss) return;
+    if (selectedBoss.status === "defeated") {
+      setErrorMsg(
+        currentLanguage === "id"
+          ? `Boss ${selectedBoss.name} telah dikalahkan (Defeated) dan sedang dalam masa cooldown respawn (${formatTimer(selectedBoss.secondsUntilRespawn)}).`
+          : `Boss ${selectedBoss.name} is Defeated and in respawn cooldown (${formatTimer(selectedBoss.secondsUntilRespawn)}).`
+      );
+      return;
+    }
     if (selectedCardIds.length === 0) {
-      setErrorMsg(currentLanguage === "id" ? "Pilih minimal 1 kartu Nekomon!" : "Select at least 1 Nekomon card!");
+      setErrorMsg(currentLanguage === "id" ? "Pilih minimal 1 kartu Nekomon yang memenuhi syarat!" : "Select at least 1 eligible Nekomon card!");
+      return;
+    }
+
+    // Verify all selected cards have >= 2 energy and are not in raid
+    const selectedCardsData = userCards.filter((c) => selectedCardIds.includes(c.id));
+    const lockedCard = selectedCardsData.find((c) => c.inRaid);
+    if (lockedCard) {
+      setErrorMsg(
+        currentLanguage === "id"
+          ? `Kartu "${lockedCard.name}" sedang bertarung di raid lain.`
+          : `Card "${lockedCard.name}" is locked in another raid.`
+      );
+      return;
+    }
+    const lowEnergyCard = selectedCardsData.find((c) => (c.energy ?? 5) < 2);
+    if (lowEnergyCard) {
+      setErrorMsg(
+        currentLanguage === "id"
+          ? `Kartu "${lowEnergyCard.name}" memiliki energi kurang dari 2 bar.`
+          : `Card "${lowEnergyCard.name}" has less than 2 energy bars.`
+      );
       return;
     }
 
     setActionLoading(true);
     setErrorMsg("");
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch("/api/raid/lobby/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           bossId: selectedBoss.id,
           isSinglePlayer,
           cardIds: selectedCardIds,
+          cards: selectedCardsData,
           roomCode: customRoomCode,
           userLat: userCoordinates?.lat,
           userLng: userCoordinates?.lng
@@ -191,13 +318,14 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Gagal membuat Raid Room.");
+        throw new Error(data.error || (currentLanguage === "id" ? "Gagal membuat Raid Room." : "Failed to create Raid Room."));
       }
 
       setShowCreateModal(false);
+      onRefreshUserData?.();
       onEnterBattle(data.room);
     } catch (e: any) {
-      setErrorMsg(e.message || "Terjadi kesalahan.");
+      setErrorMsg(e.message || "Terjadi kesalahan saat membuat Raid Room.");
     } finally {
       setActionLoading(false);
     }
@@ -213,16 +341,13 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
     setActionLoading(true);
     setErrorMsg("");
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch("/api/raid/lobby/join", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           roomCode: code.trim().toUpperCase(),
           cardId: userCards[0].id,
+          card: userCards[0],
           userLat: userCoordinates?.lat,
           userLng: userCoordinates?.lng
         })
@@ -230,12 +355,12 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Gagal bergabung ke Room.");
+        throw new Error(data.error || (currentLanguage === "id" ? "Gagal bergabung ke Room." : "Failed to join Room."));
       }
 
       onEnterBattle(data.room);
     } catch (e: any) {
-      setErrorMsg(e.message || "Gagal bergabung ke Room.");
+      setErrorMsg(e.message || (currentLanguage === "id" ? "Gagal bergabung ke Room." : "Failed to join Room."));
     } finally {
       setActionLoading(false);
     }
@@ -709,7 +834,7 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
             }`}
           >
             <MapPin size={12} />
-            {currentLanguage === "id" ? "Hanya < 10 KM" : "Only < 10 KM"}
+            {currentLanguage === "id" ? "Radius ≤ 50 KM" : "Radius ≤ 50 KM"}
           </button>
         </div>
       </div>
@@ -718,7 +843,7 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
       {loading ? (
         <div className="p-12 text-center text-neutral-500">
           <RefreshCw className="animate-spin mx-auto mb-2 text-red-400" size={24} />
-          <p className="text-xs">{currentLanguage === "id" ? "Mendeteksi sinyal Boss di radius 10 KM..." : "Detecting Boss signals in 10 KM radius..."}</p>
+          <p className="text-xs">{currentLanguage === "id" ? "Mendeteksi sinyal Boss di radius 50 KM..." : "Detecting Boss signals in 50 KM radius..."}</p>
         </div>
       ) : filteredBosses.length === 0 ? (
         <div className="rounded-2xl bg-neutral-900/60 border border-neutral-800 p-8 text-center text-neutral-400">
@@ -738,19 +863,26 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredBosses.map((boss) => {
             const inRange = boss.inRadius !== false;
+            const isDefeated = boss.status === "defeated";
+            const respawnTimeStr = formatTimer(boss.secondsUntilRespawn);
+
             return (
               <div
                 key={boss.id}
                 id={`boss-card-${boss.id}`}
                 className={`rounded-2xl bg-neutral-900/90 border transition-all flex flex-col justify-between overflow-hidden shadow-xl ${
-                  inRange ? "border-neutral-800 hover:border-red-600/60" : "border-neutral-800/40 opacity-75"
+                  isDefeated
+                    ? "border-neutral-800/60 opacity-80"
+                    : inRange
+                    ? "border-neutral-800 hover:border-red-600/60"
+                    : "border-neutral-800/40 opacity-75"
                 }`}
               >
                 {/* Boss Visual & Element Badges */}
                 <div className="relative p-4 bg-gradient-to-b from-neutral-800/50 to-transparent">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-md text-xs font-black bg-red-600 text-white shadow-md">
+                      <span className={`px-2.5 py-1 rounded-md text-xs font-black text-white shadow-md ${isDefeated ? "bg-neutral-700" : "bg-red-600"}`}>
                         LV. {boss.level}
                       </span>
                       <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700 capitalize">
@@ -759,13 +891,17 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {inRange ? (
+                      {isDefeated ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-800 text-amber-400 border border-amber-600/40 flex items-center gap-1">
+                          <Clock size={10} /> ⏳ Respawn {respawnTimeStr}
+                        </span>
+                      ) : inRange ? (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1">
-                          <MapPin size={10} /> {boss.distanceKm || "0.8"} KM (Tersedia)
+                          <MapPin size={10} /> {boss.distanceKm || "0.8"} KM (≤ 50 KM)
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-800 text-neutral-400 border border-neutral-700 flex items-center gap-1">
-                          <MapPin size={10} /> {boss.distanceKm} KM (&gt; 10 KM)
+                          <MapPin size={10} /> {boss.distanceKm} KM (&gt; 50 KM)
                         </span>
                       )}
                     </div>
@@ -773,19 +909,32 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
                   {/* Artwork & Stats */}
                   <div className="flex items-center gap-4">
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0 shadow-inner flex items-center justify-center">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800 shrink-0 shadow-inner flex items-center justify-center relative">
                       <img
                         src={boss.imageUrl}
                         alt={boss.name}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${isDefeated ? "grayscale opacity-60" : ""}`}
                         referrerPolicy="no-referrer"
                       />
+                      {isDefeated && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-1 text-center">
+                          <span className="text-[11px] font-black text-red-400 tracking-wider">DEFEATED</span>
+                          <span className="text-[9px] text-neutral-300 font-mono mt-0.5">{respawnTimeStr}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-extrabold text-white truncate">
-                        {currentLanguage === "id" ? boss.name : boss.nameEn || boss.name}
-                      </h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className={`text-base font-extrabold truncate ${isDefeated ? "text-neutral-400 line-through" : "text-white"}`}>
+                          {currentLanguage === "id" ? boss.name : boss.nameEn || boss.name}
+                        </h3>
+                        {isDefeated && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-950 text-red-400 border border-red-800">
+                            DEFEATED
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         {boss.cityName && (
                           <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-indigo-950 text-indigo-300 border border-indigo-700/60 shadow-xs">
@@ -805,7 +954,12 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
                       {/* HP & Attack Stats */}
                       <div className="mt-2 text-[11px] text-neutral-300 grid grid-cols-2 gap-1 font-mono">
-                        <div>HP: <span className="text-red-400 font-bold">{boss.hp.toLocaleString()}</span></div>
+                        <div>
+                          HP:{" "}
+                          <span className={`font-bold ${isDefeated ? "text-neutral-500" : "text-red-400"}`}>
+                            {isDefeated ? "0 (Kalah)" : boss.hp.toLocaleString()}
+                          </span>
+                        </div>
                         <div>ATK: <span className="text-amber-400 font-bold">{boss.atk}</span></div>
                       </div>
                     </div>
@@ -847,14 +1001,27 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
 
                 {/* Card Actions */}
                 <div className="p-4 bg-neutral-900 flex items-center gap-2">
-                  <button
-                    id={`boss-fight-btn-${boss.id}`}
-                    onClick={() => handleOpenCreate(boss)}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-xs font-bold text-white shadow-lg shadow-red-950/50 transition flex items-center justify-center gap-1.5"
-                  >
-                    <Swords size={14} />
-                    {currentLanguage === "id" ? "Mulai / Buat Raid Room" : "Start / Create Raid"}
-                  </button>
+                  {isDefeated ? (
+                    <button
+                      id={`boss-fight-btn-${boss.id}`}
+                      disabled={true}
+                      className="flex-1 py-2.5 rounded-xl bg-neutral-800 text-neutral-400 text-xs font-bold border border-neutral-700/60 cursor-not-allowed flex items-center justify-center gap-1.5"
+                    >
+                      <Clock size={14} className="text-amber-400 animate-pulse" />
+                      {currentLanguage === "id"
+                        ? `Defeated — Respawn ${respawnTimeStr}`
+                        : `Defeated — Respawn in ${respawnTimeStr}`}
+                    </button>
+                  ) : (
+                    <button
+                      id={`boss-fight-btn-${boss.id}`}
+                      onClick={() => handleOpenCreate(boss)}
+                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-xs font-bold text-white shadow-lg shadow-red-950/50 transition flex items-center justify-center gap-1.5"
+                    >
+                      <Swords size={14} />
+                      {currentLanguage === "id" ? "Mulai / Buat Raid Room" : "Start / Create Raid"}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -984,8 +1151,26 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
               </div>
             )}
 
+            {/* Raid Energy & Card Lock Rules Notice */}
+            <div className="mt-4 p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/50 text-[11px] text-amber-200/90 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                <Zap size={13} className="text-amber-400 shrink-0" />
+                <span>{currentLanguage === "id" ? "Aturan & Ketentuan Boss Raid:" : "Boss Raid Rules & Requirements:"}</span>
+              </div>
+              <p className="text-[10.5px] leading-relaxed">
+                • {currentLanguage === "id"
+                  ? "Masing-masing kartu nekomon wajib memiliki minimal 2 bar energi (langsung dikurangi saat raid dimulai)."
+                  : "Each Nekomon card must have at least 2 energy bars (consumed immediately when the raid begins)."}
+              </p>
+              <p className="text-[10.5px] leading-relaxed">
+                • {currentLanguage === "id"
+                  ? "Kartu nekomon yang sedang bertarung di Boss Raid akan terkunci dan tidak bisa digunakan di aktivitas lain hingga raid selesai."
+                  : "Cards currently battling in a Boss Raid are locked and unavailable for other tasks until the raid finishes."}
+              </p>
+            </div>
+
             {/* 3 Slots Selection Display */}
-            <div className="mt-5">
+            <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-white">
                   {isSinglePlayer
@@ -1002,52 +1187,95 @@ export const RaidBossHub: React.FC<RaidBossHubProps> = ({
               </div>
 
               {/* Card Picker Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1 bg-neutral-950/60 rounded-xl border border-neutral-800">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1 bg-neutral-950/60 rounded-xl border border-neutral-800">
                 {userCards.map((card) => {
                   const isSelected = selectedCardIds.includes(card.id);
                   const isEffective = card.element === selectedBoss.debuffElement;
                   const isResisted = card.element === selectedBoss.buffElement;
+                  const energy = card.energy ?? 5;
+                  const isLowEnergy = energy < 2;
+                  const isLocked = Boolean(card.inRaid);
+                  const isEligible = !isLocked && !isLowEnergy;
 
                   return (
                     <div
                       key={card.id}
                       onClick={() => handleToggleCardSelection(card.id)}
-                      className={`p-2 rounded-xl border cursor-pointer transition flex items-center gap-2.5 relative ${
-                        isSelected
-                          ? "bg-red-950/70 border-red-500 shadow-md ring-1 ring-red-500"
-                          : "bg-neutral-900 border-neutral-800 hover:border-neutral-700"
+                      className={`p-2 rounded-xl border transition flex items-center gap-2.5 relative ${
+                        isLocked
+                          ? "bg-neutral-950/90 border-neutral-800/60 opacity-60 cursor-not-allowed"
+                          : isLowEnergy
+                          ? "bg-neutral-950/90 border-amber-900/40 opacity-70 cursor-not-allowed"
+                          : isSelected
+                          ? "bg-red-950/70 border-red-500 shadow-md ring-1 ring-red-500 cursor-pointer"
+                          : "bg-neutral-900 border-neutral-800 hover:border-neutral-700 cursor-pointer"
                       }`}
                     >
-                      <img
-                        src={card.imageUrl}
-                        alt={card.name}
-                        className="w-11 h-11 rounded-lg object-cover bg-neutral-950 shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
+                      <div className="relative shrink-0">
+                        <img
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className={`w-11 h-11 rounded-lg object-cover bg-neutral-950 ${
+                            !isEligible ? "grayscale" : ""
+                          }`}
+                          referrerPolicy="no-referrer"
+                        />
+                        {isLocked && (
+                          <div className="absolute inset-0 bg-black/70 rounded-lg flex items-center justify-center">
+                            <span className="text-[9px] font-black text-red-400">🔒 RAID</span>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white truncate">{card.name}</span>
                           <span className="text-[10px] text-neutral-400">Lv.{card.level || 1}</span>
                         </div>
-                        <div className="flex items-center gap-1 mt-0.5">
+
+                        <div className="flex items-center justify-between mt-0.5">
                           {getElementBadge(card.element)}
-                        </div>
-                        {isEffective && (
-                          <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">
-                            💥 +75% Bonus Weakness!
+                          <span
+                            className={`text-[10px] font-mono font-bold flex items-center gap-0.5 ${
+                              isLowEnergy ? "text-amber-400" : "text-emerald-400"
+                            }`}
+                          >
+                            <Zap size={10} />
+                            {energy}/5
                           </span>
-                        )}
-                        {isResisted && (
+                        </div>
+
+                        {isLocked ? (
+                          <span className="text-[9px] text-red-400 font-bold block mt-0.5">
+                            🔒 {currentLanguage === "id" ? "Sedang di Raid" : "In Raid"}
+                          </span>
+                        ) : isLowEnergy ? (
+                          <span className="text-[9px] text-amber-400 font-bold block mt-0.5">
+                            ⚠️ {currentLanguage === "id" ? "Butuh ≥ 2 Energi" : "Need ≥ 2 Energy"}
+                          </span>
+                        ) : isEffective ? (
+                          <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">
+                            💥 +75% Weakness!
+                          </span>
+                        ) : isResisted ? (
                           <span className="text-[9px] text-red-400 font-medium block mt-0.5">
                             🛡️ -50% Resisted
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
+
+            {/* Modal Error Message */}
+            {errorMsg && (
+              <div className="mt-4 p-3 rounded-xl bg-red-950/80 border border-red-700/80 text-red-200 text-xs flex items-center gap-2">
+                <AlertTriangle size={16} className="text-red-400 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
             {/* Modal Actions */}
             <div className="mt-6 pt-4 border-t border-neutral-800 flex items-center justify-end gap-2">

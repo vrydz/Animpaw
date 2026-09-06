@@ -2232,6 +2232,7 @@ export default function App() {
                       <RaidBattleArena
                         initialRoom={activeRaidRoom}
                         currentUser={user}
+                        token={token || ""}
                         currentLanguage={language}
                         onExit={() => {
                           setActiveRaidRoom(null);
@@ -2251,11 +2252,18 @@ export default function App() {
                       <RaidBossHub
                         user={user}
                         userCards={cards}
+                        token={token || ""}
                         currentLanguage={language}
                         userCoordinates={userCoordinates}
                         initialBossId={selectedRaidBossId}
                         onEnterBattle={(room) => setActiveRaidRoom(room)}
                         onNavigateToMap={() => handleTabChange("spot_map")}
+                        onRefreshUserData={() => {
+                          if (token) {
+                            fetchProfile(token);
+                            fetchGallery(token);
+                          }
+                        }}
                       />
                     )}
                   </motion.div>

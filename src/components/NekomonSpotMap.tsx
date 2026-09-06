@@ -32,7 +32,8 @@ import {
   Swords,
   Flame,
   Shield,
-  Skull
+  Skull,
+  Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NekomonSpot, SpotCategory, RaidBoss } from "../types";
@@ -474,12 +475,16 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
     });
     bossMarkersRef.current = {};
 
-    // Draw Raid Boss markers (No distance limit for Raid Bosses)
+    // Draw Raid Boss markers within 50km radius of player
     raidBosses.forEach((boss) => {
       const dist = calculateDistanceMeters(playerPos.lat, playerPos.lng, boss.latitude, boss.longitude);
-      const inRadius = true; // Tidak ada batas jarak untuk menantang Raid Boss
+      // Hanya munculkan boss raid dari radius 50km dari posisi pemain
+      if (dist > 50000) return;
+
+      const isDefeated = boss.status === "defeated";
       const isSelected = selectedBoss?.id === boss.id;
       const distKmStr = (dist / 1000).toFixed(1);
+      const respawnMin = Math.ceil((boss.secondsUntilRespawn || 600) / 60);
       const elementEmoji = boss.element === "Api" ? "🔥" : boss.element === "Air" ? "💧" : boss.element === "Tanah" ? "🌿" : boss.element === "Petir" ? "⚡" : "🌪️";
       const elementColor = boss.element === "Api" ? "#ef4444" : boss.element === "Air" ? "#06b6d4" : boss.element === "Tanah" ? "#10b981" : boss.element === "Petir" ? "#eab308" : "#8b5cf6";
 
@@ -489,15 +494,19 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
           <div class="relative flex flex-col items-center group cursor-pointer select-none">
             <div class="px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-lg whitespace-nowrap mb-1 flex items-center gap-1 transition-transform ${
               isSelected ? "scale-110 ring-2 ring-yellow-400" : ""
-            } bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-red-500/60 animate-pulse border border-yellow-300/80">
-              <span class="text-xs">⚔️</span>
+            } ${isDefeated ? "bg-slate-800 text-slate-300 border border-slate-600" : "bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-red-500/60 animate-pulse border border-yellow-300/80"}">
+              <span class="text-xs">${isDefeated ? "💀" : "⚔️"}</span>
               <span>Lv.${boss.level} ${language === "id" ? boss.name : boss.nameEn}</span>
               <span class="opacity-90 font-mono text-[9px]">(${distKmStr}km)</span>
-              <span class="text-[8px] bg-yellow-400 text-slate-950 font-black px-1 rounded-sm">SIAP</span>
+              ${
+                isDefeated
+                  ? `<span class="text-[8px] bg-red-800 text-white font-black px-1 rounded-sm">DEFEATED (${respawnMin}m)</span>`
+                  : `<span class="text-[8px] bg-yellow-400 text-slate-950 font-black px-1 rounded-sm">SIAP</span>`
+              }
             </div>
             <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-2xl border-2 overflow-hidden transition-transform ${
               isSelected ? "scale-125 ring-4 ring-rose-500 shadow-rose-500/80" : "hover:scale-110"
-            } bg-gradient-to-br from-slate-900 via-rose-950 to-slate-950 border-rose-500/90 relative">
+            } ${isDefeated ? "bg-slate-950 border-slate-700 grayscale opacity-75" : "bg-gradient-to-br from-slate-900 via-rose-950 to-slate-950 border-rose-500/90"} relative">
               ${
                 boss.imageUrl 
                   ? `<img src="${boss.imageUrl}" class="w-full h-full object-cover" alt="${boss.name}" />`
@@ -507,10 +516,10 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
                 ${elementEmoji}
               </div>
               <div class="absolute bottom-0 inset-x-0 h-1.5 bg-red-950">
-                <div class="h-full bg-emerald-400" style="width: ${Math.max(10, Math.round((boss.hp / boss.maxHp) * 100))}%;"></div>
+                <div class="h-full ${isDefeated ? "bg-slate-600" : "bg-emerald-400"}" style="width: ${isDefeated ? 0 : Math.max(10, Math.round((boss.hp / boss.maxHp) * 100))}%;"></div>
               </div>
             </div>
-            <div class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping mt-1"></div>
+            ${!isDefeated ? '<div class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping mt-1"></div>' : ""}
           </div>
         `,
         iconSize: [48, 62],
@@ -528,11 +537,10 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
 
       const circle = L.circle([boss.latitude, boss.longitude], {
         radius: 1000,
-        color: elementColor,
-        fillColor: elementColor,
-        fillOpacity: inRadius ? 0.20 : 0.08,
-        weight: isSelected ? 3 : 1.5,
-        dashArray: inRadius ? undefined : "6, 6"
+        color: isDefeated ? "#64748b" : elementColor,
+        fillColor: isDefeated ? "#334155" : elementColor,
+        fillOpacity: isDefeated ? 0.05 : 0.20,
+        weight: isSelected ? 3 : 1.5
       }).addTo(map);
 
       bossMarkersRef.current[boss.id] = { marker, circle };
@@ -1068,21 +1076,35 @@ export const NekomonSpotMap: React.FC<NekomonSpotMapProps> = ({
               </div>
             </div>
 
-            {/* Action Button: Challenge / Enter Lobby (No distance limit) */}
+            {/* Action Button: Challenge / Enter Lobby */}
             <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={() => {
-                  haptics.heavy();
-                  try { audio.playVictorySound(); } catch (_) {}
-                  if (onNavigateToRaid) {
-                    onNavigateToRaid(selectedBoss.id);
-                  }
-                }}
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-red-900/60 flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider border border-yellow-300/40"
-              >
-                <Swords className="w-4 h-4 animate-bounce" />
-                <span>{language === "id" ? "Masuk Ruang Pertempuran Raid Boss" : "Enter Raid Boss Battle Room"}</span>
-              </button>
+              {selectedBoss.status === "defeated" ? (
+                <button
+                  disabled
+                  className="flex-1 py-3 px-4 bg-slate-800 text-slate-400 font-black text-xs sm:text-sm rounded-2xl border border-slate-700/60 flex items-center justify-center gap-2 cursor-not-allowed uppercase tracking-wider"
+                >
+                  <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <span>
+                    {language === "id"
+                      ? `Boss Dikalahkan — Respawn dalam ${Math.ceil((selectedBoss.secondsUntilRespawn || 600) / 60)} Menit`
+                      : `Boss Defeated — Respawns in ${Math.ceil((selectedBoss.secondsUntilRespawn || 600) / 60)} Mins`}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    haptics.heavy();
+                    try { audio.playVictorySound(); } catch (_) {}
+                    if (onNavigateToRaid) {
+                      onNavigateToRaid(selectedBoss.id);
+                    }
+                  }}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-red-900/60 flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider border border-yellow-300/40"
+                >
+                  <Swords className="w-4 h-4 animate-bounce" />
+                  <span>{language === "id" ? "Masuk Ruang Pertempuran Raid Boss" : "Enter Raid Boss Battle Room"}</span>
+                </button>
+              )}
             </div>
           </motion.div>
         )}

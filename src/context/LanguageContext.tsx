@@ -433,13 +433,26 @@ const LanguageContext = createContext<LanguageContextProps>({
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem("nekomon_language");
-    return (saved === "en" || saved === "id") ? saved : "id";
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        const saved = window.localStorage.getItem("nekomon_language");
+        return (saved === "en" || saved === "id") ? saved : "id";
+      }
+    } catch {
+      // Fallback if localStorage is inaccessible
+    }
+    return "id";
   });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem("nekomon_language", lang);
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem("nekomon_language", lang);
+      }
+    } catch {
+      // Ignore localStorage write restrictions
+    }
   };
 
   const t = (key: string): string => {

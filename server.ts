@@ -1377,15 +1377,15 @@ app.get("/api/health", (_req, res) => {
 // Helper to authenticate user using authorization token
 function getAuthUser(req: express.Request, db: any) {
   const authHeader = req.headers.authorization;
-  const xUserId = req.headers["x-user-id"] as string;
-  const xUserEmail = (req.headers["x-user-email"] as string || "").toLowerCase().trim();
+  const xUserId = (req.headers["x-user-id"] as string) || (req.body && req.body.userId);
+  const xUserEmail = ((req.headers["x-user-email"] as string || (req.body && req.body.userEmail)) || "").toLowerCase().trim();
 
   let foundUser: any = null;
 
-  if (authHeader) {
+  if (authHeader && !authHeader.includes("null") && !authHeader.includes("undefined")) {
     try {
       const token = authHeader.replace("Bearer ", "").trim();
-      if (token) {
+      if (token && token !== "null" && token !== "undefined") {
         const decoded = Buffer.from(token, "base64").toString("utf8");
         const parts = decoded.split(":");
         const id = parts[0];
@@ -1655,6 +1655,27 @@ function updateCardEnergy(card: any): any {
   return card;
 }
 
+// Helper to get card IDs currently locked in active Boss Raids (waiting or in_battle)
+function getLockedRaidCardIds(db: any): Set<string> {
+  const set = new Set<string>();
+  if (!db.raidLobbies) return set;
+  const now = Date.now();
+  db.raidLobbies.forEach((room: any) => {
+    if (room && (room.status === "waiting" || room.status === "in_battle")) {
+      // Stale safety threshold: ignore rooms older than 2 hours to prevent permanent card lockouts
+      const age = now - new Date(room.createdAt || 0).getTime();
+      if (age < 2 * 60 * 60 * 1000) {
+        room.slots?.forEach((s: any) => {
+          if (s && s.card && s.card.id) {
+            set.add(s.card.id);
+          }
+        });
+      }
+    }
+  });
+  return set;
+}
+
 // Fetch Gallery & Cards
 app.get("/api/user/gallery", (req, res) => {
   const db = readDB();
@@ -1663,6 +1684,7 @@ app.get("/api/user/gallery", (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  const lockedCardIds = getLockedRaidCardIds(db);
   let updatedAnyCard = false;
   const userCaptures = db.captures.filter((c: any) => c.userId === user.id);
   const userCards = db.cards
@@ -1671,7 +1693,10 @@ app.get("/api/user/gallery", (req, res) => {
       const prevEnergy = c.energy;
       const updated = updateCardEnergy(c);
       if (prevEnergy !== updated.energy) updatedAnyCard = true;
-      return updated;
+      return {
+        ...updated,
+        inRaid: lockedCardIds.has(updated.id)
+      };
     });
 
   if (updatedAnyCard) {
@@ -6520,6 +6545,15 @@ app.post("/api/territory/battle", (req, res) => {
     return res.status(400).json({ error: "Kartu penyerang tidak valid." });
   }
 
+  // Check if any card is currently locked in an active Boss Raid
+  const lockedCardIds = getLockedRaidCardIds(db);
+  const cardInRaid = attackerDeck.find((c: any) => lockedCardIds.has(c.id));
+  if (cardInRaid) {
+    return res.status(400).json({
+      error: `Kartu "${cardInRaid.name}" sedang bertarung di Boss Raid dan tidak dapat digunakan untuk ekspansi teritori hingga raid selesai!`
+    });
+  }
+
   // Determine defender cards
   let defenderDeck: any[] = [];
   if (targetNode.anchorCard) {
@@ -7055,8 +7089,9 @@ function ensureStandbyAndUnlockedBosses(db: any): boolean {
 
   INDONESIAN_CITIES.forEach((city) => {
     requiredLevels.forEach((lvl) => {
+      // Do not duplicate if boss exists (even if defeated, awaiting respawn cooldown)
       const exists = db.raidBosses.some(
-        (b: any) => b.cityId === city.id && b.level === lvl && (b.hp === undefined || b.hp > 0)
+        (b: any) => b.cityId === city.id && b.level === lvl
       );
       if (!exists) {
         const cfg = CITY_BOSS_CONFIGS.find((c) => c.level === lvl) || {
@@ -7088,9 +7123,9 @@ function ensureStandbyAndUnlockedBosses(db: any): boolean {
 }
 
 function ensureBossesForLocation(existingBosses: any[], userLat: number, userLng: number, maxLevel: number = 8): { bosses: any[]; hasChanges: boolean } {
-  // Check if there is already at least one active boss within 25 km of user's coordinates
+  // Check if there is already at least one active or cooldown boss within 50 km of user's coordinates
   const hasNearbyBoss = existingBosses.some((b: any) => {
-    return calculateDistanceMeters(userLat, userLng, b.latitude, b.longitude) <= 25000;
+    return calculateDistanceMeters(userLat, userLng, b.latitude, b.longitude) <= 50000;
   });
 
   if (!hasNearbyBoss) {
@@ -7122,25 +7157,50 @@ function getInitializedRaidBosses(db: any, userLat?: number, userLng?: number): 
   
   const now = Date.now();
   const maxUnlocked = db.maxUnlockedRaidLevel || 8;
+  let shouldSave = false;
+
+  // 1. Process defeated bosses: check if 10-15 min cooldown has finished, then respawn with full HP!
+  db.raidBosses.forEach((b: any) => {
+    if (b && b.status === "defeated") {
+      if (!b.respawnAt) {
+        const respawnMins = Math.floor(Math.random() * 6) + 10;
+        b.respawnMinutes = respawnMins;
+        b.defeatedAt = new Date(now).toISOString();
+        b.respawnAt = new Date(now + respawnMins * 60 * 1000).toISOString();
+        shouldSave = true;
+      }
+      if (now >= new Date(b.respawnAt).getTime()) {
+        b.status = "active";
+        b.hp = b.maxHp || (b.level * 2500 + 5000);
+        delete b.defeatedAt;
+        delete b.respawnAt;
+        delete b.respawnMinutes;
+        shouldSave = true;
+      }
+    }
+  });
+
   const beforeCount = db.raidBosses.length;
 
   // Filter out bosses: higher tiers cannot spawn unless unlocked or manually spawned by developer.
-  // Standby bosses 6, 7, 8 never expire completely.
+  // Standby bosses 6, 7, 8 never expire completely (they remain either active or awaiting respawn).
   db.raidBosses = db.raidBosses.filter((b: any) => {
     if (!b) return false;
     if (b.isManual) return true; // Developer manual spawn is preserved
     if (b.level > maxUnlocked) return false; // Enforce sequential unlock rule
-    if (b.level <= 8) return true; // Standby bosses (6, 7, 8) always active
+    if (b.level <= 8) return true; // Standby bosses (6, 7, 8) always active or respawning
     return !b.expiresAt || new Date(b.expiresAt).getTime() > now;
   });
 
-  let shouldSave = db.raidBosses.length !== beforeCount;
+  if (db.raidBosses.length !== beforeCount) {
+    shouldSave = true;
+  }
 
   if (ensureStandbyAndUnlockedBosses(db)) {
     shouldSave = true;
   }
 
-  // If user provided valid coordinates, ensure their immediate region has bosses
+  // If user provided valid coordinates, ensure their 50km radius has bosses available
   if (userLat !== undefined && userLng !== undefined && !isNaN(userLat) && !isNaN(userLng)) {
     const locResult = ensureBossesForLocation(db.raidBosses, userLat, userLng, db.maxUnlockedRaidLevel);
     if (locResult.hasChanges) {
@@ -7156,7 +7216,7 @@ function getInitializedRaidBosses(db: any, userLat?: number, userLng?: number): 
   return db.raidBosses;
 }
 
-// 1. Get Active Raid Bosses (Global / Multi-City without distance restriction)
+// 1. Get Active Raid Bosses (Strictly within 50 KM radius of player position)
 app.get("/api/raid/bosses", (req, res) => {
   const db = readDB();
   const latQuery = parseFloat(req.query.lat as string);
@@ -7167,26 +7227,65 @@ app.get("/api/raid/bosses", (req, res) => {
   const userLat = hasCoords ? latQuery : -6.1754;
   const userLng = hasCoords ? lngQuery : 106.8272;
 
-  let bosses = getInitializedRaidBosses(db, hasCoords ? userLat : undefined, hasCoords ? userLng : undefined);
+  let allBosses = getInitializedRaidBosses(db, userLat, userLng);
 
   // Optional filter by city
   if (cityQuery && cityQuery !== "all") {
-    bosses = bosses.filter((b: any) => (b.cityId || "").toLowerCase() === cityQuery);
+    allBosses = allBosses.filter((b: any) => (b.cityId || "").toLowerCase() === cityQuery);
   }
 
-  // Calculate distance in meters for informational display - no distance restriction!
-  const decoratedBosses = bosses.map((boss: any) => {
-    const distMeters = calculateDistanceMeters(userLat, userLng, boss.latitude, boss.longitude);
-    const distKm = (distMeters / 1000).toFixed(1);
+  const MAX_RADIUS_METERS = 50000; // 50 KM radius limit
+  const now = Date.now();
 
-    return {
-      ...boss,
-      distanceMeters: distMeters,
-      distanceKm: distKm,
-      inRadius: true, // Tidak ada syarat batas jarak (Global / Multi-Kota)
-      canChallenge: true
-    };
-  });
+  let decoratedBosses = allBosses
+    .map((boss: any) => {
+      const distMeters = calculateDistanceMeters(userLat, userLng, boss.latitude, boss.longitude);
+      const distKm = (distMeters / 1000).toFixed(1);
+      const isDefeated = boss.status === "defeated";
+      const secondsUntilRespawn = isDefeated && boss.respawnAt
+        ? Math.max(0, Math.ceil((new Date(boss.respawnAt).getTime() - now) / 1000))
+        : 0;
+
+      return {
+        ...boss,
+        status: isDefeated ? "defeated" : "active",
+        secondsUntilRespawn,
+        distanceMeters: distMeters,
+        distanceKm: distKm,
+        inRadius: distMeters <= MAX_RADIUS_METERS,
+        canChallenge: distMeters <= MAX_RADIUS_METERS && !isDefeated
+      };
+    })
+    .filter((boss: any) => boss.distanceMeters <= MAX_RADIUS_METERS);
+
+  // Fallback: If no boss within 50km, dynamically spawn local satellite bosses within 50km
+  if (decoratedBosses.length === 0) {
+    const locResult = ensureBossesForLocation(db.raidBosses, userLat, userLng, db.maxUnlockedRaidLevel || 8);
+    if (locResult.hasChanges) {
+      db.raidBosses = locResult.bosses;
+      writeDB(db);
+      decoratedBosses = locResult.bosses
+        .map((boss: any) => {
+          const distMeters = calculateDistanceMeters(userLat, userLng, boss.latitude, boss.longitude);
+          const distKm = (distMeters / 1000).toFixed(1);
+          const isDefeated = boss.status === "defeated";
+          const secondsUntilRespawn = isDefeated && boss.respawnAt
+            ? Math.max(0, Math.ceil((new Date(boss.respawnAt).getTime() - now) / 1000))
+            : 0;
+
+          return {
+            ...boss,
+            status: isDefeated ? "defeated" : "active",
+            secondsUntilRespawn,
+            distanceMeters: distMeters,
+            distanceKm: distKm,
+            inRadius: distMeters <= MAX_RADIUS_METERS,
+            canChallenge: distMeters <= MAX_RADIUS_METERS && !isDefeated
+          };
+        })
+        .filter((boss: any) => boss.distanceMeters <= MAX_RADIUS_METERS);
+    }
+  }
 
   // Sort by level, then by distance
   decoratedBosses.sort((a: any, b: any) => {
@@ -7197,7 +7296,7 @@ app.get("/api/raid/bosses", (req, res) => {
   res.json({
     success: true,
     userLocation: { lat: userLat, lng: userLng, hasGps: hasCoords },
-    radiusLimitKm: null, // Tanpa batas jarak
+    radiusLimitKm: 50,
     cities: INDONESIAN_CITIES,
     maxUnlockedLevel: db.maxUnlockedRaidLevel || 8,
     highestDefeatedLevel: db.highestDefeatedRaidBossLevel || 0,
@@ -7258,7 +7357,7 @@ app.post("/api/raid/lobby/create", (req, res) => {
     return res.status(401).json({ error: "Silakan login terlebih dahulu untuk membuat Raid Room." });
   }
 
-  const { bossId, isSinglePlayer, cardIds, roomCode: customCode, userLat, userLng } = req.body;
+  const { bossId, isSinglePlayer, cardIds, cards: clientPassedCards, roomCode: customCode, userLat, userLng } = req.body;
   const bosses = getInitializedRaidBosses(db, userLat, userLng);
   const boss = bosses.find((b: any) => b.id === bossId);
 
@@ -7266,10 +7365,54 @@ app.post("/api/raid/lobby/create", (req, res) => {
     return res.status(404).json({ error: "Raid Boss tidak ditemukan atau sudah berakhir." });
   }
 
-  // CATATAN: Tidak ada syarat batas jarak. Pemain di mana saja dapat menantang Raid Boss!
+  // Check 50 KM radius restriction if coordinates are provided
+  if (userLat !== undefined && userLng !== undefined && !isNaN(userLat) && !isNaN(userLng)) {
+    const distMeters = calculateDistanceMeters(userLat, userLng, boss.latitude, boss.longitude);
+    if (distMeters > 50000) {
+      return res.status(400).json({
+        error: `Raid Boss berada di luar radius 50 KM (${(distMeters / 1000).toFixed(1)} km) dari posisi Anda. Hanya boss dalam radius 50 KM yang dapat ditantang.`
+      });
+    }
+  }
+
+  // Check if boss is currently in Defeated cooldown state (10-15 minutes)
+  const now = Date.now();
+  if (boss.status === "defeated") {
+    const respawnTime = boss.respawnAt ? new Date(boss.respawnAt).getTime() : now + 10 * 60 * 1000;
+    if (now < respawnTime) {
+      const remainingSecs = Math.max(1, Math.ceil((respawnTime - now) / 1000));
+      const mins = Math.floor(remainingSecs / 60);
+      const secs = remainingSecs % 60;
+      return res.status(400).json({
+        error: `Raid Boss ${boss.name} telah dikalahkan (Status: Defeated). Boss akan spawn kembali dalam ${mins} menit ${secs} detik.`
+      });
+    } else {
+      // Cooldown passed, respawn boss
+      boss.status = "active";
+      boss.hp = boss.maxHp || (boss.level * 2500 + 5000);
+      delete boss.defeatedAt;
+      delete boss.respawnAt;
+      delete boss.respawnMinutes;
+    }
+  }
 
   if (!db.cards) db.cards = [];
   let userCards = db.cards.filter((c: any) => c.userId === user.id);
+
+  // Merge client-passed cards if not already present
+  if (Array.isArray(clientPassedCards) && clientPassedCards.length > 0) {
+    clientPassedCards.forEach((c: any) => {
+      if (c && c.id) {
+        const existingIdx = userCards.findIndex((uc: any) => uc.id === c.id);
+        if (existingIdx === -1) {
+          userCards.push(c);
+        }
+        if (!db.cards.some((dc: any) => dc.id === c.id)) {
+          db.cards.push({ ...c, userId: user.id });
+        }
+      }
+    });
+  }
 
   if (userCards.length === 0) {
     const starterElements: ("Air" | "Api" | "Tanah" | "Angin" | "Petir")[] = ["Air", "Api", "Tanah", "Angin", "Petir"];
@@ -7305,6 +7448,7 @@ app.post("/api/raid/lobby/create", (req, res) => {
     writeDB(db);
   }
 
+  const lockedCardIds = getLockedRaidCardIds(db);
   if (!db.raidLobbies) db.raidLobbies = [];
 
   const roomId = `raid_room_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -7318,26 +7462,82 @@ app.post("/api/raid/lobby/create", (req, res) => {
       ? cardIds 
       : userCards.slice(0, 3).map((c: any) => c.id);
 
-    selectedIds.slice(0, 3).forEach((cId: string, idx: number) => {
-      const card = userCards.find((c: any) => c.id === cId) || userCards[idx % userCards.length];
-      if (card) {
-        slots[idx] = {
-          slotIndex: idx,
-          userId: user.id,
-          username: user.username,
-          faction: user.faction || "Sentinel",
-          card,
-          currentHp: card.hp || (card.level ? card.level * 30 + 150 : 200),
-          maxHp: card.hp || (card.level ? card.level * 30 + 150 : 200),
-          isReady: true,
-          damageDealt: 0
-        };
+    const cardsToEquip: any[] = [];
+    for (const cId of selectedIds.slice(0, 3)) {
+      const card = userCards.find((c: any) => c.id === cId);
+      if (!card) continue;
+
+      // Lockout check: Card cannot already be participating in an active raid
+      if (lockedCardIds.has(card.id)) {
+        return res.status(400).json({
+          error: `Kartu "${card.name}" sedang digunakan dalam Boss Raid lain. Kartu tidak dapat digunakan hingga raid selesai!`
+        });
       }
+
+      // Energy check: Each card must have at least 2 energy bars
+      const updatedCard = updateCardEnergy(card);
+      if ((updatedCard.energy ?? 5) < 2) {
+        return res.status(400).json({
+          error: `Kartu "${card.name}" membutuhkan minimal 2 bar energi untuk Boss Raid (Energi saat ini: ${updatedCard.energy ?? 0}/5).`
+        });
+      }
+
+      cardsToEquip.push(updatedCard);
+    }
+
+    if (cardsToEquip.length === 0) {
+      return res.status(400).json({ error: "Pilih minimal 1 kartu tempur yang memiliki minimal 2 energi dan tidak sedang dalam raid." });
+    }
+
+    // Deduct 2 energy per participating card immediately upon boss raid execution
+    cardsToEquip.forEach((card: any, idx: number) => {
+      const dbCard = db.cards.find((c: any) => c.id === card.id);
+      if (dbCard) {
+        dbCard.energy = Math.max(0, (dbCard.energy ?? 5) - 2);
+        card.energy = dbCard.energy;
+      }
+      slots[idx] = {
+        slotIndex: idx,
+        userId: user.id,
+        username: user.username,
+        faction: user.faction || "Sentinel",
+        card,
+        currentHp: card.hp || (card.level ? card.level * 30 + 150 : 200),
+        maxHp: card.hp || (card.level ? card.level * 30 + 150 : 200),
+        isReady: true,
+        damageDealt: 0
+      };
     });
   } else {
     // Multiplayer: Host takes Slot 0, Slots 1 and 2 remain open for other players
-    const hostCardId = Array.isArray(cardIds) && cardIds.length > 0 ? cardIds[0] : userCards[0].id;
+    const hostCardId = Array.isArray(cardIds) && cardIds.length > 0 ? cardIds[0] : userCards[0]?.id;
     const hostCard = userCards.find((c: any) => c.id === hostCardId) || userCards[0];
+
+    if (!hostCard) {
+      return res.status(400).json({ error: "Pilih 1 kartu tempur untuk slot Host." });
+    }
+
+    // Lockout check
+    if (lockedCardIds.has(hostCard.id)) {
+      return res.status(400).json({
+        error: `Kartu "${hostCard.name}" sedang digunakan dalam Boss Raid lain. Kartu tidak dapat digunakan hingga raid selesai!`
+      });
+    }
+
+    // Energy check: min 2 bars
+    const updatedHostCard = updateCardEnergy(hostCard);
+    if ((updatedHostCard.energy ?? 5) < 2) {
+      return res.status(400).json({
+        error: `Kartu "${hostCard.name}" membutuhkan minimal 2 bar energi untuk Boss Raid (Energi saat ini: ${updatedHostCard.energy ?? 0}/5).`
+      });
+    }
+
+    // Deduct 2 energy immediately upon execution
+    const dbHostCard = db.cards.find((c: any) => c.id === hostCard.id);
+    if (dbHostCard) {
+      dbHostCard.energy = Math.max(0, (dbHostCard.energy ?? 5) - 2);
+      hostCard.energy = dbHostCard.energy;
+    }
 
     slots[0] = {
       slotIndex: 0,
@@ -7358,8 +7558,12 @@ app.post("/api/raid/lobby/create", (req, res) => {
       actor: "System",
       actorType: "player",
       damage: 0,
-      messageId: `🚨 Raid Lobby dibuka untuk menghadapi ${boss.name} (LV. ${boss.level})!`,
-      messageEn: `🚨 Raid Lobby opened against ${boss.nameEn || boss.name} (LV. ${boss.level})!`,
+      messageId: isSinglePlayer
+        ? `⚔️ Pertarungan Solo dimulai menghadapi ${boss.name} (LV. ${boss.level})! Serang sekarang!`
+        : `🚨 Raid Lobby dibuka untuk menghadapi ${boss.name} (LV. ${boss.level})! Bagikan kode room ke teman untuk bergabung.`,
+      messageEn: isSinglePlayer
+        ? `⚔️ Solo Battle started against ${boss.nameEn || boss.name} (LV. ${boss.level})! Attack now!`
+        : `🚨 Raid Lobby opened against ${boss.nameEn || boss.name} (LV. ${boss.level})! Share code with friends.`,
       timestamp: new Date().toISOString()
     }
   ];
@@ -7373,7 +7577,7 @@ app.post("/api/raid/lobby/create", (req, res) => {
     hostUsername: user.username,
     isSinglePlayer: !!isSinglePlayer,
     slots,
-    status: "waiting",
+    status: isSinglePlayer ? "in_battle" : "waiting",
     currentTurn: 1,
     bossCurrentHp: boss.hp,
     bossMaxHp: boss.hp,
@@ -7401,7 +7605,7 @@ app.post("/api/raid/lobby/join", (req, res) => {
     return res.status(401).json({ error: "Silakan login terlebih dahulu untuk bergabung." });
   }
 
-  const { roomId, roomCode, cardId, slotIndex, userLat, userLng } = req.body;
+  const { roomId, roomCode, cardId, card: clientCard, slotIndex, userLat, userLng } = req.body;
   if (!db.raidLobbies) db.raidLobbies = [];
 
   const room = db.raidLobbies.find((r: any) => 
@@ -7416,14 +7620,75 @@ app.post("/api/raid/lobby/join", (req, res) => {
     return res.status(400).json({ error: "Pertarungan Raid di room ini sudah berlangsung atau selesai." });
   }
 
-  // CATATAN: Tidak ada batasan jarak untuk join multiplayer raid boss
   if (!db.cards) db.cards = [];
-  const userCards = db.cards.filter((c: any) => c.userId === user.id);
+  let userCards = db.cards.filter((c: any) => c.userId === user.id);
+  if (clientCard && clientCard.id && !userCards.some((c: any) => c.id === clientCard.id)) {
+    userCards.push(clientCard);
+    db.cards.push({ ...clientCard, userId: user.id });
+  }
+
   if (userCards.length === 0) {
-    return res.status(400).json({ error: "Anda belum memiliki kartu Nekomon." });
+    const starterElements: ("Air" | "Api" | "Tanah" | "Angin" | "Petir")[] = ["Air", "Api", "Tanah", "Angin", "Petir"];
+    starterElements.forEach((el, idx) => {
+      const cId = `card_${user.id.replace(/[^a-z0-9]/g, "_")}_${el.toLowerCase()}_${idx + 1}`;
+      const newCard = {
+        id: cId,
+        userId: user.id,
+        captureId: "",
+        name: `${el} Sentinel Striker`,
+        element: el,
+        style: user.faction || "Sentinel",
+        rarity: "Epic",
+        hp: 950,
+        atk: 250,
+        def: 180,
+        spd: 170,
+        skillName: `Serangan Murni ${el}`,
+        skillDesc: `Kekuatan elemental murni ${el} yang kokoh.`,
+        imageUrl: generateFallbackImage(`${el} Sentinel Striker`, el, user.faction || "Sentinel", "Epic", undefined),
+        geminiUsed: false,
+        level: 5,
+        xp: 100,
+        maxXp: 500,
+        energy: 5,
+        maxEnergy: 5,
+        lastEnergyRefillAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+      db.cards.push(newCard);
+      userCards.push(newCard);
+    });
+    writeDB(db);
   }
 
   const cardToEquip = userCards.find((c: any) => c.id === cardId) || userCards[0];
+
+  // Lockout check: Card cannot already be in another active raid
+  const lockedCardIds = getLockedRaidCardIds(db);
+  const alreadyInThisRoom = room.slots.some((s: any) => s && s.card && s.card.id === cardToEquip.id && s.userId === user.id);
+
+  if (!alreadyInThisRoom && lockedCardIds.has(cardToEquip.id)) {
+    return res.status(400).json({
+      error: `Kartu "${cardToEquip.name}" sedang digunakan dalam Boss Raid lain. Kartu tidak dapat digunakan hingga raid selesai!`
+    });
+  }
+
+  // Energy check: min 2 bars
+  if (!alreadyInThisRoom) {
+    const updatedCard = updateCardEnergy(cardToEquip);
+    if ((updatedCard.energy ?? 5) < 2) {
+      return res.status(400).json({
+        error: `Kartu "${cardToEquip.name}" membutuhkan minimal 2 bar energi untuk bergabung ke Boss Raid (Energi saat ini: ${updatedCard.energy ?? 0}/5).`
+      });
+    }
+
+    // Deduct 2 energy immediately upon joining lobby
+    const dbCard = db.cards.find((c: any) => c.id === cardToEquip.id);
+    if (dbCard) {
+      dbCard.energy = Math.max(0, (dbCard.energy ?? 5) - 2);
+      cardToEquip.energy = dbCard.energy;
+    }
+  }
 
   // Find open slot
   let targetSlot = -1;
@@ -7467,8 +7732,8 @@ app.post("/api/raid/lobby/join", (req, res) => {
     actorType: "player",
     cardName: cardToEquip.name,
     damage: 0,
-    messageId: `🎮 ${user.username} bergabung ke Slot ${targetSlot + 1} dengan ${cardToEquip.name}!`,
-    messageEn: `🎮 ${user.username} joined Slot ${targetSlot + 1} with ${cardToEquip.name}!`,
+    messageId: `🎮 ${user.username} bergabung ke Slot ${targetSlot + 1} dengan ${cardToEquip.name}! (-2 Energi)`,
+    messageEn: `🎮 ${user.username} joined Slot ${targetSlot + 1} with ${cardToEquip.name}! (-2 Energy)`,
     timestamp: new Date().toISOString()
   });
 
@@ -7480,6 +7745,74 @@ app.post("/api/raid/lobby/join", (req, res) => {
     message: `Berhasil bergabung ke Slot ${targetSlot + 1}! 🛡️`,
     room
   });
+});
+
+// 7. Leave / Cancel Raid Lobby (Refunds energy if cancelled/left before battle)
+app.post("/api/raid/lobby/leave", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!user) {
+    return res.status(401).json({ error: "Silakan login terlebih dahulu." });
+  }
+
+  const { roomId } = req.body;
+  if (!db.raidLobbies) db.raidLobbies = [];
+  const room = db.raidLobbies.find((r: any) => r.id === roomId);
+
+  if (!room) {
+    return res.status(404).json({ error: "Room tidak ditemukan." });
+  }
+
+  if (room.status === "waiting") {
+    if (room.hostUserId === user.id) {
+      // Host cancels lobby -> refund energy to all occupied slots and mark cancelled
+      room.status = "cancelled";
+      room.slots.forEach((s: any) => {
+        if (s && s.card) {
+          const dbCard = db.cards?.find((c: any) => c.id === s.card.id);
+          if (dbCard) {
+            dbCard.energy = Math.min(dbCard.maxEnergy || 5, (dbCard.energy || 0) + 2);
+          }
+        }
+      });
+    } else {
+      // Guest leaves -> refund guest card energy and clear slot
+      const sIdx = room.slots.findIndex((s: any) => s && s.userId === user.id);
+      if (sIdx !== -1) {
+        const slot = room.slots[sIdx];
+        if (slot && slot.card) {
+          const dbCard = db.cards?.find((c: any) => c.id === slot.card.id);
+          if (dbCard) {
+            dbCard.energy = Math.min(dbCard.maxEnergy || 5, (dbCard.energy || 0) + 2);
+          }
+        }
+        room.slots[sIdx] = null;
+      }
+    }
+  } else if (room.status === "in_battle") {
+    // Forfeit / surrender during active raid
+    if (room.isSinglePlayer || room.hostUserId === user.id) {
+      room.status = "defeat";
+      room.battleLogs.push({
+        turn: room.currentTurn,
+        actor: user.username,
+        actorType: "player",
+        damage: 0,
+        messageId: `🏳️ Trainer ${user.username} memilih menyerah dan menghentikan Boss Raid.`,
+        messageEn: `🏳️ Trainer ${user.username} surrendered and stopped the Boss Raid.`,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      const sIdx = room.slots.findIndex((s: any) => s && s.userId === user.id);
+      if (sIdx !== -1) {
+        room.slots[sIdx].currentHp = 0;
+      }
+    }
+  }
+
+  room.updatedAt = new Date().toISOString();
+  writeDB(db);
+  res.json({ success: true, room });
 });
 
 // 7. Update Card in Slot (Single Player or Host)
@@ -7542,7 +7875,9 @@ app.post("/api/raid/lobby/start", (req, res) => {
   const room = db.raidLobbies.find((r: any) => r.id === roomId);
 
   if (!room) return res.status(404).json({ error: "Room tidak ditemukan." });
-  if (room.hostUserId !== user.id) return res.status(403).json({ error: "Hanya Host yang dapat memulai pertarungan." });
+  if (room.hostUserId !== user.id && !room.slots.some((s: any) => s?.userId === user.id) && user.role !== "developer") {
+    return res.status(403).json({ error: "Hanya Host yang dapat memulai pertarungan." });
+  }
 
   const filledSlots = room.slots.filter((s: any) => s !== null);
   if (filledSlots.length === 0) {
@@ -7551,6 +7886,15 @@ app.post("/api/raid/lobby/start", (req, res) => {
 
   room.status = "in_battle";
   room.currentTurn = 1;
+  room.battleLogs.push({
+    turn: 1,
+    actor: "System",
+    actorType: "player",
+    damage: 0,
+    messageId: `⚔️ Pertarungan Raid dimulai oleh ${user.username}! Seluruh komandan serang Boss sekarang!`,
+    messageEn: `⚔️ Raid Battle started by ${user.username}! All commanders attack the Boss now!`,
+    timestamp: new Date().toISOString()
+  });
   room.updatedAt = new Date().toISOString();
   writeDB(db);
 
@@ -7717,15 +8061,39 @@ app.post("/api/raid/lobby/turn", (req, res) => {
       createdAt: new Date().toISOString()
     });
 
-    // PROGRESSIVE RAID BOSS UNLOCK ENGINE
-    // Aturan: Bos level 6, 7, 8 selalu standby.
-    // 2 level boss berikutnya baru bisa di-spawn setelah bos level sebelumnya dikalahkan (misal level 8 kalah -> level 9 & 10 muncul).
+    // PROGRESSIVE RAID BOSS UNLOCK ENGINE & DEFEATED COOLDOWN LOGIC
+    // Aturan: Boss yang sudah dikalahkan akan muncul status "defeated" dan baru spawn kembali setelah jeda 10-15 menit.
+    // 2 level boss berikutnya baru bisa di-spawn setelah bos level sebelumnya dikalahkan.
     if (!db.maxUnlockedRaidLevel) db.maxUnlockedRaidLevel = 8;
     if (!db.defeatedRaidBossLevels) db.defeatedRaidBossLevels = [];
     if (!db.defeatedRaidBossLevels.includes(boss.level)) {
       db.defeatedRaidBossLevels.push(boss.level);
     }
     db.highestDefeatedRaidBossLevel = Math.max(db.highestDefeatedRaidBossLevel || 0, boss.level);
+
+    // Set 10-15 minute respawn cooldown for this defeated boss
+    const respawnMinutes = Math.floor(Math.random() * 6) + 10; // 10 to 15 minutes
+    const defeatedAt = new Date().toISOString();
+    const respawnAt = new Date(Date.now() + respawnMinutes * 60 * 1000).toISOString();
+
+    const targetBoss = (db.raidBosses || []).find((b: any) => b.id === boss.id);
+    if (targetBoss) {
+      targetBoss.status = "defeated";
+      targetBoss.hp = 0;
+      targetBoss.defeatedAt = defeatedAt;
+      targetBoss.respawnMinutes = respawnMinutes;
+      targetBoss.respawnAt = respawnAt;
+    }
+
+    roundLogs.push({
+      turn: turnNum,
+      actor: "System",
+      actorType: "player",
+      damage: 0,
+      messageId: `⏳ ${boss.name} telah berstatus DEFEATED dan akan spawn kembali setelah jeda istirahat ${respawnMinutes} menit.`,
+      messageEn: `⏳ ${boss.nameEn || boss.name} is now DEFEATED and will respawn after a ${respawnMinutes}-minute cooldown.`,
+      timestamp: new Date().toISOString()
+    });
 
     let newlyUnlockedLevels: number[] = [];
     if (boss.level >= db.maxUnlockedRaidLevel && db.maxUnlockedRaidLevel < 30) {
@@ -7735,9 +8103,6 @@ app.post("/api/raid/lobby/turn", (req, res) => {
         newlyUnlockedLevels.push(l);
       }
       db.maxUnlockedRaidLevel = nextMax;
-
-      // Remove the defeated boss and spawn the next 2 tier levels across all cities
-      db.raidBosses = (db.raidBosses || []).filter((b: any) => b.id !== boss.id);
       ensureStandbyAndUnlockedBosses(db);
 
       const unlockedStr = newlyUnlockedLevels.map(lvl => `Level ${lvl}`).join(" & ");
@@ -7746,14 +8111,10 @@ app.post("/api/raid/lobby/turn", (req, res) => {
         actor: "Nekomon Global Dispatcher",
         actorType: "player",
         damage: 0,
-        messageId: `🚨⚡ TIER BARU RAID BOSS TERBUKA! Karena Boss Level ${boss.level} berhasil dikalahkan, kini Boss ${unlockedStr} telah resmi spawn di seluruh kota Nusantara!`,
-        messageEn: `🚨⚡ NEW RAID BOSS TIER UNLOCKED! Because Boss Level ${boss.level} was defeated, Boss ${unlockedStr} has now spawned across all Indonesian cities!`,
+        messageId: `🚨⚡ TIER BARU RAID BOSS TERBUKA! Karena Boss Level ${boss.level} berhasil dikalahkan, kini Boss ${unlockedStr} telah resmi spawn di spot peta!`,
+        messageEn: `🚨⚡ NEW RAID BOSS TIER UNLOCKED! Because Boss Level ${boss.level} was defeated, Boss ${unlockedStr} has now spawned on the map!`,
         timestamp: new Date().toISOString()
       });
-    } else {
-      // Standby bosses (Levels 6, 7, 8) refresh standby instances so they remain available
-      db.raidBosses = (db.raidBosses || []).filter((b: any) => b.id !== boss.id);
-      ensureStandbyAndUnlockedBosses(db);
     }
 
     room.battleLogs.push(...roundLogs);
@@ -8037,8 +8398,29 @@ app.post("/api/developer/database/sync-firestore", async (req, res) => {
 
 // Explicit endpoint for Google AdSense ads.txt verification
 app.get("/ads.txt", (_req, res) => {
-  res.setHeader("Content-Type", "text/plain");
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.send("google.com, pub-2411657012211511, DIRECT, f08c47fec0942fa0\n");
+});
+
+// Explicit endpoint for Googlebot & AdSense robots.txt crawler verification
+app.get("/robots.txt", (_req, res) => {
+  const robotsPath = path.join(process.cwd(), "public", "robots.txt");
+  if (fs.existsSync(robotsPath)) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.sendFile(robotsPath);
+  }
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send("User-agent: *\nAllow: /\n\nUser-agent: Mediapartners-Google\nAllow: /\n\nUser-agent: Googlebot\nAllow: /\n\nSitemap: https://nekomon.online/sitemap.xml\n");
+});
+
+// Explicit endpoint for XML sitemap
+app.get("/sitemap.xml", (_req, res) => {
+  const sitemapPath = path.join(process.cwd(), "public", "sitemap.xml");
+  if (fs.existsSync(sitemapPath)) {
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    return res.sendFile(sitemapPath);
+  }
+  res.status(404).end();
 });
 
 // ----------------------------------------------------------------
@@ -8055,6 +8437,13 @@ const SEO_PATHS = [
 ];
 
 async function startServer() {
+  // Always serve sw.js with strict no-cache headers to trigger immediate worker retirement
+  app.get(["/sw.js", "/service-worker.js"], (req, res) => {
+    res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.sendFile(path.join(process.cwd(), "public", "sw.js"));
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

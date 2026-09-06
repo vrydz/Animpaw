@@ -24,6 +24,7 @@ import {
 interface RaidBattleArenaProps {
   initialRoom: RaidLobbyRoom;
   currentUser: User | null;
+  token?: string;
   currentLanguage: "id" | "en";
   onExit: () => void;
   onRefreshUserData?: () => void;
@@ -32,6 +33,7 @@ interface RaidBattleArenaProps {
 export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
   initialRoom,
   currentUser,
+  token,
   currentLanguage,
   onExit,
   onRefreshUserData
@@ -47,6 +49,23 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
 
   const logsEndRef = useRef<HTMLDivElement | null>(null);
 
+  const getAuthHeaders = () => {
+    const activeToken = token || localStorage.getItem("nekomon_token") || localStorage.getItem("token") || "";
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (activeToken) {
+      headers["Authorization"] = `Bearer ${activeToken}`;
+    }
+    if (currentUser?.id) {
+      headers["x-user-id"] = currentUser.id;
+    }
+    if (currentUser?.email) {
+      headers["x-user-email"] = currentUser.email;
+    }
+    return headers;
+  };
+
   // Auto scroll logs
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -57,7 +76,9 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
     if (room.status === "waiting") {
       const interval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/raid/lobby/${room.id}`);
+          const res = await fetch(`/api/raid/lobby/${room.id}`, {
+            headers: getAuthHeaders()
+          });
           if (res.ok) {
             const data = await res.json();
             if (data.room) setRoom(data.room);
@@ -91,22 +112,18 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
     setLoadingTurn(true);
     setErrorMsg("");
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch("/api/raid/lobby/start", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ roomId: room.id })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal memulai battle.");
+      if (!res.ok) throw new Error(data.error || (currentLanguage === "id" ? "Gagal memulai battle." : "Failed to start battle."));
 
       setRoom(data.room);
     } catch (e: any) {
-      setErrorMsg(e.message);
+      setErrorMsg(e.message || (currentLanguage === "id" ? "Gagal memulai pertarungan." : "Failed to start battle."));
     } finally {
       setLoadingTurn(false);
     }
@@ -121,18 +138,14 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
     setTimeout(() => setBossHitAnim(false), 600);
 
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch("/api/raid/lobby/turn", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ roomId: room.id, action: "attack" })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menjalankan turn.");
+      if (!res.ok) throw new Error(data.error || (currentLanguage === "id" ? "Gagal menjalankan turn." : "Failed to execute turn."));
 
       setRoom(data.room);
 
@@ -144,16 +157,40 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
         setAutoBattle(false);
       }
     } catch (e: any) {
-      setErrorMsg(e.message);
+      setErrorMsg(e.message || (currentLanguage === "id" ? "Gagal menjalankan serangan." : "Failed to execute attack."));
       setAutoBattle(false);
     } finally {
       setLoadingTurn(false);
     }
   };
 
+  const handleExitArena = async () => {
+    // If exiting while battle or lobby is still active, notify server to release room and card locks
+    if (room.status === "waiting" || room.status === "in_battle") {
+      try {
+        const activeToken = token || localStorage.getItem("nekomon_token") || localStorage.getItem("token") || "";
+        await fetch("/api/raid/lobby/leave", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
+            ...(currentUser?.id ? { "x-user-id": currentUser.id } : {})
+          },
+          body: JSON.stringify({ roomId: room.id })
+        }).catch(() => null);
+      } catch (e) {
+        console.warn("Failed to notify leave:", e);
+      }
+    }
+    if (onRefreshUserData) {
+      onRefreshUserData();
+    }
+    onExit();
+  };
+
   const boss = room.bossSnapshot;
   const bossHpPercent = Math.max(0, Math.min(100, Math.round((room.bossCurrentHp / room.bossMaxHp) * 100)));
-  const isHost = currentUser?.id === room.hostUserId;
+  const isHost = !room.hostUserId || currentUser?.id === room.hostUserId || room.slots[0]?.userId === currentUser?.id || currentUser?.role === "developer";
 
   const getElementBadge = (elem: string) => {
     switch (elem) {
@@ -178,7 +215,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-neutral-800">
         <button
           id="exit-raid-btn"
-          onClick={onExit}
+          onClick={handleExitArena}
           className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-semibold text-neutral-300 border border-neutral-800 flex items-center gap-1.5 transition"
         >
           <ArrowLeft size={14} />
@@ -475,10 +512,16 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
                 id="start-raid-battle-btn"
                 onClick={handleStartBattle}
                 disabled={loadingTurn}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 font-bold text-white text-xs shadow-lg flex items-center justify-center gap-2 transition"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 font-bold text-white text-xs shadow-lg flex items-center justify-center gap-2 transition"
               >
-                <Play size={14} />
-                {currentLanguage === "id" ? "Mulai Pertarungan Raid" : "Start Raid Battle"}
+                <Play size={14} className={loadingTurn ? "animate-spin" : ""} />
+                {loadingTurn
+                  ? currentLanguage === "id"
+                    ? "Memulai Battle..."
+                    : "Starting Battle..."
+                  : currentLanguage === "id"
+                  ? "Mulai Pertarungan Raid"
+                  : "Start Raid Battle"}
               </button>
             )}
           </>
@@ -533,7 +576,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
                 : "💀 Defeated. Try again!"}
             </span>
             <button
-              onClick={onExit}
+              onClick={handleExitArena}
               className="px-5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs font-bold text-white transition"
             >
               {currentLanguage === "id" ? "Kembali ke Raid Hub" : "Back to Raid Hub"}
@@ -595,7 +638,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
 
             <button
               id="claim-victory-exit-btn"
-              onClick={onExit}
+              onClick={handleExitArena}
               className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black text-white text-xs shadow-lg shadow-emerald-950/60 transition"
             >
               {currentLanguage === "id" ? "Klaim & Kembali ke Hub" : "Claim & Back to Hub"}

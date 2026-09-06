@@ -102,6 +102,7 @@ export interface Card {
   energy?: number;
   maxEnergy?: number;
   lastEnergyRefillAt?: string;
+  inRaid?: boolean;
 }
 
 export interface AuthResponse {
@@ -370,6 +371,11 @@ export interface RaidBoss {
     cardXp: number;
   };
   isActive: boolean;
+  status?: "active" | "defeated";
+  defeatedAt?: string;
+  respawnAt?: string;
+  respawnMinutes?: number;
+  secondsUntilRespawn?: number;
   expiresAt: string;
   createdAt: string;
   isManual?: boolean;

@@ -246,15 +246,17 @@ export const GameGuide: React.FC = () => {
                     <Swords className="w-5 h-5 text-red-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">12. Fitur Raid Boss Co-op & Sistem Spawning Berurutan ⚔️🐾</h4>
+                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">12. Fitur Raid Boss Co-op & Mekanisme Pertempuran ⚔️🐾</h4>
                     <p className="leading-relaxed">
-                      Hadapi Boss raksasa dari 3 spesies (<span className="text-amber-400 font-bold font-mono">Kucing, Tikus, dan Anjing</span>) dengan versi yang telah ditempa (<span className="text-cyan-300 font-bold font-mono">Forged</span>) dalam 5 elemen dasar (<span className="text-rose-400 font-mono">Api</span>, <span className="text-sky-400 font-mono">Air</span>, <span className="text-emerald-400 font-mono">Tanah</span>, <span className="text-teal-400 font-mono">Angin</span>, <span className="text-yellow-400 font-mono">Petir</span>) dengan sistem leveling progresif!
+                      Hadapi Boss raksasa dari 3 spesies (<span className="text-amber-400 font-bold font-mono">Kucing, Tikus, dan Anjing</span>) dengan versi yang telah ditempa (<span className="text-cyan-300 font-bold font-mono">Forged</span>) dalam 5 elemen dasar (<span className="text-rose-400 font-mono">Api</span>, <span className="text-sky-400 font-mono">Air</span>, <span className="text-emerald-400 font-mono">Tanah</span>, <span className="text-teal-400 font-mono">Angin</span>, <span className="text-yellow-400 font-mono">Petir</span>) dengan sistem leveling dan aturan energi!
                       <br className="my-1"/>
-                      <span className="text-emerald-400 font-bold font-mono">• Tanpa Batas Jarak:</span> Tidak ada syarat jarak 10 km! Pemain di seluruh Indonesia dapat langsung menantang dan bergabung dalam pertarungan Raid Boss dari mana saja.
+                      <span className="text-emerald-400 font-bold font-mono">• Radius Spawning 50 KM:</span> Boss raid hanya akan muncul pada radar dan peta jika berada dalam radius maksimal 50 km dari koordinat GPS pemain berada.
                       <br/>
-                      <span className="text-amber-400 font-bold font-mono">• Boss Standby (Level 6, 7, 8):</span> Bos Level 6, 7, dan 8 selalu siaga di setiap kota Nusantara.
+                      <span className="text-amber-400 font-bold font-mono">• Status Defeated & Respawn 10-15 Menit:</span> Boss raid yang telah berhasil dikalahkan pemain akan berstatus <span className="text-red-400 font-bold font-mono">Defeated</span> dan baru akan spawn kembali setelah jeda waktu pendinginan (cooldown) 10 hingga 15 menit.
                       <br/>
-                      <span className="text-yellow-400 font-bold font-mono">• Spawning 2 Level Berurutan:</span> 2 level berikutnya (contohnya Level 9 dan 10) baru akan spawn di spot map setelah bos level sebelumnya (Level 8) berhasil dikalahkan oleh Trainer, dan berlanjut ke tier berikutnya.
+                      <span className="text-yellow-400 font-bold font-mono">• Syarat Energi (Minimal 2 Bar):</span> Untuk melakukan boss raid, masing-masing kartu Nekomon yang dipilih setidaknya memiliki 2 bar energi dan akan langsung terpakai saat eksekusi boss raid dimulai.
+                      <br/>
+                      <span className="text-rose-400 font-bold font-mono">• Penguncian Kartu (Lockout):</span> Kartu Nekomon yang sedang menjalankan eksekusi Boss Raid terkunci dan tidak bisa digunakan untuk aktivitas lain hingga eksekusi boss raid selesai. Saat eksekusi raid selesai (menang, kalah, atau keluar arena), seluruh kartu langsung dibuka kuncinya dan kembali tersedia (available) selama sisa energi bar mencukupi.
                       <br/>
                       <span className="text-cyan-400 font-bold font-mono">• Konfigurasi 3 Slot Pasukan:</span> Pertarungan Raid menyediakan minimal 3 slot kartu yang dapat diisi secara <span className="text-cyan-300 font-bold font-mono">Single Player</span> (memasang 3 kartu milikmu sendiri) atau <span className="text-indigo-300 font-bold font-mono">Multiplayer Co-op</span> (membuka room dan bertarung bersama 2 Trainer lain dari faksi Sentinel maupun Vanguard).
                       <br/>
@@ -326,13 +328,13 @@ export const GameGuide: React.FC = () => {
                     <Flame className="w-5 h-5 text-rose-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-rose-300 font-mono text-xs uppercase mb-1">17. Spawn Raid Boss di Peta Spot GPS (Bebas Jarak) ⚔️📍</h4>
+                    <h4 className="font-bold text-rose-300 font-mono text-xs uppercase mb-1">17. Spawn Raid Boss di Peta Spot GPS (Radius 50 KM) ⚔️📍</h4>
                     <p className="leading-relaxed">
-                      Lokasi aktif spawn Raid Boss kini diproyeksikan langsung secara real-time pada <span className="text-amber-400 font-bold font-mono">Peta Spot Nekomon</span>.
+                      Lokasi aktif spawn Raid Boss kini diproyeksikan langsung secara real-time pada <span className="text-amber-400 font-bold font-mono">Peta Spot Nekomon</span> khusus dalam radius 50 km dari posisi pemain.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Tombol Lacak Boss:</span> Klik tombol <span className="text-rose-400 font-mono font-bold">Boss</span> di bilah toolbar peta untuk secara instan mengarahkan kamera ke Raid Boss terdekat dari lokasi GPS Anda.
                       <br/>
-                      <span className="text-emerald-400 font-bold font-mono">• Akses Bebas Jarak:</span> Tidak ada batasan jarak 10 km! Anda dapat langsung menekan tombol pertempuran dari jendela sorotan peta dan masuk ke Ruang Pertempuran dari kota mana pun di Indonesia!
+                      <span className="text-emerald-400 font-bold font-mono">• Radius 50 KM & Status Defeated:</span> Boss raid hanya muncul jika berjarak ≤ 50 km. Boss yang baru saja dikalahkan menampilkan status Defeated lengkap dengan timer mundur sebelum respawn kembali dalam 10-15 menit.
                     </p>
                   </div>
                 </div>
@@ -566,15 +568,17 @@ export const GameGuide: React.FC = () => {
                     <Swords className="w-5 h-5 text-red-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">12. Co-op Raid Boss Feature & Sequential Tier Unlocking ⚔️🐾</h4>
+                    <h4 className="font-bold text-red-300 font-mono text-xs uppercase mb-1">12. Co-op Raid Boss Mechanics & Combat Requirements ⚔️🐾</h4>
                     <p className="leading-relaxed">
-                      Encounter colossal Bosses from 3 species (<span className="text-amber-400 font-bold font-mono">Cat, Rat, and Dog</span>) forged across the 5 core elements (<span className="text-rose-400 font-mono">Fire</span>, <span className="text-sky-400 font-mono">Water</span>, <span className="text-emerald-400 font-mono">Earth</span>, <span className="text-teal-400 font-mono">Wind</span>, <span className="text-yellow-400 font-mono">Thunder</span>) with progressive unlocking!
+                      Encounter colossal Bosses from 3 species (<span className="text-amber-400 font-bold font-mono">Cat, Rat, and Dog</span>) forged across the 5 core elements (<span className="text-rose-400 font-mono">Fire</span>, <span className="text-sky-400 font-mono">Water</span>, <span className="text-emerald-400 font-mono">Earth</span>, <span className="text-teal-400 font-mono">Wind</span>, <span className="text-yellow-400 font-mono">Thunder</span>) with tactical energy rules!
                       <br className="my-1"/>
-                      <span className="text-emerald-400 font-bold font-mono">• No Distance Restrictions:</span> The 10 km distance barrier is removed! Trainers anywhere across Indonesia can join and challenge Raid Bosses freely.
+                      <span className="text-emerald-400 font-bold font-mono">• 50 KM Spawning Radius:</span> Raid Bosses only spawn and display on your radar and map if they are situated within a 50 km radius of your current player location.
                       <br/>
-                      <span className="text-amber-400 font-bold font-mono">• Standby Tiers (Levels 6, 7, 8):</span> Bosses of levels 6, 7, and 8 remain permanently on standby across all Indonesian cities.
+                      <span className="text-amber-400 font-bold font-mono">• Defeated Status & 10-15 Min Respawn:</span> Defeated bosses enter a <span className="text-red-400 font-bold font-mono">Defeated</span> cooldown state and will only respawn after a 10 to 15 minute interval.
                       <br/>
-                      <span className="text-yellow-400 font-bold font-mono">• Sequential 2-Level Unlocks:</span> The subsequent 2 boss levels (e.g. Levels 9 and 10) only spawn on the spot map once the previous tier (Level 8) is defeated by Trainers.
+                      <span className="text-yellow-400 font-bold font-mono">• Energy Requirement (≥ 2 Bars):</span> Each participating Nekomon card must possess at least 2 energy bars. These 2 energy bars are deducted immediately upon launching the raid battle.
+                      <br/>
+                      <span className="text-rose-400 font-bold font-mono">• Card Lockout:</span> Any card actively assigned to an ongoing Raid Boss battle is temporarily locked and cannot be deployed in other activities (such as Beacon Territory wars) until the raid concludes. Once the raid concludes (victory, defeat, or exit), all cards are immediately unlocked and available again across all activities as long as their energy bars are sufficient.
                       <br/>
                       <span className="text-cyan-400 font-bold font-mono">• 3-Slot Combat Squad:</span> Raid battles feature a 3-slot combat formation available in <span className="text-cyan-300 font-bold font-mono">Single Player</span> (equip 3 cards from your deck) or <span className="text-indigo-300 font-bold font-mono">Multiplayer Co-op</span> (create room and battle with 2 other trainers from Sentinel or Vanguard factions).
                       <br/>
@@ -646,13 +650,13 @@ export const GameGuide: React.FC = () => {
                     <Flame className="w-5 h-5 text-rose-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-rose-300 font-mono text-xs uppercase mb-1">17. Raid Boss GPS Spot Map Spawns (No Distance Limit) ⚔️📍</h4>
+                    <h4 className="font-bold text-rose-300 font-mono text-xs uppercase mb-1">17. Raid Boss GPS Spot Map Spawns (50 KM Radius) ⚔️📍</h4>
                     <p className="leading-relaxed">
-                      Active Raid Boss spawn points are rendered directly in real-time onto the <span className="text-amber-400 font-bold font-mono">Nekomon Spot Map</span>.
+                      Active Raid Boss spawn points are rendered directly in real-time onto the <span className="text-amber-400 font-bold font-mono">Nekomon Spot Map</span> exclusively within a 50 km radius of your player coordinates.
                       <br className="my-1"/>
                       <span className="text-yellow-400 font-bold font-mono">• Boss Focus Shortcut:</span> Click the <span className="text-rose-400 font-mono font-bold">Boss</span> quick button on the map toolbar to smoothly center the camera onto the nearest active Raid Boss.
                       <br/>
-                      <span className="text-emerald-400 font-bold font-mono">• Global Combat Access:</span> Distance constraints are removed! You can immediately enter the combat lobby from the spotlight panel from anywhere in Indonesia.
+                      <span className="text-emerald-400 font-bold font-mono">• 50 KM Radar & Defeated Cooldown:</span> Only bosses within ≤ 50 km appear. Once defeated, bosses display a Defeated status and a countdown timer before respawning in 10-15 minutes.
                     </p>
                   </div>
                 </div>
