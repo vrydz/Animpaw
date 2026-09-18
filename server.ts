@@ -23,8 +23,51 @@ const PORT = 3000;
 const DB_PATH = path.join(process.cwd(), "server", "db.json");
 
 // Middleware to parse large JSON payloads (for base64 cat photos)
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+type RateLimitEntry = { count: number; resetAt: number };
+
+function createRateLimiter(maxRequests: number, windowMs: number) {
+  const attempts = new Map<string, RateLimitEntry>();
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const now = Date.now();
+    if (attempts.size > 10_000) {
+      for (const [storedKey, entry] of attempts) {
+        if (entry.resetAt <= now) attempts.delete(storedKey);
+      }
+    }
+    const key = req.ip || req.socket.remoteAddress || "unknown";
+    const current = attempts.get(key);
+    if (!current || current.resetAt <= now) {
+      attempts.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    if (current.count >= maxRequests) {
+      res.setHeader("Retry-After", Math.ceil((current.resetAt - now) / 1000));
+      return res.status(429).json({ error: "Terlalu banyak percobaan. Silakan tunggu beberapa saat." });
+    }
+    current.count += 1;
+    next();
+  };
+}
+
+const loginRateLimit = createRateLimiter(10, 15 * 60 * 1000);
+const authWriteRateLimit = createRateLimiter(5, 15 * 60 * 1000);
+const verificationRateLimit = createRateLimiter(10, 15 * 60 * 1000);
+const emailPattern = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
+const isValidPassword = (password: string) => password.length >= 8 && password.length <= 128;
+const isExpired = (entry: { expiresAt?: string }) => !entry.expiresAt || new Date(entry.expiresAt).getTime() <= Date.now();
+
+function getPublicBaseUrl(req: express.Request) {
+  const configuredUrl = process.env.APP_URL?.trim().replace(/\/+$/, "");
+  if (configuredUrl) return configuredUrl;
+  if (process.env.NODE_ENV === "production") return "https://nekomon.online";
+  const protocol = (req.headers["x-forwarded-proto"] as string) || req.protocol || "http";
+  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || `localhost:${PORT}`;
+  return `${protocol}://${host}`;
+}
 
 // Synchronize memory cache / file DB on server boot
 let isFirestoreLoaded = false;
@@ -137,6 +180,9 @@ async function bootSyncFirestore() {
         });
       }
       fs.writeFileSync(DB_PATH, JSON.stringify(current, null, 2));
+      // Backfill server-only credential hashes for installations upgraded from
+      // versions that only persisted them in the local JSON database.
+      syncToFirestore(current).catch((err) => console.warn("Credential backfill notice:", err));
       console.log("Database initialized & restored from Firestore successfully.");
     }
     isFirestoreLoaded = true;
@@ -566,7 +612,7 @@ function ensureDemoUserAndDeck(db: any): boolean {
       id: "user_demo1_tcg",
       username: "demo1",
       email: "demo1@nekomon.online",
-      password: "n3komontcg",
+      password: hashPassword("n3komontcg"),
       points: 1000,
       cores: 50,
       faction: "Sentinel",
@@ -578,8 +624,8 @@ function ensureDemoUserAndDeck(db: any): boolean {
     db.users.push(demoUser);
     modified = true;
   } else {
-    if (demoUser.password !== "n3komontcg") {
-      demoUser.password = "n3komontcg";
+    if (typeof demoUser.password !== "string" || !demoUser.password.startsWith("scrypt$") || !verifyPassword("n3komontcg", demoUser.password)) {
+      demoUser.password = hashPassword("n3komontcg");
       modified = true;
     }
     if ((demoUser.points || 0) < 500) {
@@ -739,50 +785,13 @@ function ensureDemoUserAndDeck(db: any): boolean {
 
 // Auth: Register (Legacy direct route)
 app.post("/api/auth/register", (req, res) => {
-  const { email, username, password } = req.body;
-  if (!email || !username || !password) {
-    return res.status(400).json({ error: "Email, username, dan password wajib diisi." });
-  }
-
-  const cleanEmail = email.trim();
-  const cleanUsername = username.trim();
-  const cleanPassword = password.trim();
-
-  if (!cleanEmail || !cleanUsername || !cleanPassword) {
-    return res.status(400).json({ error: "Email, username, dan password tidak boleh kosong." });
-  }
-
-  const db = readDB();
-  const existingUser = db.users.find((u: any) => u.username.toLowerCase() === cleanUsername.toLowerCase() || u.email.toLowerCase() === cleanEmail.toLowerCase());
-  
-  if (existingUser) {
-    return res.status(400).json({ error: "Username atau Email sudah terdaftar." });
-  }
-
-  const newUser = {
-    id: "user_" + Math.random().toString(36).substr(2, 9),
-    email: cleanEmail,
-    username: cleanUsername,
-    password: hashPassword(cleanPassword),
-    points: 100, // starting credit
-    cores: 0,
-    createdAt: new Date().toISOString()
-  };
-
-  db.users.push(newUser);
-  writeDB(db);
-
-  res.json({
-    success: true,
-    user: { id: newUser.id, username: newUser.username, email: newUser.email, points: newUser.points, cores: 0 },
-    token: createSessionToken(newUser)
-  });
+  return res.status(410).json({ error: "Pendaftaran langsung telah dinonaktifkan. Gunakan verifikasi email." });
 });
 
 // Auth: Send Email Verification Link & Code via Real Hostinger SMTP (support@nekomon.online)
-app.post("/api/auth/send-verification", async (req, res) => {
+app.post("/api/auth/send-verification", authWriteRateLimit, async (req, res) => {
   const { email, password, isEn } = req.body;
-  if (!email || !password) {
+  if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
     return res.status(400).json({ error: "Email dan password wajib diisi." });
   }
 
@@ -791,6 +800,12 @@ app.post("/api/auth/send-verification", async (req, res) => {
 
   if (!cleanEmail || !cleanPassword) {
     return res.status(400).json({ error: "Email dan password tidak boleh kosong." });
+  }
+  if (!emailPattern.test(cleanEmail)) {
+    return res.status(400).json({ error: "Format alamat email tidak valid." });
+  }
+  if (!isValidPassword(cleanPassword)) {
+    return res.status(400).json({ error: "Password harus terdiri dari 8 hingga 128 karakter." });
   }
 
   const db = readDB();
@@ -807,8 +822,8 @@ app.post("/api/auth/send-verification", async (req, res) => {
   // Remove existing pending verifications for this email
   db.pendingVerifications = db.pendingVerifications.filter((v: any) => v.email.toLowerCase() !== cleanEmail.toLowerCase());
 
-  const token = "vt_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const token = "vt_" + crypto.randomBytes(32).toString("base64url");
+  const code = crypto.randomInt(100000, 1000000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
   const newVerification = {
@@ -817,6 +832,7 @@ app.post("/api/auth/send-verification", async (req, res) => {
     email: cleanEmail,
     password: hashPassword(cleanPassword),
     verified: false,
+    failedAttempts: 0,
     expiresAt,
     createdAt: new Date().toISOString()
   };
@@ -825,9 +841,7 @@ app.post("/api/auth/send-verification", async (req, res) => {
   writeDB(db);
 
   // Construct absolute Verification URL
-  const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
-  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "ais-dev-iuova2al3sc3knpj6hb7ml-261769556031.asia-east1.run.app";
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = getPublicBaseUrl(req);
   const verificationUrl = `${baseUrl}/api/auth/verify?token=${token}`;
 
   // Send real email via Hostinger SMTP (support@nekomon.online)
@@ -838,25 +852,33 @@ app.post("/api/auth/send-verification", async (req, res) => {
     isEn: isEn || false
   });
 
+  if (!mailResult.success) {
+    db.pendingVerifications = db.pendingVerifications.filter((v: any) => v.token !== token);
+    writeDB(db);
+    return res.status(502).json({ error: "Email verifikasi belum dapat dikirim. Silakan coba lagi beberapa saat." });
+  }
+
   res.json({
     success: true,
     message: isEn 
       ? `Verification email has been sent to ${cleanEmail} via support@nekomon.online!` 
       : `Email verifikasi telah dikirim langsung ke ${cleanEmail} via support@nekomon.online!`,
     token,
-    emailSent: mailResult.success,
-    mailError: mailResult.error || null
+    emailSent: true
   });
 });
 
 // Auth: Resend Verification Email
-app.post("/api/auth/resend-verification", async (req, res) => {
+app.post("/api/auth/resend-verification", authWriteRateLimit, async (req, res) => {
   const { email, isEn } = req.body;
-  if (!email) {
+  if (typeof email !== "string" || !email) {
     return res.status(400).json({ error: "Email wajib diisi." });
   }
 
   const cleanEmail = email.trim();
+  if (!emailPattern.test(cleanEmail)) {
+    return res.status(400).json({ error: "Format alamat email tidak valid." });
+  }
   const db = readDB();
   if (!db.pendingVerifications) db.pendingVerifications = [];
   const verification = db.pendingVerifications.find((v: any) => v.email.toLowerCase() === cleanEmail.toLowerCase());
@@ -866,14 +888,14 @@ app.post("/api/auth/resend-verification", async (req, res) => {
   }
 
   // Refresh code & token
-  verification.code = Math.floor(100000 + Math.random() * 900000).toString();
-  verification.token = "vt_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  const previousVerification = { ...verification };
+  verification.code = crypto.randomInt(100000, 1000000).toString();
+  verification.token = "vt_" + crypto.randomBytes(32).toString("base64url");
   verification.expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  verification.failedAttempts = 0;
   writeDB(db);
 
-  const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
-  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "ais-dev-iuova2al3sc3knpj6hb7ml-261769556031.asia-east1.run.app";
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = getPublicBaseUrl(req);
   const verificationUrl = `${baseUrl}/api/auth/verify?token=${verification.token}`;
 
   const mailResult = await sendVerificationEmail({
@@ -883,33 +905,49 @@ app.post("/api/auth/resend-verification", async (req, res) => {
     isEn: isEn || false
   });
 
+  if (!mailResult.success) {
+    Object.assign(verification, previousVerification);
+    writeDB(db);
+    return res.status(502).json({ error: "Email verifikasi belum dapat dikirim. Silakan coba lagi beberapa saat." });
+  }
+
   res.json({
     success: true,
     message: isEn 
       ? `A new verification email has been sent to ${cleanEmail}!` 
       : `Email verifikasi baru telah dikirimkan ke ${cleanEmail}!`,
     token: verification.token,
-    emailSent: mailResult.success
+    emailSent: true
   });
 });
 
 // Auth: Verify Email via Code (OTP)
-app.post("/api/auth/verify-code", (req, res) => {
+app.post("/api/auth/verify-code", verificationRateLimit, (req, res) => {
   const { token, code, email } = req.body;
-  if (!code) {
+  if (typeof code !== "string" || !code) {
     return res.status(400).json({ error: "Kode verifikasi 6 digit wajib diisi." });
   }
 
   const cleanCode = code.trim();
+  const cleanToken = typeof token === "string" ? token : "";
+  const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const db = readDB();
   if (!db.pendingVerifications) db.pendingVerifications = [];
 
   const verification = db.pendingVerifications.find((v: any) => 
-    (token && v.token === token) || (email && v.email.toLowerCase() === email.trim().toLowerCase())
+    (cleanToken && v.token === cleanToken) || (cleanEmail && v.email.toLowerCase() === cleanEmail)
   );
 
   if (!verification) {
     return res.status(400).json({ error: "Sesi verifikasi tidak ditemukan atau telah kadaluarsa." });
+  }
+  if (isExpired(verification)) {
+    db.pendingVerifications = db.pendingVerifications.filter((v: any) => v.token !== verification.token);
+    writeDB(db);
+    return res.status(400).json({ error: "Sesi verifikasi telah kadaluarsa. Silakan daftar ulang." });
+  }
+  if ((verification.failedAttempts || 0) >= 5) {
+    return res.status(429).json({ error: "Terlalu banyak percobaan OTP. Silakan kirim ulang kode." });
   }
 
   if (verification.code && verification.code === cleanCode) {
@@ -917,6 +955,9 @@ app.post("/api/auth/verify-code", (req, res) => {
     writeDB(db);
     return res.json({ success: true, verified: true, token: verification.token });
   }
+
+  verification.failedAttempts = (verification.failedAttempts || 0) + 1;
+  writeDB(db);
 
   return res.status(400).json({ error: "Kode verifikasi 6-digit salah atau tidak sesuai." });
 });
@@ -934,6 +975,11 @@ app.get("/api/auth/verify", (req, res) => {
   const verification = db.pendingVerifications.find((v: any) => v.token === token);
   if (!verification) {
     return res.status(400).send("<h3>Link verifikasi kadaluarsa atau tidak ditemukan.</h3>");
+  }
+  if (isExpired(verification)) {
+    db.pendingVerifications = db.pendingVerifications.filter((v: any) => v.token !== token);
+    writeDB(db);
+    return res.status(400).send("<h3>Link verifikasi telah kadaluarsa. Silakan daftar ulang.</h3>");
   }
 
   verification.verified = true;
@@ -980,19 +1026,27 @@ app.get("/api/auth/check-verification", (req, res) => {
   if (!verification) {
     return res.json({ verified: false });
   }
+  if (isExpired(verification)) {
+    db.pendingVerifications = db.pendingVerifications.filter((v: any) => v.token !== token);
+    writeDB(db);
+    return res.json({ verified: false, expired: true });
+  }
   res.json({ verified: verification.verified });
 });
 
 // Auth: Complete Registration with Username
-app.post("/api/auth/complete-register", (req, res) => {
+app.post("/api/auth/complete-register", authWriteRateLimit, (req, res) => {
   const { token, username, code } = req.body;
-  if (!token || !username) {
+  if (typeof token !== "string" || typeof username !== "string" || !token || !username) {
     return res.status(400).json({ error: "Token verifikasi dan username wajib diisi." });
   }
 
   const cleanUsername = username.trim();
   if (!cleanUsername) {
     return res.status(400).json({ error: "Username tidak boleh kosong." });
+  }
+  if (!/^[a-zA-Z0-9_]{3,24}$/.test(cleanUsername)) {
+    return res.status(400).json({ error: "Username harus 3-24 karakter dan hanya boleh berisi huruf, angka, atau garis bawah." });
   }
 
   const db = readDB();
@@ -1009,9 +1063,14 @@ app.post("/api/auth/complete-register", (req, res) => {
   if (!verification) {
     return res.status(400).json({ error: "Sesi registrasi tidak valid atau kadaluarsa." });
   }
+  if (isExpired(verification)) {
+    db.pendingVerifications = db.pendingVerifications.filter((v: any) => v.token !== token);
+    writeDB(db);
+    return res.status(400).json({ error: "Sesi registrasi telah kadaluarsa. Silakan daftar ulang." });
+  }
 
   // If user provided code directly during complete register
-  if (code && verification.code && code.trim() === verification.code) {
+  if (typeof code === "string" && verification.code && code.trim() === verification.code) {
     verification.verified = true;
   }
 
@@ -1052,19 +1111,24 @@ app.post("/api/auth/complete-register", (req, res) => {
 });
 
 // Auth: Request Forgot Password Link
-app.post("/api/auth/forgot-password", async (req, res) => {
+app.post("/api/auth/forgot-password", authWriteRateLimit, async (req, res) => {
   const { email, isEn } = req.body;
-  if (!email) {
+  if (typeof email !== "string" || !email) {
     return res.status(400).json({ error: "Email wajib diisi." });
   }
 
   const cleanEmail = email.trim();
+  if (!emailPattern.test(cleanEmail)) {
+    return res.status(400).json({ error: "Format alamat email tidak valid." });
+  }
   const db = readDB();
   const user = db.users.find((u: any) => u.email && u.email.toLowerCase() === cleanEmail.toLowerCase());
 
-  if (!user) {
-    return res.status(404).json({ error: "Alamat email tidak terdaftar di sistem kami." });
-  }
+  const genericMessage = isEn
+    ? "If the email is registered, a password reset link will be sent."
+    : "Jika email terdaftar, tautan reset sandi akan dikirimkan.";
+  const sendGenericResponse = () => res.json({ success: true, message: genericMessage });
+  if (!user) return sendGenericResponse();
 
   if (!db.passwordResets) {
     db.passwordResets = [];
@@ -1081,20 +1145,24 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   });
   writeDB(db);
 
-  const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
-  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "ais-dev-iuova2al3sc3knpj6hb7ml-261769556031.asia-east1.run.app";
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = getPublicBaseUrl(req);
   const resetUrl = `${baseUrl}/api/auth/reset-password-page?token=${token}`;
 
-  await sendPasswordResetEmail({
+  const mailResult = await sendPasswordResetEmail({
     to: cleanEmail,
     resetUrl,
     isEn: isEn || false
   });
 
+  if (!mailResult.success) {
+    db.passwordResets = db.passwordResets.filter((r: any) => r.token !== token);
+    writeDB(db);
+    return res.status(502).json({ error: "Email reset sandi belum dapat dikirim. Silakan coba lagi beberapa saat." });
+  }
+
   res.json({
     success: true,
-    message: isEn ? `Password reset link sent to ${cleanEmail}!` : `Link reset sandi telah dikirim ke ${cleanEmail}!`,
+    message: genericMessage,
     // Do not disclose reset tokens to API callers.
   });
 });
@@ -1124,7 +1192,7 @@ app.get("/api/auth/reset-password-page", (req, res) => {
           <input type="hidden" name="token" value="${token}" />
           <div style="margin-bottom: 15px;">
             <label style="display: block; font-size: 11px; font-weight: bold; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase;">KATA SANDI BARU</label>
-            <input type="password" name="password" required placeholder="••••••••" style="width: 100%; box-sizing: border-box; background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 12px; color: #fff; font-size: 14px;" />
+            <input type="password" name="password" required minlength="8" maxlength="128" placeholder="••••••••" style="width: 100%; box-sizing: border-box; background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 12px; color: #fff; font-size: 14px;" />
           </div>
           <button type="submit" style="width: 100%; background: linear-gradient(to right, #eab308, #d97706); border: none; color: #020617; padding: 12px; font-weight: 900; border-radius: 8px; cursor: pointer; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; margin-top: 10px;">Simpan Sandi Baru ⚔️</button>
         </form>
@@ -1134,15 +1202,19 @@ app.get("/api/auth/reset-password-page", (req, res) => {
 });
 
 // Auth: Complete Reset Password
-app.post("/api/auth/reset-password", (req, res) => {
-  const { token, password } = req.body;
-  if (!token || !password) {
+app.post("/api/auth/reset-password", authWriteRateLimit, (req, res) => {
+  const { token } = req.body;
+  const password = req.body.password || req.body.newPassword;
+  if (typeof token !== "string" || typeof password !== "string" || !token || !password) {
     return res.status(400).json({ error: "Token dan sandi baru wajib diisi." });
   }
 
   const cleanPassword = password.trim();
   if (!cleanPassword) {
     return res.status(400).json({ error: "Sandi baru tidak boleh kosong." });
+  }
+  if (!isValidPassword(cleanPassword)) {
+    return res.status(400).json({ error: "Password harus terdiri dari 8 hingga 128 karakter." });
   }
 
   const db = readDB();
@@ -1182,9 +1254,9 @@ app.post("/api/auth/reset-password", (req, res) => {
 });
 
 // Auth: Login
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", loginRateLimit, (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) {
+  if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
     return res.status(400).json({ error: "Username/Email dan password wajib diisi." });
   }
 
@@ -1193,7 +1265,7 @@ app.post("/api/auth/login", (req, res) => {
 
   const db = readDB();
   const user = db.users.find((u: any) =>
-    (u.username.toLowerCase() === cleanIdentifier || u.email.toLowerCase() === cleanIdentifier) &&
+    (u.username?.toLowerCase() === cleanIdentifier || u.email?.toLowerCase() === cleanIdentifier) &&
     verifyPassword(cleanPassword, u.password || "")
   );
 
@@ -1224,7 +1296,7 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 // Auth: Google Sign-In
-app.post("/api/auth/google", async (req, res) => {
+app.post("/api/auth/google", loginRateLimit, async (req, res) => {
   const { idToken } = req.body;
   if (!idToken || typeof idToken !== "string") return res.status(400).json({ error: "Google ID token wajib ada." });
   let claims: any;

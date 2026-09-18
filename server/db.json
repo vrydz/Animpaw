@@ -77,7 +77,7 @@
       "id": "user_demo1_tcg",
       "username": "demo1",
       "email": "demo1@nekomon.online",
-      "password": "n3komontcg",
+      "password": "scrypt$u6o2zzsZxB_TmnWmKwsp_w$CJ5viM1VyaeN5TNotK9drhiT2vSC13K954UzuLplD_eg58B4kWyY4KlNnY1pb-51MMn4dVyEMHErsEcnIWnbNw",
       "points": 1000,
       "cores": 50,
       "faction": "Sentinel",

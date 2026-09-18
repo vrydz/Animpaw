@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { signInWithGoogleFirebase } from "../lib/firebase";
-import { getAnimeNekomonSpeciesArtwork } from "../data/nekomonSpeciesData";
 import { LegalPagesModal, LegalTabType } from "./LegalPagesModal";
 import { AdSenseBanner } from "./AdSenseBanner";
 import { useLanguage } from "../context/LanguageContext";
@@ -35,11 +34,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   const { language } = useLanguage();
   const isEn = language === "en";
 
-  const [mode, setMode] = useState<"login" | "register_email" | "register_verifying" | "register_username" | "forgot_password" | "reset_password">("login");
+  const [mode, setMode] = useState<"login" | "register_email" | "register_verifying" | "register_username" | "forgot_password">("login");
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [newPassword, setNewPassword] = useState<string>("");
   const [token, setToken] = useState<string>("");
   const [otpCode, setOtpCode] = useState<string>("");
   const [resendCooldown, setResendCooldown] = useState<number>(0);
@@ -47,6 +45,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Remove credentials stored by older releases. Authentication data must never
+  // be persisted in browser-readable storage.
+  useEffect(() => {
+    try {
+      localStorage.removeItem("nekomon_backup_users");
+    } catch {
+      // Storage may be unavailable in private browsing contexts.
+    }
+  }, []);
 
   // Background polling for email link clicks in another tab / phone
   useEffect(() => {
@@ -189,7 +197,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
       }
 
       setSuccess(isEn ? "Google login successful! Loading game..." : "Login Google berhasil! Memuat data game...");
-      updateLocalBackup(data.user, "google_oauth_auth");
       setTimeout(() => {
         onSuccess(data.token, data.user);
       }, 1000);
@@ -202,80 +209,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const updateLocalBackup = (userObj: any, passwordStr: string) => {
-    if (!userObj || !userObj.username) return;
-    try {
-      const key = "nekomon_backup_users";
-      const existingStr = localStorage.getItem(key);
-      const backups = existingStr ? JSON.parse(existingStr) : {};
-      
-      const usernameKey = userObj.username.toLowerCase();
-      const prevBackup = backups[usernameKey] || {};
-      
-      backups[usernameKey] = {
-        user: { ...prevBackup.user, ...userObj },
-        password: passwordStr || prevBackup.password || "",
-        captures: prevBackup.captures || [],
-        cards: prevBackup.cards || []
-      };
-      
-      const sanitize = (data: any, mode: number) => {
-        try {
-          const clean = JSON.parse(JSON.stringify(data));
-          for (const k in clean) {
-            const entry = clean[k];
-            if (entry?.captures) {
-              entry.captures = entry.captures.map((c: any) => ({
-                ...c,
-                photoBase64: mode === 0 && (c.photoBase64?.length || 0) < 30000 ? c.photoBase64 : ""
-              }));
-            }
-            if (entry?.cards) {
-              entry.cards = entry.cards.map((card: any) => {
-                let img = card.imageUrl;
-                if (!img || typeof img !== "string" || img.trim() === "" || (mode > 0 && img.length > 50000)) {
-                  img = getAnimeNekomonSpeciesArtwork(
-                    card.name || "Nekomon",
-                    card.element || "Api",
-                    card.style || "Sentinel",
-                    card.rarity || "Common"
-                  );
-                }
-                return {
-                  ...card,
-                  imageUrl: img
-                };
-              });
-            }
-            if (mode === 2) {
-              entry.captures = [];
-              entry.cards = [];
-            }
-          }
-          return clean;
-        } catch {
-          return data;
-        }
-      };
-
-      try {
-        localStorage.setItem(key, JSON.stringify(sanitize(backups, 0)));
-      } catch {
-        try {
-          localStorage.setItem(key, JSON.stringify(sanitize(backups, 1)));
-        } catch {
-          try {
-            localStorage.setItem(key, JSON.stringify(sanitize(backups, 2)));
-          } catch {
-            // Ignore quota limits
-          }
-        }
-      }
-    } catch {
-      // Ignore backup errors
     }
   };
 
@@ -292,56 +225,13 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password }),
         });
-        let data = await response.json();
+        const data = await response.json();
 
-        // Ephemeral Server Reset Fallback Check:
         if (!response.ok) {
-          try {
-            const key = "nekomon_backup_users";
-            const existingStr = localStorage.getItem(key);
-            const backups = existingStr ? JSON.parse(existingStr) : {};
-            const usernameKey = username.trim().toLowerCase();
-            const backup = backups[usernameKey];
-
-            if (backup && backup.password === password.trim()) {
-              setSuccess(isEn ? "Syncing account from local database..." : "Sinkronisasi akun dari database lokal...");
-              const syncResponse = await fetch("/api/auth/sync", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  user: backup.user,
-                  password: backup.password,
-                  captures: backup.captures,
-                  cards: backup.cards
-                }),
-              });
-
-              if (syncResponse.ok) {
-                // Retry login now that user is restored
-                const retryResponse = await fetch("/api/auth/login", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ username, password }),
-                });
-                data = await retryResponse.json();
-                if (retryResponse.ok) {
-                  setSuccess(isEn ? "Login successful! Loading game..." : "Login berhasil! Memuat data game...");
-                  updateLocalBackup(data.user, password.trim());
-                  setTimeout(() => {
-                    onSuccess(data.token, data.user);
-                  }, 1200);
-                  return;
-                }
-              }
-            }
-          } catch (syncErr) {
-            console.error("Error during auto-sync restore:", syncErr);
-          }
           throw new Error(data.error || (isEn ? "Invalid username, email, or password." : "Username, Email, atau password salah."));
         }
 
         setSuccess(isEn ? "Login successful! Loading game..." : "Login berhasil! Memuat data game...");
-        updateLocalBackup(data.user, password.trim());
         setTimeout(() => {
           onSuccess(data.token, data.user);
         }, 1200);
@@ -350,7 +240,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         const response = await fetch("/api/auth/send-verification", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email, password, isEn }),
         });
         const data = await response.json();
 
@@ -378,7 +268,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         }
 
         setSuccess(isEn ? "Registration complete! Logging in..." : "Pendaftaran selesai! Memulai game...");
-        updateLocalBackup(data.user, "initial_reg");
         setTimeout(() => {
           onSuccess(data.token, data.user);
         }, 1200);
@@ -387,7 +276,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         const response = await fetch("/api/auth/forgot-password", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, isEn }),
         });
         const data = await response.json();
 
@@ -395,31 +284,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
           throw new Error(data.error || (isEn ? "Failed to send reset link." : "Gagal mengirim link reset."));
         }
 
-        setSuccess(isEn ? "Password reset link sent to your email!" : "Link reset password berhasil dikirim ke email Anda!");
-        setToken(data.token);
-        setTimeout(() => {
-          setMode("reset_password");
-          setSuccess(null);
-        }, 1500);
-
-      } else if (mode === "reset_password") {
-        const response = await fetch("/api/auth/reset-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, newPassword }),
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || (isEn ? "Failed to reset password." : "Gagal mereset kata sandi."));
-        }
-
-        setSuccess(isEn ? "Password updated successfully! Please log in." : "Sandi berhasil diupdate! Silakan masuk kembali.");
+        setSuccess(data.message || (isEn ? "If the email is registered, a reset link will be sent." : "Jika email terdaftar, tautan reset akan dikirimkan."));
         setTimeout(() => {
           setMode("login");
           setSuccess(null);
-          setNewPassword("");
-        }, 2000);
+        }, 3000);
       }
     } catch (err: any) {
       setError(err.message || (isEn ? "Failed to connect to server." : "Gagal menghubungi server."));
@@ -454,11 +323,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         return {
           title: isEn ? "FORGOT PASSWORD" : "LUPA KATA SANDI",
           desc: isEn ? "Enter your registered email address to receive a password reset link." : "Ketik alamat email Anda yang pernah terdaftar untuk mendapatkan tautan reset sandi."
-        };
-      case "reset_password":
-        return {
-          title: isEn ? "SET NEW PASSWORD" : "ATUR SANDI BARU",
-          desc: isEn ? "Enter your new chosen password to restore access to your trainer account." : "Masukkan sandi baru pilihan Anda untuk memulihkan akses ke akun trainer."
         };
     }
   };
@@ -555,6 +419,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                     ? (isEn ? "username or email" : "pilih_nama_unik atau email") 
                     : (isEn ? "unique_trainer_name" : "nama_unik_trainer")}
                   required
+                  minLength={mode === "register_username" ? 3 : undefined}
+                  maxLength={mode === "register_username" ? 24 : undefined}
+                  pattern={mode === "register_username" ? "[a-zA-Z0-9_]+" : undefined}
                   className="w-full bg-slate-950 border border-slate-800 focus:border-yellow-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition-all font-mono"
                 />
               </div>
@@ -573,24 +440,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-yellow-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition-all font-mono"
-                />
-              </div>
-            )}
-
-            {/* New Password Field (ResetPassword mode) */}
-            {mode === "reset_password" && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-400 font-mono flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-slate-500" />
-                  {isEn ? "NEW PASSWORD" : "KATA SANDI BARU (NEW PASSWORD)"}
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
+                  minLength={mode === "register_email" ? 8 : undefined}
+                  maxLength={128}
                   className="w-full bg-slate-950 border border-slate-800 focus:border-yellow-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none transition-all font-mono"
                 />
               </div>
@@ -611,7 +462,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                     {mode === "register_email" && (isEn ? "SEND EMAIL VERIFICATION" : "KIRIM VERIFIKASI EMAIL")}
                     {mode === "register_username" && (isEn ? "COMPLETE REGISTRATION" : "SELESAIKAN PENDAFTARAN")}
                     {mode === "forgot_password" && (isEn ? "SEND RESET LINK" : "KIRIM LINK RESET PASSWORD")}
-                    {mode === "reset_password" && (isEn ? "SAVE NEW PASSWORD" : "SIMPAN SANDI BARU")}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
@@ -779,7 +629,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
             </>
           )}
 
-          {(mode === "register_email" || mode === "forgot_password" || mode === "register_verifying" || mode === "register_username" || mode === "reset_password") && (
+          {(mode === "register_email" || mode === "forgot_password" || mode === "register_verifying" || mode === "register_username") && (
             <div className="text-slate-500">
               {isEn ? "Already have an account? " : "Sudah memiliki akun? "}
               <button

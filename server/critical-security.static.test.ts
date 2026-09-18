@@ -116,7 +116,46 @@ test("password reset tokens expire and are never returned", () => {
   assert.match(server, /crypto\.randomBytes\(32\)/);
   assert.match(server, /expiresAt: new Date\(Date\.now\(\) \+ 15 \* 60 \* 1000\)/);
   const resetResponse = server.slice(server.indexOf('app.post("/api/auth/forgot-password"'), server.indexOf('// Auth: Reset Password Page HTML Form'));
-  assert.doesNotMatch(resetResponse, /res\.json\(\{[\s\S]*?token\s*[,}]/);
+  assert.doesNotMatch(resetResponse, /res\.json\(\{\s*success:\s*true,\s*message:[^}]*\btoken\s*[,}]/);
+});
+
+test("authentication flows enforce verification, expiry, and abuse controls", () => {
+  const server = read("server.ts");
+  const authForm = read("src/components/AuthForm.tsx");
+  const mailer = read("server/mailer.ts");
+  const firestore = read("server/firestoreDb.ts");
+
+  const legacyRegister = server.slice(server.indexOf('// Auth: Register (Legacy direct route)'), server.indexOf('// Auth: Send Email Verification'));
+  assert.match(legacyRegister, /status\(410\)/);
+  assert.doesNotMatch(legacyRegister, /db\.users\.push/);
+
+  assert.match(server, /crypto\.randomBytes\(32\).*base64url/);
+  assert.match(server, /crypto\.randomInt\(100000, 1000000\)/);
+  assert.match(server, /isExpired\(verification\)/);
+  assert.match(server, /failedAttempts/);
+  assert.match(server, /authWriteRateLimit/);
+  assert.match(server, /loginRateLimit/);
+
+  assert.doesNotMatch(authForm, /password:\s*passwordStr|backup\.password|\/api\/auth\/sync/);
+  assert.doesNotMatch(authForm, /setMode\("reset_password"\)|JSON\.stringify\(\{ token, newPassword \}\)/);
+  assert.match(authForm, /localStorage\.removeItem\("nekomon_backup_users"\)/);
+
+  assert.match(mailer, /connectionTimeout/);
+  assert.match(mailer, /socketTimeout/);
+  assert.match(firestore, /collection\("authCredentials"\)/);
+  assert.match(firestore, /passwordHash/);
+});
+
+test("demo account is provisioned with a hashed known password", () => {
+  const server = read("server.ts");
+  const database = JSON.parse(read("server/db.json"));
+  const demo = database.users.find((user: any) => user.username === "demo1");
+
+  assert.ok(demo);
+  assert.equal(demo.email, "demo1@nekomon.online");
+  assert.match(demo.password, /^scrypt\$/);
+  assert.match(server, /password: hashPassword\("n3komontcg"\)/);
+  assert.match(server, /verifyPassword\("n3komontcg", demoUser\.password\)/);
 });
 
 test("production secrets are not committed as fallback credentials", () => {

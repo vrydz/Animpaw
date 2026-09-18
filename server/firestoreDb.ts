@@ -46,6 +46,11 @@ export async function syncToFirestore(data: any) {
         await fsDb.collection("users").doc(u.id).set(safeUser, { merge: true }).catch(err => {
           console.warn("Firestore user sync warning:", err?.message || err);
         });
+        if (typeof password === "string" && password) {
+          await fsDb.collection("authCredentials").doc(u.id).set({ passwordHash: password }, { merge: true }).catch(err => {
+            console.warn("Firestore credential sync warning:", err?.message || err);
+          });
+        }
       }
     }
 
@@ -131,6 +136,7 @@ export async function loadFromFirestore(): Promise<any | null> {
 
   try {
     const usersSnap = await fsDb.collection("users").get().catch(() => ({ docs: [] }));
+    const credentialsSnap = await fsDb.collection("authCredentials").get().catch(() => ({ docs: [] }));
     const capturesSnap = await fsDb.collection("captures").get().catch(() => ({ docs: [] }));
     const cardsSnap = await fsDb.collection("cards").get().catch(() => ({ docs: [] }));
     const tradesSnap = await fsDb.collection("trades").get().catch(() => ({ docs: [] }));
@@ -140,7 +146,14 @@ export async function loadFromFirestore(): Promise<any | null> {
     const officialMailsSnap = await fsDb.collection("officialMails").get().catch(() => ({ docs: [] }));
     const directMessagesSnap = await fsDb.collection("directMessages").get().catch(() => ({ docs: [] }));
 
-    const users = usersSnap.docs.map(doc => doc.data());
+    const passwordByUserId = new Map<string, string>(
+      credentialsSnap.docs.map(doc => [doc.id, doc.data().passwordHash] as [string, string])
+    );
+    const users = usersSnap.docs.map(doc => {
+      const user = doc.data();
+      const password = passwordByUserId.get(doc.id);
+      return password ? { ...user, password } : user;
+    });
     const captures = capturesSnap.docs.map(doc => doc.data());
     const cards = cardsSnap.docs.map(doc => doc.data());
     const trades = tradesSnap.docs.map(doc => doc.data());

@@ -15,6 +15,9 @@ export function getMailTransporter(): nodemailer.Transporter {
       host,
       port,
       secure: port === 465, // true for 465 (SSL), false for other ports (587 STARTTLS)
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
       auth: {
         user,
         pass
