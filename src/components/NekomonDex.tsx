@@ -635,6 +635,11 @@ export function NekomonDex({ cards, onOpenForge }: NekomonDexProps) {
                         <span className="text-slate-400 uppercase">{language === "id" ? "STATISTIK BASE DENGAN MUTU" : "BASE SPECIES STATS"}</span>
                         <span className="text-yellow-400 font-extrabold">TOTAL: {totalStat}</span>
                       </div>
+                      <p className="text-[9px] text-slate-500 leading-snug">
+                        {language === "id"
+                          ? "Statistik ini adalah profil dasar spesies. Statistik kartu hasil Forge tetap mengikuti rarity dan dapat bervariasi."
+                          : "These are species baseline stats. Forged card stats follow rarity ranges and may vary."}
+                      </p>
 
                       <div className="flex flex-col gap-2 text-[10px]">
                         {/* HP Bar */}

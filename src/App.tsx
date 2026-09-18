@@ -1822,7 +1822,7 @@ export default function App() {
                     <span>⚡</span> SPD (Speed)
                   </span>
                   <span className="text-slate-400 text-[11px] leading-tight">
-                    {language === "id" ? "Menentukan urutan giliran bertindak di Arena." : "Controls turn priority order in Arena combat."}
+                    {language === "id" ? "Memberi bonus tempo serangan hingga ±15% di Arena, Territory, dan Raid." : "Provides up to ±15% attack-tempo impact in Arena, Territory, and Raid."}
                   </span>
                 </div>
 

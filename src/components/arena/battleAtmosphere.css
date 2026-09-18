@@ -1,0 +1,33 @@
+.arena-scene { position: relative; isolation: isolate; background: #080f1e; }
+.arena-environment { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; background: radial-gradient(ellipse at 12% 22%, #19344270, transparent 55%), radial-gradient(ellipse at 90% 38%, #3c273f60, transparent 55%); }
+.arena-light { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 25%, #89b9ca0b 40%, transparent 57%); animation: arena-light-drift 22s ease-in-out infinite alternate; }
+.arena-horizon { position: absolute; width: 140%; height: 200px; left: -20%; top: 38%; border: 1px solid #a6c8e21a; border-radius: 50%; background: repeating-radial-gradient(ellipse at center, transparent 0 35px, #aacbdb08 36px 37px); transform: scaleY(.38); }
+.arena-mote { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #b4d1df; opacity: 0; animation: arena-mote-drift 15s linear infinite; }
+.arena-mote:nth-child(3n) { background: #d9b97a; width: 2px; height: 2px; }
+.arena-scene[data-victory=true] .arena-environment { background: radial-gradient(ellipse at 50% 35%, #98702a26, transparent 65%), #080f1e; }
+.arena-scene[data-victory=true] .arena-mote { background: #e9ce93; }
+.arena-card { min-width: 0; animation: arena-card-enter .55s cubic-bezier(.2,.7,.3,1) backwards; background: linear-gradient(160deg, #182335ed, #101725f5); border-color: #7c98b52e; transition: opacity .65s; }
+.arena-card[data-side=right] { animation-delay: .09s; }
+.arena-card[data-defeated=true] { opacity: .5; }
+.arena-cue { pointer-events: none; position: absolute; inset: 0; z-index: 25; border-radius: inherit; animation: arena-cue-fade .8s ease-out both; border: 1px solid #f6b2a9; background: linear-gradient(135deg, #f880701b, transparent 60%); }
+.arena-cue span { position: absolute; top: 18%; right: 8%; color: #fff1e9; background: #28171deb; padding: 5px 9px; border-radius: 6px; font: 800 14px ui-monospace, monospace; animation: arena-number .8s ease-out both; }
+.arena-cue--heal,.arena-cue--buff { border-color: #8edab5; background: linear-gradient(0deg, #74d2a224, transparent 70%); }
+.arena-cue--heal span,.arena-cue--buff span { color: #b9f1d5; background: #10261fed; }
+.arena-cue--critical { border-color: #e7c47d; }
+.arena-cue--damage::after,.arena-cue--critical::after { content: ''; position: absolute; left: 25%; top: 30%; width: 50%; height: 25%; border: 1px solid #dfbaac; border-radius: 50%; animation: arena-impact-ring .45s ease-out both; }
+.arena-cue--debuff { border-color: #bf9adb; }
+.arena-cue--defeat { background: transparent; border-color: #8493a2; }
+.arena-impact { position: absolute; inset: 0; pointer-events: none; z-index: 20; overflow: hidden; }
+.arena-impact::after { content: ''; position: absolute; left: 25%; top: 30%; width: 50%; height: 35%; border: 1px solid var(--impact-color, #adcde0); border-radius: 50%; animation: arena-impact-ring .45s ease-out both; }
+.arena-scene [class*="backdrop-blur-"] { backdrop-filter: none; }
+.arena-scene[data-paused=true] *, .arena-scene[data-paused=true] *::after { animation-play-state: paused !important; }
+.arena-scene[data-reduced=true] *, .arena-scene[data-reduced=true] *::before, .arena-scene[data-reduced=true] *::after { animation: none !important; transition: none !important; }
+.arena-scene[data-reduced=true] .arena-cue { background: transparent; }
+@keyframes arena-light-drift { from { transform: translateX(-5%); opacity: .4; } to { transform: translateX(5%); opacity: .8; } }
+@keyframes arena-mote-drift { 0%,100% { opacity: 0; transform: translate(0,18px); } 30% { opacity: .35; } 80% { opacity: .2; } 99% { transform: translate(12px,-55px); opacity: 0; } }
+@keyframes arena-card-enter { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes arena-impact-ring { from { transform: scale(.65) rotate(-20deg); opacity: .65; } to { transform: scale(1.3) rotate(-20deg); opacity: 0; } }
+@keyframes arena-cue-fade { 0% { opacity: .8; } 100% { opacity: 0; } }
+@keyframes arena-number { from { transform: translateY(6px); } to { transform: translateY(-12px); } }
+@media (max-width: 640px) { .arena-mote:nth-child(n+7) { display: none; } .arena-light { animation: none; opacity: .5; } .arena-card { padding: 10px; } }
+@media (prefers-reduced-motion: reduce) { .arena-scene *, .arena-scene *::before, .arena-scene *::after { animation: none !important; transition: none !important; } .arena-impact { display: none; } .arena-cue { background: transparent; } .arena-mote { opacity: .15; } }

@@ -1,5 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { Server } from "http";
+import { getElementalMultiplier, getSkillPowerMultiplier, getSpeedMultiplier, getStyleAttackMultiplier, getStyleDefenseMultiplier } from "../src/lib/combatBalance";
+import { applyCardXp } from "../src/lib/cardProgression";
 
 interface ChatMessage {
   id: string;
@@ -48,27 +50,6 @@ setInterval(() => {
     }
   }
 }, 60000);
-
-// Helper to calculate elemental multipliers
-export function getElementalMultiplier(attackerElement: string, defenderElement: string): number {
-  const att = attackerElement ? attackerElement.toLowerCase() : "";
-  const def = defenderElement ? defenderElement.toLowerCase() : "";
-  
-  if (att === def || !att || !def) return 1.0;
-
-  // Air (Water) beats Api & Tanah
-  if (att === "air" && (def === "api" || def === "tanah")) return 1.4;
-  // Api (Fire) beats Angin & Petir
-  if (att === "api" && (def === "angin" || def === "petir")) return 1.4;
-  // Angin (Wind) beats Tanah & Air
-  if (att === "angin" && (def === "tanah" || def === "air")) return 1.4;
-  // Tanah (Earth) beats Petir & Api
-  if (att === "tanah" && (def === "petir" || def === "api")) return 1.4;
-  // Petir (Lightning) beats Air & Angin
-  if (att === "petir" && (def === "air" || def === "angin")) return 1.4;
-
-  return 1.0;
-}
 
 // Helper to update card energy (1 bar per 2 hours)
 function updateCardEnergy(card: any): any {
@@ -641,6 +622,8 @@ function resolveBattleRound(room: BattleRoom, readDB: () => any, writeDB: (data:
   // 1. Calculate Element Multipliers based on 5-element Rock-Paper-Scissors cycle
   const multA = getElementalMultiplier(cardA.element, cardB.element);
   const multB = getElementalMultiplier(cardB.element, cardA.element);
+  const speedMultA = getSpeedMultiplier(cardA.spd, cardB.spd);
+  const speedMultB = getSpeedMultiplier(cardB.spd, cardA.spd);
 
   let roundLogs: string[] = [];
   roundLogs.push(`--- ROUND ${room.round} RESOLUTION ---`);
@@ -657,10 +640,10 @@ function resolveBattleRound(room: BattleRoom, readDB: () => any, writeDB: (data:
 
   // Element advantage announcements
   if (multA > 1.0) {
-    roundLogs.push(`🔥 UNGGUL ELEMEN! Elemen ${cardA.element} milik ${cardA.name} sangat efektif melawan ${cardB.element} (+40% PWR)!`);
+    roundLogs.push(`🔥 UNGGUL ELEMEN! Elemen ${cardA.element} milik ${cardA.name} sangat efektif melawan ${cardB.element} (+30% PWR)!`);
   }
   if (multB > 1.0) {
-    roundLogs.push(`🔥 UNGGUL ELEMEN! Elemen ${cardB.element} milik ${cardB.name} sangat efektif melawan ${cardA.element} (+40% PWR)!`);
+    roundLogs.push(`🔥 UNGGUL ELEMEN! Elemen ${cardB.element} milik ${cardB.name} sangat efektif melawan ${cardA.element} (+30% PWR)!`);
   }
 
   // Deduct energy for skills
@@ -675,20 +658,20 @@ function resolveBattleRound(room: BattleRoom, readDB: () => any, writeDB: (data:
 
   // A's attack power
   if (actA === "attack") {
-    const raw = (cardA.atk || 80) * multA * (0.85 + Math.random() * 0.3);
-    dmgToB = Math.max(minDmg(cardA.level), Math.floor(raw - (cardB.def || 80) * 0.45));
+    const raw = (cardA.atk || 80) * getStyleAttackMultiplier(cardA.style) * multA * speedMultA * (0.85 + Math.random() * 0.3);
+    dmgToB = Math.max(minDmg(cardA.level), Math.floor(raw - (cardB.def || 80) * getStyleDefenseMultiplier(cardB.style) * 0.45));
   } else if (actA === "skill") {
-    const raw = (cardA.atk || 80) * 1.55 * multA * (0.95 + Math.random() * 0.15);
-    dmgToB = Math.max(minDmg(cardA.level) * 1.5, Math.floor(raw - (cardB.def || 80) * 0.3));
+    const raw = (cardA.atk || 80) * getStyleAttackMultiplier(cardA.style) * getSkillPowerMultiplier(cardA.element) * multA * speedMultA * (0.95 + Math.random() * 0.15);
+    dmgToB = Math.max(minDmg(cardA.level) * 1.5, Math.floor(raw - (cardB.def || 80) * getStyleDefenseMultiplier(cardB.style) * 0.3));
   }
 
   // B's attack power
   if (actB === "attack") {
-    const raw = (cardB.atk || 80) * multB * (0.85 + Math.random() * 0.3);
-    dmgToA = Math.max(minDmg(cardB.level), Math.floor(raw - (cardA.def || 80) * 0.45));
+    const raw = (cardB.atk || 80) * getStyleAttackMultiplier(cardB.style) * multB * speedMultB * (0.85 + Math.random() * 0.3);
+    dmgToA = Math.max(minDmg(cardB.level), Math.floor(raw - (cardA.def || 80) * getStyleDefenseMultiplier(cardA.style) * 0.45));
   } else if (actB === "skill") {
-    const raw = (cardB.atk || 80) * 1.55 * multB * (0.95 + Math.random() * 0.15);
-    dmgToA = Math.max(minDmg(cardB.level) * 1.5, Math.floor(raw - (cardA.def || 80) * 0.3));
+    const raw = (cardB.atk || 80) * getStyleAttackMultiplier(cardB.style) * getSkillPowerMultiplier(cardB.element) * multB * speedMultB * (0.95 + Math.random() * 0.15);
+    dmgToA = Math.max(minDmg(cardB.level) * 1.5, Math.floor(raw - (cardA.def || 80) * getStyleDefenseMultiplier(cardA.style) * 0.3));
   }
 
   // Adjust for defenses
@@ -733,8 +716,14 @@ function resolveBattleRound(room: BattleRoom, readDB: () => any, writeDB: (data:
     let loser: PlayerState | null = null;
 
     if (room.playerA.hp <= 0 && room.playerB.hp <= 0) {
-      // Tie breaker based on higher speed or random
+      // Tie breaker based on higher speed, then a fair random roll.
       if ((cardA.spd || 0) > (cardB.spd || 0)) {
+        winner = room.playerA;
+        loser = room.playerB;
+      } else if ((cardB.spd || 0) > (cardA.spd || 0)) {
+        winner = room.playerB;
+        loser = room.playerA;
+      } else if (Math.random() < 0.5) {
         winner = room.playerA;
         loser = room.playerB;
       } else {
@@ -801,27 +790,8 @@ function awardMatchRewards(winner: PlayerState, loser: PlayerState, readDB: () =
     const wCardIdx = db.cards.findIndex((c: any) => c.id === winner.card.id && c.userId === winner.userId);
     if (wCardIdx !== -1) {
       const card = db.cards[wCardIdx];
-      let oldLevel = card.level || 1;
-      let xpGained = 120; // 120 EXP for win
-      let currentXp = (card.xp || 0) + xpGained;
-      let maxXp = oldLevel * 100;
-      let leveledUp = false;
-
-      while (currentXp >= maxXp) {
-        currentXp -= maxXp;
-        card.level = (card.level || 1) + 1;
-        maxXp = card.level * 100;
-        leveledUp = true;
-
-        // Upgrade stats
-        card.hp = (card.hp || 200) + Math.floor(Math.random() * 15) + 12;
-        card.atk = (card.atk || 80) + Math.floor(Math.random() * 6) + 6;
-        card.def = (card.def || 80) + Math.floor(Math.random() * 6) + 6;
-        card.spd = (card.spd || 80) + Math.floor(Math.random() * 4) + 4;
-      }
-
-      card.xp = currentXp;
-      card.maxXp = maxXp;
+      const xpGained = 120;
+      const { leveledUp } = applyCardXp(card, xpGained);
 
       db.cards[wCardIdx] = card;
 
@@ -852,27 +822,8 @@ function awardMatchRewards(winner: PlayerState, loser: PlayerState, readDB: () =
     const lCardIdx = db.cards.findIndex((c: any) => c.id === loser.card.id && c.userId === loser.userId);
     if (lCardIdx !== -1) {
       const card = db.cards[lCardIdx];
-      let oldLevel = card.level || 1;
-      let xpGained = 50; // 50 EXP for loss
-      let currentXp = (card.xp || 0) + xpGained;
-      let maxXp = oldLevel * 100;
-      let leveledUp = false;
-
-      while (currentXp >= maxXp) {
-        currentXp -= maxXp;
-        card.level = (card.level || 1) + 1;
-        maxXp = card.level * 100;
-        leveledUp = true;
-
-        // Upgrade stats
-        card.hp = (card.hp || 200) + Math.floor(Math.random() * 15) + 12;
-        card.atk = (card.atk || 80) + Math.floor(Math.random() * 6) + 6;
-        card.def = (card.def || 80) + Math.floor(Math.random() * 6) + 6;
-        card.spd = (card.spd || 80) + Math.floor(Math.random() * 4) + 4;
-      }
-
-      card.xp = currentXp;
-      card.maxXp = maxXp;
+      const xpGained = 50;
+      const { leveledUp } = applyCardXp(card, xpGained);
 
       db.cards[lCardIdx] = card;
 

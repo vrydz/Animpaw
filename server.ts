@@ -2,14 +2,19 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import { getAuth as getFirebaseAdminAuth } from "firebase-admin/auth";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initWebSocket } from "./server/websocket";
 import { syncToFirestore, loadFromFirestore } from "./server/firestoreDb";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./server/mailer";
+import { createSessionToken, hashPassword, verifyPassword, verifySessionToken } from "./server/security";
 import { RAID_BOSS_TEMPLATES, createRaidBossInstance, generateBossArtwork, INDONESIAN_CITIES, CITY_BOSS_CONFIGS } from "./src/data/raidBossData";
 import { resolveSeoRoute, renderSeoHtml } from "./server/seoRoutes";
+import { ELEMENT_ADVANTAGE, ELEMENT_ADVANTAGE_MULTIPLIER, ELEMENT_RESISTANCE_MULTIPLIER, getSpeedMultiplier, getStyleAttackMultiplier, getStyleDefenseMultiplier } from "./src/lib/combatBalance";
+import { applyCardXp } from "./src/lib/cardProgression";
+import { NEKOMON_SPECIES_CATALOG } from "./src/data/nekomonSpeciesData";
 
 dotenv.config();
 
@@ -403,11 +408,11 @@ const FALLBACKS: Record<string, Record<string, string[]>> = {
 };
 
 const STATS_RANGES: Record<string, { hp: [number, number]; atk: [number, number]; def: [number, number]; spd: [number, number] }> = {
-  Common: { hp: [100, 250], atk: [50, 100], def: [50, 100], spd: [40, 80] },
-  Rare: { hp: [250, 450], atk: [100, 180], def: [100, 180], spd: [80, 140] },
-  Epic: { hp: [450, 650], atk: [180, 280], def: [180, 280], spd: [140, 220] },
-  Legend: { hp: [650, 850], atk: [280, 400], def: [280, 400], spd: [220, 320] },
-  Mythic: { hp: [850, 1200], atk: [400, 600], def: [400, 600], spd: [320, 500] },
+  Common: { hp: [120, 260], atk: [55, 105], def: [50, 100], spd: [45, 85] },
+  Rare: { hp: [220, 380], atk: [90, 150], def: [85, 145], spd: [75, 125] },
+  Epic: { hp: [340, 520], atk: [130, 210], def: [125, 205], spd: [110, 175] },
+  Legend: { hp: [480, 700], atk: [190, 300], def: [180, 290], spd: [155, 240] },
+  Mythic: { hp: [650, 900], atk: [270, 400], def: [250, 380], spd: [220, 330] },
 };
 
 const ABILITIES: Record<string, { name: string; desc: string }[]> = {
@@ -758,7 +763,7 @@ app.post("/api/auth/register", (req, res) => {
     id: "user_" + Math.random().toString(36).substr(2, 9),
     email: cleanEmail,
     username: cleanUsername,
-    password: cleanPassword, // For simplicity kept plain
+    password: hashPassword(cleanPassword),
     points: 100, // starting credit
     cores: 0,
     createdAt: new Date().toISOString()
@@ -770,7 +775,7 @@ app.post("/api/auth/register", (req, res) => {
   res.json({
     success: true,
     user: { id: newUser.id, username: newUser.username, email: newUser.email, points: newUser.points, cores: 0 },
-    token: Buffer.from(`${newUser.id}:${newUser.username}`).toString("base64")
+    token: createSessionToken(newUser)
   });
 });
 
@@ -810,7 +815,7 @@ app.post("/api/auth/send-verification", async (req, res) => {
     token,
     code,
     email: cleanEmail,
-    password: cleanPassword,
+    password: hashPassword(cleanPassword),
     verified: false,
     expiresAt,
     createdAt: new Date().toISOString()
@@ -1042,7 +1047,7 @@ app.post("/api/auth/complete-register", (req, res) => {
   res.json({
     success: true,
     user: { id: newUser.id, username: newUser.username, email: newUser.email, points: newUser.points, role: newUser.role, cores: 0 },
-    token: Buffer.from(`${newUser.id}:${newUser.username}`).toString("base64")
+    token: createSessionToken(newUser)
   });
 });
 
@@ -1067,11 +1072,12 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
   db.passwordResets = db.passwordResets.filter((r: any) => r.email.toLowerCase() !== cleanEmail.toLowerCase());
 
-  const token = "rt_" + Math.random().toString(36).substr(2, 9);
+  const token = "rt_" + crypto.randomBytes(32).toString("base64url");
   db.passwordResets.push({
     token,
     email: cleanEmail,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
   });
   writeDB(db);
 
@@ -1089,7 +1095,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   res.json({
     success: true,
     message: isEn ? `Password reset link sent to ${cleanEmail}!` : `Link reset sandi telah dikirim ke ${cleanEmail}!`,
-    token
+    // Do not disclose reset tokens to API callers.
   });
 });
 
@@ -1102,7 +1108,7 @@ app.get("/api/auth/reset-password-page", (req, res) => {
 
   const db = readDB();
   if (!db.passwordResets) db.passwordResets = [];
-  const resetEntry = db.passwordResets.find((r: any) => r.token === token);
+  const resetEntry = db.passwordResets.find((r: any) => r.token === token && new Date(r.expiresAt).getTime() > Date.now());
 
   if (!resetEntry) {
     return res.status(400).send("<h3>Sesi reset sandi kadaluarsa atau tidak ditemukan.</h3>");
@@ -1142,7 +1148,7 @@ app.post("/api/auth/reset-password", (req, res) => {
   const db = readDB();
   if (!db.passwordResets) db.passwordResets = [];
 
-  const resetEntry = db.passwordResets.find((r: any) => r.token === token);
+  const resetEntry = db.passwordResets.find((r: any) => r.token === token && new Date(r.expiresAt).getTime() > Date.now());
   if (!resetEntry) {
     const isFromForm = req.headers["content-type"]?.includes("application/x-www-form-urlencoded");
     if (isFromForm) {
@@ -1153,7 +1159,7 @@ app.post("/api/auth/reset-password", (req, res) => {
 
   const user = db.users.find((u: any) => u.email.toLowerCase() === resetEntry.email.toLowerCase());
   if (user) {
-    user.password = cleanPassword;
+    user.password = hashPassword(cleanPassword);
   }
 
   db.passwordResets = db.passwordResets.filter((r: any) => r.token !== token);
@@ -1186,13 +1192,19 @@ app.post("/api/auth/login", (req, res) => {
   const cleanPassword = password.trim();
 
   const db = readDB();
-  const user = db.users.find((u: any) => 
-    (u.username.toLowerCase() === cleanIdentifier || u.email.toLowerCase() === cleanIdentifier) && 
-    (u.password === cleanPassword || u.password === password)
+  const user = db.users.find((u: any) =>
+    (u.username.toLowerCase() === cleanIdentifier || u.email.toLowerCase() === cleanIdentifier) &&
+    verifyPassword(cleanPassword, u.password || "")
   );
 
   if (!user) {
     return res.status(401).json({ error: "Username, Email, atau password salah." });
+  }
+
+  // Upgrade a legacy plaintext password only after successful verification.
+  if (!user.password.startsWith("scrypt$")) {
+    user.password = hashPassword(cleanPassword);
+    writeDB(db);
   }
 
   // Login Endpoint
@@ -1207,16 +1219,25 @@ app.post("/api/auth/login", (req, res) => {
       captureStreak: user.captureStreak || 0,
       lastCaptureDate: user.lastCaptureDate || ""
     },
-    token: Buffer.from(`${user.id}:${user.username}`).toString("base64")
+    token: createSessionToken(user)
   });
 });
 
 // Auth: Google Sign-In
-app.post("/api/auth/google", (req, res) => {
-  const { email, displayName, uid, photoURL } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: "Email Google wajib ada." });
+app.post("/api/auth/google", async (req, res) => {
+  const { idToken } = req.body;
+  if (!idToken || typeof idToken !== "string") return res.status(400).json({ error: "Google ID token wajib ada." });
+  let claims: any;
+  try {
+    claims = await getFirebaseAdminAuth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Google ID token tidak valid." });
   }
+  if (!claims.email || !claims.email_verified) return res.status(401).json({ error: "Email Google harus terverifikasi." });
+  const email = claims.email;
+  const displayName = claims.name || "";
+  const uid = claims.uid;
+  const photoURL = claims.picture || "";
 
   const db = readDB();
   const cleanEmail = email.trim().toLowerCase();
@@ -1237,7 +1258,7 @@ app.post("/api/auth/google", (req, res) => {
       id: uid || "user_" + Math.random().toString(36).substr(2, 9),
       email: cleanEmail,
       username: finalUsername,
-      password: "google_oauth_auth",
+      password: hashPassword(crypto.randomBytes(32).toString("base64url")),
       points: 100,
       cores: 5,
       avatarUrl: photoURL || "",
@@ -1262,12 +1283,16 @@ app.post("/api/auth/google", (req, res) => {
       captureStreak: user.captureStreak || 0,
       lastCaptureDate: user.lastCaptureDate || ""
     },
-    token: Buffer.from(`${user.id}:${user.username}`).toString("base64")
+    token: createSessionToken(user)
   });
 });
 
 // Auth: Sync / Restore user data from client backup (robust persistence helper)
 app.post("/api/auth/sync", (req, res) => {
+  const authDb = readDB();
+  if (!getAuthUser(req, authDb)) return res.status(401).json({ error: "Unauthorized" });
+  return res.status(410).json({ error: "Sinkronisasi backup browser telah dinonaktifkan demi keamanan akun." });
+
   const { user, password, captures, cards, trades } = req.body;
   if (!user || !user.id || !user.username) {
     return res.status(400).json({ error: "Data user tidak lengkap untuk melakukan sinkronisasi." });
@@ -1377,56 +1402,10 @@ app.get("/api/health", (_req, res) => {
 // Helper to authenticate user using authorization token
 function getAuthUser(req: express.Request, db: any) {
   const authHeader = req.headers.authorization;
-  const xUserId = (req.headers["x-user-id"] as string) || (req.body && req.body.userId);
-  const xUserEmail = ((req.headers["x-user-email"] as string || (req.body && req.body.userEmail)) || "").toLowerCase().trim();
-
-  let foundUser: any = null;
-
-  if (authHeader && !authHeader.includes("null") && !authHeader.includes("undefined")) {
-    try {
-      const token = authHeader.replace("Bearer ", "").trim();
-      if (token && token !== "null" && token !== "undefined") {
-        const decoded = Buffer.from(token, "base64").toString("utf8");
-        const parts = decoded.split(":");
-        const id = parts[0];
-        const username = parts.slice(1).join(":");
-        foundUser = db.users?.find(
-          (u: any) =>
-            (id && u.id === id) ||
-            (username && u.username && u.username.toLowerCase() === username.toLowerCase())
-        );
-      }
-    } catch (e) {}
-  }
-
-  // Resilient fallback to user-id / email header
-  if (!foundUser && (xUserId || xUserEmail) && db.users) {
-    foundUser = db.users.find((u: any) => {
-      if (xUserId && u.id === xUserId) return true;
-      if (xUserEmail && (u.email || "").toLowerCase().trim() === xUserEmail) return true;
-      return false;
-    });
-  }
-
-  // Auto-resolve developer identity if developer email or username is provided
-  if (!foundUser) {
-    const isDevEmail = xUserEmail && ["verydiaz@gmail.com", "support@nekomon.online", "nekomaster@nekomon.online"].includes(xUserEmail);
-    if (isDevEmail) {
-      foundUser = {
-        id: `dev_${xUserEmail.replace(/[^a-z0-9]/g, "_")}`,
-        username: xUserEmail.split("@")[0],
-        email: xUserEmail,
-        role: "developer",
-        points: 99999,
-        cores: 9999,
-        faction: "Sentinel"
-      };
-      if (db.users && !db.users.some((u: any) => (u.email || "").toLowerCase() === xUserEmail)) {
-        db.users.push(foundUser);
-        writeDB(db);
-      }
-    }
-  }
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+  const session = verifySessionToken(authHeader.slice("Bearer ".length).trim());
+  if (!session) return null;
+  const foundUser = db.users?.find((u: any) => u.id === session.sub && u.username?.toLowerCase() === session.username.toLowerCase()) || null;
 
   if (foundUser) {
     const now = Date.now();
@@ -1943,6 +1922,11 @@ app.post("/api/forge", async (req, res) => {
   if (!captureId || !element || !style) {
     return res.status(400).json({ error: "captureId, element, dan style wajib diisi." });
   }
+  const validElements = new Set(["Api", "Air", "Tanah", "Angin", "Petir"]);
+  const validStyles = new Set(["Vanguard", "Sentinel"]);
+  if (!validElements.has(element) || !validStyles.has(style)) {
+    return res.status(400).json({ error: "Elemen atau style kartu tidak valid." });
+  }
 
   const db = readDB();
   const user = getAuthUser(req, db);
@@ -1990,13 +1974,22 @@ app.post("/api/forge", async (req, res) => {
   stats.spd = Math.floor(Math.random() * (range.spd[1] - range.spd[0] + 1)) + range.spd[0];
 
   // 2. Select basic skills based on element
-  const elementSkills = ABILITIES[element] || ABILITIES.Api;
-  const chosenSkill = elementSkills[Math.floor(Math.random() * elementSkills.length)];
-  skill = { ...chosenSkill };
+  const speciesPool = NEKOMON_SPECIES_CATALOG.filter(species => species.element === element && species.rarity === rarity);
+  const preferredSpecies = speciesPool.filter(species => species.style === style);
+  const selectedSpeciesPool = preferredSpecies.length > 0 ? preferredSpecies : speciesPool;
+  const selectedSpecies = selectedSpeciesPool[Math.floor(Math.random() * selectedSpeciesPool.length)];
+  if (selectedSpecies) {
+    skill = { name: selectedSpecies.skillName, desc: selectedSpecies.skillDesc };
+    cardName = selectedSpecies.name;
+  } else {
+    const elementSkills = ABILITIES[element] || ABILITIES.Api;
+    const chosenSkill = elementSkills[Math.floor(Math.random() * elementSkills.length)];
+    skill = { ...chosenSkill };
+  }
 
   // 3. Choose basic card name
   const namesList = FALLBACKS[style]?.[element] || FALLBACKS.Sentinel.Api;
-  cardName = namesList[Math.floor(Math.random() * namesList.length)] + " " + rarity;
+  if (!cardName) cardName = namesList[Math.floor(Math.random() * namesList.length)] + " " + rarity;
 
   // Call Gemini if initialized
   if (ai) {
@@ -2010,6 +2003,8 @@ app.post("/api/forge", async (req, res) => {
 - Elemen Terpilih: ${element}
 - Studio Anime Gaya: ${style} (${animeConcept})
 - Tingkat Kelangkaan (Rarity): ${rarity}
+- Spesies Katalog Resmi: ${selectedSpecies?.name || "Varian Nekomon Liar"}
+- Skill Dasar Katalog: ${selectedSpecies?.skillName || skill.name}
 - Deskripsi Rarity yang harus dipenuhi: ${
         rarity === "Common" ? "Kucing domestik biasa dalam situasi sehari-hari yang menggemaskan, kekuatan sederhana." :
         rarity === "Rare" ? "Kucing dengan sedikit kostum ringan atau tema ras spesifik dengan percikan fantasi." :
@@ -2020,8 +2015,8 @@ app.post("/api/forge", async (req, res) => {
 
 Berikan output berupa objek JSON dengan spesifikasi tepat berikut:
 {
-  "name": "Nama fantasi kucing yang sangat keren berciri khas elemen ${element} dan gaya ${style} (maksimal 2-3 kata, contoh: Volcanic Mane)",
-  "skillName": "Nama skill bertema elemen ${element}",
+  "name": "Nama varian maksimal 2-3 kata yang tetap jelas berasal dari spesies katalog ${selectedSpecies?.name || cardName}",
+  "skillName": "Nama evolusi atau variasi dari skill katalog ${selectedSpecies?.skillName || skill.name}",
   "skillDesc": "Deskripsi efek skill dalam bahasa Indonesia",
   "imagePrompt": "Detailed English descriptive prompt for an image generator to draw this card's cat artwork. You MUST capture and transfer the exact physical features of the original cat from the photo (such as its specific fur patterns, colors, face markings, and eye colors/features) into the requested anime style. Specifically: describe a cat with the same fur color/pattern/markings and eye color as the original photo, but beautifully transformed into ${animeConcept} style, fused with the ${element} element, with specific details fitting the ${rarity} rarity description (e.g. glowing elemental aura, floating crystals or sparks, dynamic energy). Set background to a stunning elemental environment matching the element ${element}."
 }`;
@@ -2395,7 +2390,7 @@ app.post("/api/user/change-username", (req, res) => {
   writeDB(db);
 
   // Generate new token since auth token is base64 of id:username
-  const newToken = Buffer.from(`${user.id}:${user.username}`).toString("base64");
+  const newToken = createSessionToken(user);
 
   res.json({
     success: true,
@@ -2542,40 +2537,7 @@ app.post("/api/cards/:id/mission", (req, res) => {
   user.points = (user.points || 0) + pointsGained;
 
   // Apply XP & check Level Up
-  let oldLevel = card.level;
-  let newLevel = oldLevel;
-  let currentXp = card.xp + xpGained;
-  let maxXp = card.level * 100;
-  let leveledUp = false;
-
-  const statUpgrades = { hp: 0, atk: 0, def: 0, spd: 0 };
-
-  while (currentXp >= maxXp) {
-    currentXp -= maxXp;
-    newLevel += 1;
-    maxXp = newLevel * 100;
-    leveledUp = true;
-
-    // Stat gains
-    const hpGain = Math.floor(Math.random() * 16) + 10; // +10 to +25
-    const atkGain = Math.floor(Math.random() * 6) + 5;   // +5 to +10
-    const defGain = Math.floor(Math.random() * 6) + 5;   // +5 to +10
-    const spdGain = Math.floor(Math.random() * 5) + 3;   // +3 to +7
-
-    card.hp += hpGain;
-    card.atk += atkGain;
-    card.def += defGain;
-    card.spd = (card.spd || 45) + spdGain;
-
-    statUpgrades.hp += hpGain;
-    statUpgrades.atk += atkGain;
-    statUpgrades.def += defGain;
-    statUpgrades.spd += spdGain;
-  }
-
-  card.level = newLevel;
-  card.xp = currentXp;
-  card.maxXp = maxXp;
+  const { oldLevel, newLevel, leveledUp, statUpgrades } = applyCardXp(card, xpGained);
 
   // Generate realistic battle/activity logs
   const logs = [
@@ -2736,10 +2698,10 @@ app.post("/api/cards/:id/evolve", async (req, res) => {
 
   // Calculate new upgraded stats
   const range = STATS_RANGES[nextRarity] || STATS_RANGES.Rare;
-  const newHp = Math.max(Math.floor(card.hp * 1.35), range.hp[0] + Math.floor(Math.random() * 50));
-  const newAtk = Math.max(Math.floor(card.atk * 1.35), range.atk[0] + Math.floor(Math.random() * 30));
-  const newDef = Math.max(Math.floor(card.def * 1.35), range.def[0] + Math.floor(Math.random() * 30));
-  const newSpd = Math.max(Math.floor((card.spd || 45) * 1.30), range.spd[0] + Math.floor(Math.random() * 20));
+  const newHp = Math.max(Math.floor(card.hp * 1.18), range.hp[0] + Math.floor(Math.random() * 50));
+  const newAtk = Math.max(Math.floor(card.atk * 1.18), range.atk[0] + Math.floor(Math.random() * 30));
+  const newDef = Math.max(Math.floor(card.def * 1.18), range.def[0] + Math.floor(Math.random() * 30));
+  const newSpd = Math.max(Math.floor((card.spd || 45) * 1.15), range.spd[0] + Math.floor(Math.random() * 20));
 
   const statsIncreases = {
     hp: newHp - oldStats.hp,
@@ -3447,939 +3409,14 @@ app.get("/api/trainers/history", (req, res) => {
 // SHOP & VIRTUAL MICROTRANSACTIONS ENDPOINTS
 // ----------------------------------------------------------------
 
-async function generateBoosterCard(userId: string, rarity: string, element: "Api" | "Air" | "Tanah" | "Angin" | "Petir", style: "Sentinel" | "Vanguard", db: any): Promise<any> {
-  let cardName = "";
-  let stats = { hp: 120, atk: 65, def: 55, spd: 45 };
-  let skill = { name: "Spark Claw", desc: "Cakaran cepat bermuatan energi." };
-  let finalImage = "";
-  let geminiUsed = false;
-
-  const range = STATS_RANGES[rarity] || STATS_RANGES.Epic;
-  stats.hp = Math.floor(Math.random() * (range.hp[1] - range.hp[0] + 1)) + range.hp[0];
-  stats.atk = Math.floor(Math.random() * (range.atk[1] - range.atk[0] + 1)) + range.atk[0];
-  stats.def = Math.floor(Math.random() * (range.def[1] - range.def[0] + 1)) + range.def[0];
-  stats.spd = Math.floor(Math.random() * (range.spd[1] - range.spd[0] + 1)) + range.spd[0];
-
-  const elementSkills = ABILITIES[element] || ABILITIES.Api;
-  const chosenSkill = elementSkills[Math.floor(Math.random() * elementSkills.length)];
-  skill = { ...chosenSkill };
-
-  const namesList = FALLBACKS[style]?.[element] || FALLBACKS.Sentinel.Api;
-  cardName = "Gacha " + namesList[Math.floor(Math.random() * namesList.length)] + " " + rarity;
-
-  if (ai) {
-    try {
-      console.log(`[Shop] Calling Gemini to generate booster card profile for rarity: ${rarity}...`);
-      const animeConcept = style === "Sentinel" ? "anime character with soft, magical composition, hand-drawn aesthetic, highly detailed, cozy, heartwarming, inspired by Ghibli, A-1 Pictures, Kyoto Animation, or Steampunk elements" : "anime character with sharp, dynamic, cinematic composition, modern high-contrast action anime style, cinematic lighting, sleek and energetic, inspired by Mappa, Bones, Madhouse, or Cyberpunk elements";
-      
-      const prompt = `Hasilkan detail Nekomon Card Game dari Gacha Booster Pack surgawi:
-- Elemen Terpilih: ${element}
-- Studio Anime Gaya: ${style} (${animeConcept})
-- Tingkat Kelangkaan (Rarity): ${rarity}
-- Deskripsi Rarity yang harus dipenuhi: ${
-        rarity === "Common" ? "Kucing domestik biasa dalam situasi sehari-hari yang menggemaskan, kekuatan sederhana." :
-        rarity === "Rare" ? "Kucing dengan sedikit kostum ringan atau tema ras spesifik dengan percikan fantasi." :
-        rarity === "Epic" ? "Kucing menyatu dengan elemen alam (${element}) atau sihir dengan aura mengagumkan." :
-        rarity === "Legend" ? "Kucing dewa mitologi atau penjaga dimensi misterius, desain sangat detail, dramatis, mistis." :
-        "Tingkat tertinggi: Dewa penguasa alam semesta (God-tier), megah, abstrak, mengintimidasi namun tetap kucing."
-      }
-
-Berikan output berupa objek JSON dengan spesifikasi tepat berikut:
-{
-  "name": "Nama fantasi kucing yang sangat keren berciri khas elemen ${element} dan gaya ${style} (maksimal 2-3 kata, contoh: Volcanic Mane)",
-  "skillName": "Nama skill bertema elemen ${element}",
-  "skillDesc": "Deskripsi efek skill dalam bahasa Indonesia",
-  "imagePrompt": "Detailed English descriptive prompt for an image generator to draw an epic anime cat artwork. Specifically: describe an epic, majestic, cute cat beautifully styled in ${animeConcept} style, fused with the ${element} element, with specific details fitting the ${rarity} rarity description (e.g. glowing elemental aura, floating crystals or sparks, dynamic energy). Set background to a stunning elemental environment matching the element ${element}."
-}`;
-
-      const contentRes = await callWithRetry(() => ai!.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: [ { text: prompt } ],
-        config: {
-          responseMimeType: "application/json"
-        }
-      }));
-
-      if (contentRes.text) {
-        const parsed = JSON.parse(contentRes.text.trim());
-        if (parsed.name) cardName = parsed.name;
-        if (parsed.skillName) skill.name = parsed.skillName;
-        if (parsed.skillDesc) skill.desc = parsed.skillDesc;
-        
-        console.log("[Shop] Card Profile generated by Gemini:", parsed);
-
-        try {
-          console.log(`[Shop] Generating booster card artwork using gemini-3.1-flash-lite-image with prompt: "${parsed.imagePrompt}"...`);
-          const imgRes = await callWithRetry(() => ai!.models.generateContent({
-            model: "gemini-3.1-flash-lite-image",
-            contents: {
-              parts: [{ text: parsed.imagePrompt }]
-            },
-            config: {
-              imageConfig: {
-                aspectRatio: "1:1"
-              }
-            }
-          }));
-
-          if (imgRes.candidates?.[0]?.content?.parts) {
-            for (const part of imgRes.candidates[0].content.parts) {
-              if (part.inlineData?.data) {
-                finalImage = `data:image/png;base64,${part.inlineData.data}`;
-                geminiUsed = true;
-                console.log("[Shop] Booster Card Image generated by Imagen!");
-                break;
-              }
-            }
-          }
-        } catch (imgErr) {
-          console.error("[Shop] Gemini Image generation failed, falling back to SVG:", imgErr);
-        }
-      }
-    } catch (genErr) {
-      console.error("[Shop] Gemini processing failed, falling back to SVG:", genErr);
-    }
-  }
-
-  if (!finalImage) {
-    finalImage = generateFallbackImage(cardName, element, style, rarity, undefined);
-  }
-
-  const newCard = {
-    id: "card_" + Math.random().toString(36).substr(2, 9),
-    userId: userId,
-    captureId: "", // Purchased directly through Booster Pack
-    name: cardName,
-    element,
-    style,
-    rarity,
-    hp: stats.hp,
-    atk: stats.atk,
-    def: stats.def,
-    spd: stats.spd,
-    skillName: skill.name,
-    skillDesc: skill.desc,
-    imageUrl: finalImage,
-    geminiUsed,
-    level: 1,
-    xp: 0,
-    maxXp: 100,
-    energy: 5,
-    maxEnergy: 5,
-    lastEnergyRefillAt: new Date().toISOString(),
-    createdAt: new Date().toISOString()
-  };
-
-  db.cards.push(newCard);
-  return newCard;
-}
-
-// Midtrans Payment Gateway Configuration
-const MIDTRANS_MERCHANT_ID = process.env.MIDTRANS_MERCHANT_ID || "M008936459";
-const MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY || "Mid-client-32UIWiM2pKqsBW_t";
-const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || "Mid-server-30dVRdpLlmD2OTv4apqq8zVS";
-
-// iPaymu Payment Gateway Configuration (Official Credentials)
-const IPAYMU_VA = process.env.IPAYMU_VA || "1179005624089327";
-const IPAYMU_API_KEY = process.env.IPAYMU_API_KEY || "945D2CBE-FEBF-4DA8-934C-455D1999DD9F";
-const IPAYMU_IS_PROD = process.env.IPAYMU_IS_PROD !== "false";
-
-// Helper to generate iPaymu HMAC-SHA256 signature
-function generateIpaymuSignature(bodyObj: any, va: string, apiKey: string) {
-  const body = JSON.stringify(bodyObj);
-  const reqBody = crypto.createHash("sha256").update(body).digest("hex").toLowerCase();
-  const stringToSign = `POST:${va}:${reqBody}:${apiKey}`;
-  const hmac = crypto.createHmac("sha256", apiKey);
-  return hmac.update(Buffer.from(stringToSign, "utf-8")).digest("hex");
-}
-
-function getIpaymuTimestamp(date?: Date) {
-  const d = date || new Date();
-  const pad = (n: number) => (n < 10 ? "0" + n : n.toString());
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-}
-
-// 1. Create Midtrans Snap Transaction Token
-app.post("/api/shop/midtrans-token", async (req, res) => {
-  const db = readDB();
-  const user = getAuthUser(req, db);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const { itemType, itemId, targetElement, targetStyle } = req.body;
-  let price = 0;
-  let packageName = "";
-
-  if (itemType === "points") {
-    if (itemId === "points_100") {
-      price = 15000;
-      packageName = "100 Nekomon Points";
-    } else if (itemId === "points_500") {
-      price = 50000;
-      packageName = "500 Nekomon Points (+50 Bonus)";
-    } else if (itemId === "points_1200") {
-      price = 100000;
-      packageName = "1200 Nekomon Points (+200 Bonus)";
-    } else {
-      return res.status(400).json({ error: "Paket poin tidak valid." });
-    }
-  } else if (itemType === "booster") {
-    if (itemId === "booster_epic") {
-      price = 25000;
-      packageName = "Booster Pack Epic";
-    } else if (itemId === "booster_legend") {
-      price = 50000;
-      packageName = "Booster Pack Legend";
-    } else if (itemId === "booster_ultimate") {
-      price = 100000;
-      packageName = "Celestial Booster Pack (3 Kartu)";
-    } else {
-      return res.status(400).json({ error: "Tipe Booster Pack tidak valid." });
-    }
-  } else {
-    return res.status(400).json({ error: "Tipe item tidak valid." });
-  }
-
-  const orderId = `ORDER-NEKOMON-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-  // Store pending order in DB
-  if (!db.pendingOrders) db.pendingOrders = [];
-  db.pendingOrders.push({
-    orderId,
-    userId: user.id,
-    itemType,
-    itemId,
-    price,
-    packageName,
-    targetElement: targetElement || "Random",
-    targetStyle: targetStyle || "Random",
-    status: "pending",
-    createdAt: new Date().toISOString()
-  });
-  writeDB(db);
-
-  try {
-    // Determine API Endpoint (Production vs Sandbox)
-    const isSandboxKey = MIDTRANS_SERVER_KEY.startsWith("SB-");
-    const snapUrl = isSandboxKey 
-      ? "https://app.sandbox.midtrans.com/snap/v1/transactions"
-      : "https://app.midtrans.com/snap/v1/transactions";
-
-    const authHeader = "Basic " + Buffer.from(MIDTRANS_SERVER_KEY + ":").toString("base64");
-
-    const payload = {
-      transaction_details: {
-        order_id: orderId,
-        gross_amount: price
-      },
-      item_details: [
-        {
-          id: itemId,
-          price: price,
-          quantity: 1,
-          name: packageName
-        }
-      ],
-      customer_details: {
-        first_name: user.username,
-        email: user.email || `${user.username}@nekomon.online`
-      },
-      credit_card: {
-        secure: true
-      }
-    };
-
-    const midtransRes = await fetch(snapUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": authHeader
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const snapData = await midtransRes.json();
-
-    if (midtransRes.ok && snapData.token) {
-      return res.json({
-        success: true,
-        token: snapData.token,
-        redirect_url: snapData.redirect_url,
-        orderId,
-        merchantId: MIDTRANS_MERCHANT_ID,
-        clientKey: MIDTRANS_CLIENT_KEY,
-        price,
-        packageName
-      });
-    } else {
-      console.warn("Midtrans Snap API Response Warning:", snapData);
-      // Return simulated token for smooth local testing / iframe fallback
-      return res.json({
-        success: true,
-        token: "SNAP_TOKEN_SIMULATED_" + orderId,
-        orderId,
-        merchantId: MIDTRANS_MERCHANT_ID,
-        clientKey: MIDTRANS_CLIENT_KEY,
-        price,
-        packageName,
-        isSimulation: true,
-        notice: snapData.error_messages ? snapData.error_messages.join(", ") : "Midtrans Direct Snap Fallback"
-      });
-    }
-  } catch (err: any) {
-    console.error("Failed to connect to Midtrans API:", err);
-    return res.json({
-      success: true,
-      token: "SNAP_TOKEN_SIMULATED_" + orderId,
-      orderId,
-      merchantId: MIDTRANS_MERCHANT_ID,
-      clientKey: MIDTRANS_CLIENT_KEY,
-      price,
-      packageName,
-      isSimulation: true
-    });
-  }
-});
-
-// 2. Complete / Finish Midtrans Transaction
-app.post("/api/shop/midtrans-finish", async (req, res) => {
-  const db = readDB();
-  const user = getAuthUser(req, db);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const { orderId, itemType, itemId, targetElement, targetStyle } = req.body;
-  if (!orderId) {
-    return res.status(400).json({ error: "Order ID wajib diisi." });
-  }
-
-  // Check if order exists in pending or already processed transactions
-  if (!db.transactions) db.transactions = [];
-  const existingTx = db.transactions.find((t: any) => t.orderId === orderId && t.userId === user.id);
-  if (existingTx) {
-    return res.json({
-      success: true,
-      message: "Transaksi ini telah diproses sebelumnya.",
-      user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-      transaction: existingTx
-    });
-  }
-
-  let finalItemType = itemType;
-  let finalItemId = itemId;
-  let price = 0;
-  let packageName = "";
-
-  if (db.pendingOrders) {
-    const pending = db.pendingOrders.find((p: any) => p.orderId === orderId);
-    if (pending) {
-      finalItemType = pending.itemType;
-      finalItemId = pending.itemId;
-      price = pending.price;
-      packageName = pending.packageName;
-    }
-  }
-
-  if (finalItemType === "points") {
-    let pointsToAdd = 100;
-    if (finalItemId === "points_100") { pointsToAdd = 100; price = 15000; packageName = "100 Nekomon Points"; }
-    else if (finalItemId === "points_500") { pointsToAdd = 500; price = 50000; packageName = "500 Nekomon Points"; }
-    else if (finalItemId === "points_1200") { pointsToAdd = 1200; price = 100000; packageName = "1200 Nekomon Points"; }
-
-    user.points = (user.points || 0) + pointsToAdd;
-
-    const tx = {
-      id: "tx_midtrans_" + Math.random().toString(36).substr(2, 9),
-      orderId,
-      userId: user.id,
-      type: "points",
-      paymentGateway: "midtrans",
-      packageId: finalItemId,
-      packageName,
-      price,
-      priceCurrency: "IDR",
-      pointsAdded: pointsToAdd,
-      createdAt: new Date().toISOString()
-    };
-    db.transactions.push(tx);
-
-    const uIdx = db.users.findIndex((u: any) => u.id === user.id);
-    if (uIdx !== -1) db.users[uIdx] = user;
-    writeDB(db);
-
-    return res.json({
-      success: true,
-      message: `Pembayaran Berhasil! ${pointsToAdd} Poin ditambahkan ke akun Anda!`,
-      user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-      transaction: tx
-    });
-
-  } else if (finalItemType === "booster") {
-    let packName = "Booster Pack";
-    let cardsToGenerate: { rarity: string; element: string; style: string }[] = [];
-    const elements: ("Api" | "Air" | "Tanah" | "Angin" | "Petir")[] = ["Api", "Air", "Tanah", "Angin", "Petir"];
-    const styles: ("Sentinel" | "Vanguard")[] = ["Sentinel", "Vanguard"];
-
-    const el = targetElement && targetElement !== "Random" && elements.includes(targetElement) ? targetElement : elements[Math.floor(Math.random() * elements.length)];
-    const st = targetStyle && targetStyle !== "Random" && styles.includes(targetStyle) ? targetStyle : styles[Math.floor(Math.random() * styles.length)];
-
-    if (finalItemId === "booster_epic") {
-      price = 25000;
-      packName = "Booster Pack Epic";
-      const roll = Math.random() * 100;
-      let r = "Epic";
-      if (roll < 5) r = "Mythic";
-      else if (roll < 25) r = "Legend";
-      cardsToGenerate.push({ rarity: r, element: el, style: st });
-    } else if (finalItemId === "booster_legend") {
-      price = 50000;
-      packName = "Booster Pack Legend";
-      const roll = Math.random() * 100;
-      let r = "Legend";
-      if (roll < 10) r = "Mythic";
-      else if (roll < 25) r = "Epic";
-      cardsToGenerate.push({ rarity: r, element: el, style: st });
-    } else if (finalItemId === "booster_ultimate") {
-      price = 100000;
-      packName = "Celestial Booster Pack (3 Kartu)";
-      for (let i = 0; i < 3; i++) {
-        const roll = Math.random() * 100;
-        let r = "Epic";
-        if (roll < 15) r = "Mythic";
-        else if (roll < 50) r = "Legend";
-        cardsToGenerate.push({ rarity: r, element: el, style: st });
-      }
-    }
-
-    const generatedCards = [];
-    let totalCoresEarned = 0;
-    for (const cardCfg of cardsToGenerate) {
-      const newCard = await generateBoosterCard(user.id, cardCfg.rarity, cardCfg.element as any, cardCfg.style as any, db);
-      generatedCards.push(newCard);
-      
-      let coresEarned = 1;
-      const lowercaseRarity = cardCfg.rarity.toLowerCase();
-      if (lowercaseRarity === "rare") coresEarned = 2;
-      else if (lowercaseRarity === "epic") coresEarned = 3;
-      else if (lowercaseRarity === "legend" || lowercaseRarity === "legendary") coresEarned = 4;
-      else if (lowercaseRarity === "mythic") coresEarned = 5;
-      totalCoresEarned += coresEarned;
-    }
-
-    user.cores = (user.cores || 0) + totalCoresEarned;
-
-    const tx = {
-      id: "tx_midtrans_" + Math.random().toString(36).substr(2, 9),
-      orderId,
-      userId: user.id,
-      type: "booster",
-      paymentGateway: "midtrans",
-      packageId: finalItemId,
-      packageName: packName,
-      price,
-      priceCurrency: "IDR",
-      cardsCount: generatedCards.length,
-      createdAt: new Date().toISOString()
-    };
-    db.transactions.push(tx);
-
-    const uIdx = db.users.findIndex((u: any) => u.id === user.id);
-    if (uIdx !== -1) db.users[uIdx] = user;
-    writeDB(db);
-
-    return res.json({
-      success: true,
-      message: `Pembayaran Berhasil! Anda mendapatkan ${generatedCards.length} kartu dari ${packName}!`,
-      user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-      cards: generatedCards,
-      coresEarned: totalCoresEarned,
-      transaction: tx
-    });
-  }
-
-  res.status(400).json({ error: "Transaksi tidak dapat diselesaikan." });
-});
-
-// 3. Midtrans Webhook Notification
-app.post("/api/midtrans/notification", async (req, res) => {
-  const notification = req.body;
-  if (!notification || !notification.order_id) {
-    return res.status(400).json({ error: "Invalid notification payload" });
-  }
-
-  const orderId = notification.order_id;
-  const transactionStatus = notification.transaction_status;
-  const fraudStatus = notification.fraud_status;
-
-  console.log(`[Midtrans Webhook] Notification received for Order ${orderId}: ${transactionStatus} (Fraud: ${fraudStatus})`);
-
-  if (transactionStatus === "capture" || transactionStatus === "settlement") {
-    if (transactionStatus === "capture" && fraudStatus !== "accept") {
-      return res.status(200).json({ status: "ignored_fraud" });
-    }
-
-    const db = readDB();
-    if (!db.pendingOrders) db.pendingOrders = [];
-    const pending = db.pendingOrders.find((p: any) => p.orderId === orderId);
-
-    if (pending) {
-      pending.status = "paid";
-      const user = db.users.find((u: any) => u.id === pending.userId);
-
-      if (user) {
-        if (pending.itemType === "points") {
-          let pointsToAdd = 100;
-          if (pending.itemId === "points_100") pointsToAdd = 100;
-          else if (pending.itemId === "points_500") pointsToAdd = 500;
-          else if (pending.itemId === "points_1200") pointsToAdd = 1200;
-
-          user.points = (user.points || 0) + pointsToAdd;
-
-          if (!db.transactions) db.transactions = [];
-          db.transactions.push({
-            id: "tx_webhook_" + Math.random().toString(36).substr(2, 9),
-            orderId,
-            userId: user.id,
-            type: "points",
-            paymentGateway: "midtrans",
-            packageId: pending.itemId,
-            packageName: pending.packageName,
-            price: pending.price,
-            priceCurrency: "IDR",
-            pointsAdded: pointsToAdd,
-            createdAt: new Date().toISOString()
-          });
-        }
-        writeDB(db);
-      }
-    }
-  }
-
-  res.status(200).json({ status: "OK" });
-});
-
-// ==========================================
-// iPaymu Payment Gateway Integration
-// Official VA: 1179005624089327
-// ==========================================
-
-// 1. Create iPaymu Payment Session / Redirect
-app.post("/api/shop/ipaymu-session", async (req, res) => {
-  const db = readDB();
-  const user = getAuthUser(req, db);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const { itemType, itemId, targetElement, targetStyle, paymentMethod = "qris" } = req.body;
-  let price = 0;
-  let packageName = "";
-
-  if (itemType === "points") {
-    if (itemId === "points_100") {
-      price = 15000;
-      packageName = "100 Nekomon Points";
-    } else if (itemId === "points_500") {
-      price = 50000;
-      packageName = "500 Nekomon Points (+50 Bonus)";
-    } else if (itemId === "points_1200") {
-      price = 100000;
-      packageName = "1200 Nekomon Points (+200 Bonus)";
-    } else {
-      return res.status(400).json({ error: "Paket poin tidak valid." });
-    }
-  } else if (itemType === "booster") {
-    if (itemId === "booster_epic") {
-      price = 25000;
-      packageName = "Booster Pack Epic";
-    } else if (itemId === "booster_legend") {
-      price = 50000;
-      packageName = "Booster Pack Legend";
-    } else if (itemId === "booster_ultimate") {
-      price = 100000;
-      packageName = "Celestial Booster Pack (3 Kartu)";
-    } else {
-      return res.status(400).json({ error: "Tipe Booster Pack tidak valid." });
-    }
-  } else {
-    return res.status(400).json({ error: "Tipe item tidak valid." });
-  }
-
-  const orderId = `IPAYMU-NEKOMON-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-  // Store pending order in DB
-  if (!db.pendingOrders) db.pendingOrders = [];
-  db.pendingOrders.push({
-    orderId,
-    userId: user.id,
-    itemType,
-    itemId,
-    price,
-    packageName,
-    targetElement: targetElement || "Random",
-    targetStyle: targetStyle || "Random",
-    paymentGateway: "ipaymu",
-    status: "pending",
-    createdAt: new Date().toISOString()
-  });
-  writeDB(db);
-
-  try {
-    const protocol = (req.headers["x-forwarded-proto"] as string) || "https";
-    const host = req.headers.host || "nekomon.online";
-    const origin = `${protocol}://${host}`;
-
-    const baseUrl = IPAYMU_IS_PROD ? "https://my.ipaymu.com/api/v2" : "https://sandbox.ipaymu.com/api/v2";
-
-    const payload = {
-      account: IPAYMU_VA,
-      product: [packageName],
-      qty: ["1"],
-      price: [price.toString()],
-      description: [packageName],
-      returnUrl: `${origin}/shop?status=success&orderId=${orderId}`,
-      cancelUrl: `${origin}/shop?status=cancel&orderId=${orderId}`,
-      notifyUrl: `${origin}/api/ipaymu/notification`,
-      referenceId: orderId,
-      buyerName: user.username || "Trainer",
-      buyerEmail: user.email || "support@nekomon.online",
-      buyerPhone: "081234567890"
-    };
-
-    const signature = generateIpaymuSignature(payload, IPAYMU_VA, IPAYMU_API_KEY);
-    const timestamp = getIpaymuTimestamp();
-
-    console.log(`[iPaymu] Requesting payment session for ${orderId} (Price: Rp ${price})`);
-
-    let ipaymuResult: any = null;
-    try {
-      const response = await fetch(`${baseUrl}/payment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "va": IPAYMU_VA,
-          "signature": signature,
-          "timestamp": timestamp
-        },
-        body: JSON.stringify(payload)
-      });
-      ipaymuResult = await response.json();
-      console.log("[iPaymu] API response:", ipaymuResult);
-    } catch (fetchErr: any) {
-      console.warn("[iPaymu] Gateway connection notice:", fetchErr.message);
-    }
-
-    if (ipaymuResult && ipaymuResult.Status === 200 && ipaymuResult.Data) {
-      return res.json({
-        success: true,
-        orderId,
-        paymentUrl: ipaymuResult.Data.Url || "",
-        sessionId: ipaymuResult.Data.SessionID || "",
-        va: IPAYMU_VA,
-        price,
-        packageName,
-        paymentMethod,
-        isSimulation: false
-      });
-    } else {
-      // Direct instant fallback if external endpoint returns verification requirement
-      return res.json({
-        success: true,
-        orderId,
-        paymentUrl: ipaymuResult?.Data?.Url || "",
-        sessionId: ipaymuResult?.Data?.SessionID || `SESSION_${orderId}`,
-        va: IPAYMU_VA,
-        price,
-        packageName,
-        paymentMethod,
-        isSimulation: true,
-        message: ipaymuResult?.Message || "iPaymu Gateway Connected"
-      });
-    }
-  } catch (err: any) {
-    console.error("Failed to connect to iPaymu Gateway:", err);
-    return res.json({
-      success: true,
-      orderId,
-      va: IPAYMU_VA,
-      price,
-      packageName,
-      isSimulation: true
-    });
-  }
-});
-
-// 2. Complete iPaymu Order & Disburse Items
-app.post("/api/shop/ipaymu-finish", async (req, res) => {
-  const db = readDB();
-  const user = getAuthUser(req, db);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const { orderId, itemType, itemId, targetElement, targetStyle } = req.body;
-  if (!orderId) {
-    return res.status(400).json({ error: "Order ID wajib diisi." });
-  }
-
-  // Check if already processed
-  if (!db.transactions) db.transactions = [];
-  const existingTx = db.transactions.find((t: any) => t.orderId === orderId && t.userId === user.id);
-  if (existingTx) {
-    return res.json({
-      success: true,
-      message: "Transaksi iPaymu ini telah berhasil diproses sebelumnya.",
-      user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-      transaction: existingTx
-    });
-  }
-
-  let finalItemType = itemType;
-  let finalItemId = itemId;
-  let price = 0;
-  let packageName = "";
-
-  if (db.pendingOrders) {
-    const pending = db.pendingOrders.find((p: any) => p.orderId === orderId);
-    if (pending) {
-      finalItemType = pending.itemType;
-      finalItemId = pending.itemId;
-      price = pending.price;
-      packageName = pending.packageName;
-      pending.status = "paid";
-    }
-  }
-
-  if (finalItemType === "points") {
-    let pointsToAdd = 100;
-    if (finalItemId === "points_100") { pointsToAdd = 100; price = 15000; packageName = "100 Nekomon Points"; }
-    else if (finalItemId === "points_500") { pointsToAdd = 500; price = 50000; packageName = "500 Nekomon Points (+50 Bonus)"; }
-    else if (finalItemId === "points_1200") { pointsToAdd = 1200; price = 100000; packageName = "1200 Nekomon Points (+200 Bonus)"; }
-
-    user.points = (user.points || 0) + pointsToAdd;
-
-    const tx = {
-      id: "tx_ipaymu_" + Math.random().toString(36).substr(2, 9),
-      orderId,
-      userId: user.id,
-      type: "points",
-      paymentGateway: "ipaymu",
-      packageId: finalItemId,
-      packageName,
-      price,
-      priceCurrency: "IDR",
-      pointsAdded: pointsToAdd,
-      va: IPAYMU_VA,
-      createdAt: new Date().toISOString()
-    };
-    db.transactions.push(tx);
-
-    const uIdx = db.users.findIndex((u: any) => u.id === user.id);
-    if (uIdx !== -1) db.users[uIdx] = user;
-    writeDB(db);
-
-    return res.json({
-      success: true,
-      message: `Pembayaran iPaymu Berhasil! ${pointsToAdd} Poin ditambahkan ke akun Anda!`,
-      user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-      transaction: tx
-    });
-
-  } else if (finalItemType === "booster") {
-    let packName = "Booster Pack";
-    let cardsToGenerate: { rarity: string; element: string; style: string }[] = [];
-    const elements: ("Api" | "Air" | "Tanah" | "Angin" | "Petir")[] = ["Api", "Air", "Tanah", "Angin", "Petir"];
-    const styles: ("Sentinel" | "Vanguard")[] = ["Sentinel", "Vanguard"];
-
-    const el = targetElement && targetElement !== "Random" && elements.includes(targetElement) ? targetElement : elements[Math.floor(Math.random() * elements.length)];
-    const st = targetStyle && targetStyle !== "Random" && styles.includes(targetStyle) ? targetStyle : styles[Math.floor(Math.random() * styles.length)];
-
-    if (finalItemId === "booster_epic") {
-      price = 25000;
-      packName = "Booster Pack Epic";
-      const roll = Math.random() * 100;
-      let r = "Epic";
-      if (roll < 5) r = "Mythic";
-      else if (roll < 25) r = "Legend";
-      cardsToGenerate.push({ rarity: r, element: el, style: st });
-    } else if (finalItemId === "booster_legend") {
-      price = 50000;
-      packName = "Booster Pack Legend";
-      const roll = Math.random() * 100;
-      let r = "Legend";
-      if (roll < 10) r = "Mythic";
-      else if (roll < 25) r = "Epic";
-      cardsToGenerate.push({ rarity: r, element: el, style: st });
-    } else if (finalItemId === "booster_ultimate") {
-      price = 100000;
-      packName = "Celestial Booster Pack (3 Kartu)";
-      for (let i = 0; i < 3; i++) {
-        const roll = Math.random() * 100;
-        let r = "Epic";
-        if (roll < 15) r = "Mythic";
-        else if (roll < 50) r = "Legend";
-        cardsToGenerate.push({ rarity: r, element: el, style: st });
-      }
-    }
-
-    const generatedCards = [];
-    let totalCoresEarned = 0;
-    for (const cardCfg of cardsToGenerate) {
-      const newCard = await generateBoosterCard(user.id, cardCfg.rarity, cardCfg.element as any, cardCfg.style as any, db);
-      generatedCards.push(newCard);
-      
-      let coresEarned = 1;
-      const lowercaseRarity = cardCfg.rarity.toLowerCase();
-      if (lowercaseRarity === "rare") coresEarned = 2;
-      else if (lowercaseRarity === "epic") coresEarned = 3;
-      else if (lowercaseRarity === "legend" || lowercaseRarity === "legendary") coresEarned = 4;
-      else if (lowercaseRarity === "mythic") coresEarned = 5;
-      totalCoresEarned += coresEarned;
-    }
-
-    user.cores = (user.cores || 0) + totalCoresEarned;
-
-    const tx = {
-      id: "tx_ipaymu_" + Math.random().toString(36).substr(2, 9),
-      orderId,
-      userId: user.id,
-      type: "booster",
-      paymentGateway: "ipaymu",
-      packageId: finalItemId,
-      packageName: packName,
-      price,
-      priceCurrency: "IDR",
-      cardsCount: generatedCards.length,
-      va: IPAYMU_VA,
-      createdAt: new Date().toISOString()
-    };
-    db.transactions.push(tx);
-
-    const uIdx = db.users.findIndex((u: any) => u.id === user.id);
-    if (uIdx !== -1) db.users[uIdx] = user;
-    writeDB(db);
-
-    return res.json({
-      success: true,
-      message: `Pembayaran iPaymu Berhasil! Anda mendapatkan ${generatedCards.length} kartu dari ${packName}!`,
-      user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-      cards: generatedCards,
-      coresEarned: totalCoresEarned,
-      transaction: tx
-    });
-  }
-
-  res.status(400).json({ error: "Transaksi iPaymu tidak dapat diselesaikan." });
-});
-
-// 3. iPaymu Webhook Notification
-app.all(["/api/ipaymu/notification", "/api/ipaymu/notify"], async (req, res) => {
-  const payload = req.method === "POST" ? req.body : req.query;
-  console.log("[iPaymu Webhook] Received notification:", payload);
-
-  const referenceId = payload?.reference_id || payload?.order_id || payload?.trx_id;
-  const status = (payload?.status || payload?.status_code || "").toString().toLowerCase();
-
-  if (referenceId && (status === "berhasil" || status === "1" || status === "paid")) {
-    const db = readDB();
-    if (!db.pendingOrders) db.pendingOrders = [];
-    const pending = db.pendingOrders.find((p: any) => p.orderId === referenceId);
-
-    if (pending && pending.status !== "paid") {
-      pending.status = "paid";
-      const user = db.users.find((u: any) => u.id === pending.userId);
-
-      if (user && pending.itemType === "points") {
-        let pointsToAdd = 100;
-        if (pending.itemId === "points_100") pointsToAdd = 100;
-        else if (pending.itemId === "points_500") pointsToAdd = 500;
-        else if (pending.itemId === "points_1200") pointsToAdd = 1200;
-
-        user.points = (user.points || 0) + pointsToAdd;
-
-        if (!db.transactions) db.transactions = [];
-        db.transactions.push({
-          id: "tx_ipaymu_hook_" + Math.random().toString(36).substr(2, 9),
-          orderId: referenceId,
-          userId: user.id,
-          type: "points",
-          paymentGateway: "ipaymu",
-          packageId: pending.itemId,
-          packageName: pending.packageName,
-          price: pending.price,
-          priceCurrency: "IDR",
-          pointsAdded: pointsToAdd,
-          va: IPAYMU_VA,
-          createdAt: new Date().toISOString()
-        });
-        writeDB(db);
-        console.log(`[iPaymu Webhook] Successfully credited ${pointsToAdd} points to user ${user.username}`);
-      }
-    }
-  }
-
-  res.status(200).json({ status: 200, message: "OK" });
-});
-
-// 1. Buy points (microtransaction package)
-app.post("/api/shop/buy-points", (req, res) => {
-  const db = readDB();
-  const user = getAuthUser(req, db);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const { packageId } = req.body;
-  let pointsToAdd = 0;
-  let price = 0;
-  let packageName = "";
-
-  if (packageId === "points_100") {
-    pointsToAdd = 100;
-    price = 15000;
-    packageName = "Paket Pemula 100 Poin";
-  } else if (packageId === "points_500") {
-    pointsToAdd = 500;
-    price = 50000;
-    packageName = "Paket Bundling 500 Poin";
-  } else if (packageId === "points_1200") {
-    pointsToAdd = 1200;
-    price = 100000;
-    packageName = "Paket Sultan 1200 Poin";
-  } else {
-    return res.status(400).json({ error: "Paket poin tidak valid." });
-  }
-
-  user.points = (user.points || 0) + pointsToAdd;
-
-  if (!db.transactions) db.transactions = [];
-  const tx = {
-    id: "tx_" + Math.random().toString(36).substr(2, 9),
-    userId: user.id,
-    type: "points",
-    packageId,
-    packageName,
-    price,
-    pointsAdded: pointsToAdd,
-    createdAt: new Date().toISOString()
-  };
-  db.transactions.push(tx);
-
-  const uIdx = db.users.findIndex((u: any) => u.id === user.id);
-  db.users[uIdx] = user;
-  writeDB(db);
-
-  res.json({
-    success: true,
-    message: `Pembelian sukses! ${pointsToAdd} Poin telah ditambahkan ke akun Anda.`,
-    user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-    transaction: tx
-  });
-});
+// Payment gateways are intentionally disabled until a signed, server-verified
+// payment implementation is available. Keep the routes explicit so legacy
+// clients fail safely rather than receiving simulated goods.
+app.all([
+  "/api/shop/midtrans-token", "/api/shop/midtrans-finish", "/api/midtrans/notification",
+  "/api/shop/ipaymu-session", "/api/shop/ipaymu-finish", "/api/ipaymu/notification", "/api/ipaymu/notify",
+  "/api/shop/buy-points", "/api/shop/buy-booster"
+], (_req, res) => res.status(410).json({ error: "Pembayaran sementara tidak tersedia." }));
 
 // Rewarded Ad completion endpoint (AdMob / Unity Ads integration - 4 hours cooldown)
 app.post("/api/ads/reward", (req, res) => {
@@ -4482,105 +3519,6 @@ app.post("/api/ads/reward", (req, res) => {
     transaction: tx,
     nextClaimAvailableAt: new Date(now + COOLDOWN_MS).toISOString(),
     cooldownSeconds: COOLDOWN_HOURS * 3600
-  });
-});
-
-// 2. Buy booster packs (Gacha pack)
-app.post("/api/shop/buy-booster", async (req, res) => {
-  const db = readDB();
-  const user = getAuthUser(req, db);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const { packId, element, style } = req.body;
-  let price = 0;
-  let packName = "";
-  let cardsToGenerate: { rarity: string; element: string; style: string }[] = [];
-
-  const elements: ("Api" | "Air" | "Tanah" | "Angin" | "Petir")[] = ["Api", "Air", "Tanah", "Angin", "Petir"];
-  const styles: ("Sentinel" | "Vanguard")[] = ["Sentinel", "Vanguard"];
-
-  const getRandElement = () => element && elements.includes(element) ? element : elements[Math.floor(Math.random() * elements.length)];
-  const getRandStyle = () => style && styles.includes(style) ? style : styles[Math.floor(Math.random() * styles.length)];
-
-  if (packId === "booster_epic") {
-    price = 25000;
-    packName = "Booster Pack Epic";
-    const roll = Math.random() * 100;
-    let r = "Epic";
-    if (roll < 5) r = "Mythic";
-    else if (roll < 25) r = "Legend";
-    cardsToGenerate.push({ rarity: r, element: getRandElement(), style: getRandStyle() });
-  } else if (packId === "booster_legend") {
-    price = 50000;
-    packName = "Booster Pack Legend";
-    const roll = Math.random() * 100;
-    let r = "Legend";
-    if (roll < 10) r = "Mythic";
-    else if (roll < 25) r = "Epic";
-    cardsToGenerate.push({ rarity: r, element: getRandElement(), style: getRandStyle() });
-  } else if (packId === "booster_ultimate") {
-    price = 100000;
-    packName = "Celestial Booster Pack (3 Kartu)";
-    for (let i = 0; i < 3; i++) {
-      const roll = Math.random() * 100;
-      let r = "Epic";
-      if (roll < 15) r = "Mythic";
-      else if (roll < 50) r = "Legend";
-      cardsToGenerate.push({ rarity: r, element: getRandElement(), style: getRandStyle() });
-    }
-  } else {
-    return res.status(400).json({ error: "Tipe Booster Pack tidak valid." });
-  }
-
-  const generatedCards = [];
-  let totalCoresEarned = 0;
-  for (const cardCfg of cardsToGenerate) {
-    const newCard = await generateBoosterCard(user.id, cardCfg.rarity, cardCfg.element as any, cardCfg.style as any, db);
-    generatedCards.push(newCard);
-    
-    // Calculate Nekomon cores earned based on rarity
-    let coresEarned = 1;
-    const lowercaseRarity = cardCfg.rarity.toLowerCase();
-    if (lowercaseRarity === "rare") {
-      coresEarned = 2;
-    } else if (lowercaseRarity === "epic") {
-      coresEarned = 3;
-    } else if (lowercaseRarity === "legend" || lowercaseRarity === "legendary") {
-      coresEarned = 4;
-    } else if (lowercaseRarity === "mythic") {
-      coresEarned = 5;
-    }
-    totalCoresEarned += coresEarned;
-  }
-
-  user.cores = (user.cores || 0) + totalCoresEarned;
-
-  if (!db.transactions) db.transactions = [];
-  const tx = {
-    id: "tx_" + Math.random().toString(36).substr(2, 9),
-    userId: user.id,
-    type: "booster",
-    packageId: packId,
-    packageName: packName,
-    price,
-    cardsCount: generatedCards.length,
-    createdAt: new Date().toISOString()
-  };
-  db.transactions.push(tx);
-
-  const uIdx = db.users.findIndex((u: any) => u.id === user.id);
-  db.users[uIdx] = user;
-  writeDB(db);
-
-  res.json({
-    success: true,
-    message: `Pembelian sukses! Anda mendapatkan ${generatedCards.length} kartu dari ${packName}!`,
-    user: { id: user.id, username: user.username, points: user.points, cores: user.cores || 0 },
-    cards: generatedCards,
-    coresEarned: totalCoresEarned,
-    transaction: tx
   });
 });
 
@@ -6281,6 +5219,18 @@ app.post("/api/territory/capture", (req, res) => {
     });
   }
 
+  // Enforce the same ownership cap shown by the client. Reusing an anchor
+  // migrates ownership instead of consuming an additional territory slot.
+  const maxAllowedNodes = Math.max(2, 1 + userCards.filter((c: any) => c.rarity === "Mythic").length * 2);
+  const ownedNodesCount = nodes.filter(n => n.ownerId === user.id).length;
+  const migratedAnchorNode = nodes.find(n => n.id !== targetNode.id && n.ownerId === user.id && n.anchorCard?.id === mythicCard.id);
+  const projectedNodesCount = ownedNodesCount + (targetNode.ownerId === user.id ? 0 : 1) - (migratedAnchorNode ? 1 : 0);
+  if (projectedNodesCount > maxAllowedNodes) {
+    return res.status(400).json({
+      error: `Batas penguasaan tercapai (${ownedNodesCount}/${maxAllowedNodes} Beacon). Tambahkan kartu Mythic atau pindahkan Anchor yang sudah aktif.`
+    });
+  }
+
   // Update card energy before checking
   updateCardEnergy(mythicCard);
   const cardLevel = mythicCard.level || 1;
@@ -6394,12 +5344,22 @@ app.post("/api/territory/capture", (req, res) => {
   // Prepare Garrison Deck
   const garrisonDeck: any[] = [];
   if (Array.isArray(garrisonCardIds)) {
-    garrisonCardIds.forEach((cId: string) => {
+    if (garrisonCardIds.length > 3) {
+      return res.status(400).json({ error: "Garnisun dibatasi maksimal 3 kartu." });
+    }
+    const uniqueGarrisonCardIds = [...new Set(garrisonCardIds.filter((id: unknown): id is string => typeof id === "string" && id.length > 0))];
+    if (uniqueGarrisonCardIds.length !== garrisonCardIds.length) {
+      return res.status(400).json({ error: "Setiap slot garnisun harus menggunakan kartu yang berbeda." });
+    }
+    uniqueGarrisonCardIds.forEach((cId: string) => {
       const found = userCards.find((c: any) => c.id === cId);
       if (found && found.id !== mythicCard.id) {
         garrisonDeck.push(found);
       }
     });
+    if (garrisonDeck.length !== uniqueGarrisonCardIds.length) {
+      return res.status(400).json({ error: "Satu atau lebih kartu garnisun tidak valid." });
+    }
   }
 
   // Rule 4: Semakin besar levelnya, semakin cepat proses capturenya (Jeda stabilisasi dipersingkat)
@@ -6485,6 +5445,15 @@ app.post("/api/territory/battle", (req, res) => {
     return res.status(400).json({ error: "Pilih minimal 1 kartu tempur untuk menyerang Beacon!" });
   }
 
+  if (attackerCardIds.length > 3) {
+    return res.status(400).json({ error: "Deck penyerang Territory dibatasi maksimal 3 kartu." });
+  }
+
+  const uniqueAttackerCardIds = [...new Set(attackerCardIds.filter((id: unknown): id is string => typeof id === "string" && id.length > 0))];
+  if (uniqueAttackerCardIds.length !== attackerCardIds.length) {
+    return res.status(400).json({ error: "Setiap slot deck Territory harus menggunakan kartu yang berbeda." });
+  }
+
   const nodes = getInitializedTerritoryNodes(db);
   const targetNode = nodes.find(n => n.id === nodeId);
   if (!targetNode) {
@@ -6539,9 +5508,9 @@ app.post("/api/territory/battle", (req, res) => {
   }
 
   const userCards = (db.cards || []).filter((c: any) => c.userId === user.id);
-  const attackerDeck = attackerCardIds.map((id: string) => userCards.find((c: any) => c.id === id)).filter(Boolean);
+  const attackerDeck = uniqueAttackerCardIds.map((id: string) => userCards.find((c: any) => c.id === id)).filter(Boolean);
 
-  if (attackerDeck.length === 0) {
+  if (attackerDeck.length !== uniqueAttackerCardIds.length) {
     return res.status(400).json({ error: "Kartu penyerang tidak valid." });
   }
 
@@ -6553,6 +5522,23 @@ app.post("/api/territory/battle", (req, res) => {
       error: `Kartu "${cardInRaid.name}" sedang bertarung di Boss Raid dan tidak dapat digunakan untuk ekspansi teritori hingga raid selesai!`
     });
   }
+
+  for (const card of attackerDeck) {
+    updateCardEnergy(card);
+    if ((card.energy ?? 5) < 1) {
+      return res.status(400).json({
+        error: `Kartu "${card.name}" membutuhkan minimal 1 energi untuk menyerang Territory.`
+      });
+    }
+  }
+
+  // Charge the battle cost only after every card and lock check has passed.
+  attackerDeck.forEach((card: any) => {
+    if ((card.energy ?? 5) === (card.maxEnergy ?? 5)) {
+      card.lastEnergyRefillAt = new Date().toISOString();
+    }
+    card.energy = Math.max(0, (card.energy ?? 5) - 1);
+  });
 
   // Determine defender cards
   let defenderDeck: any[] = [];
@@ -6583,14 +5569,6 @@ app.post("/api/territory/battle", (req, res) => {
   let attackerTotalHp = attackerDeck.reduce((sum, c) => sum + (c.hp || 100), 0);
   let defenderTotalHp = targetNode.defenseHp || defenderDeck.reduce((sum, c) => sum + (c.hp || 100), 0);
 
-  const elementAdvantages: Record<string, string> = {
-    Api: "Angin",
-    Angin: "Tanah",
-    Tanah: "Petir",
-    Petir: "Air",
-    Air: "Api"
-  };
-
   let turn = 1;
   const maxTurns = 6;
 
@@ -6599,15 +5577,17 @@ app.post("/api/territory/battle", (req, res) => {
     const defenderCard = defenderDeck[(turn - 1) % defenderDeck.length];
 
     // Attacker strike
-    let atkPower = (attackerCard.atk || 50);
+    let atkPower = (attackerCard.atk || 50) * getStyleAttackMultiplier(attackerCard.style);
     const hasFieldBonus = attackerCard.element === targetNode.element;
     if (hasFieldBonus) atkPower = Math.round(atkPower * 1.25); // +25% beacon field bonus
 
-    if (elementAdvantages[attackerCard.element] === defenderCard.element) {
-      atkPower = Math.round(atkPower * 1.3); // +30% elemental counter
+    if (ELEMENT_ADVANTAGE[attackerCard.element] === defenderCard.element) {
+      atkPower = Math.round(atkPower * ELEMENT_ADVANTAGE_MULTIPLIER);
     }
 
-    const defPower = Math.round((defenderCard.def || 30) * 0.4);
+    atkPower = Math.round(atkPower * getSpeedMultiplier(attackerCard.spd, defenderCard.spd));
+
+    const defPower = Math.round((defenderCard.def || 30) * getStyleDefenseMultiplier(defenderCard.style) * 0.4);
     const damageToDef = Math.max(15, atkPower - defPower + Math.floor(Math.random() * 12));
     defenderTotalHp = Math.max(0, defenderTotalHp - damageToDef);
 
@@ -6624,9 +5604,13 @@ app.post("/api/territory/battle", (req, res) => {
     if (defenderTotalHp <= 0) break;
 
     // Defender counter-attack
-    let defAtk = (defenderCard.atk || 50);
+    let defAtk = (defenderCard.atk || 50) * getStyleAttackMultiplier(defenderCard.style);
     if (defenderCard.element === targetNode.element) defAtk = Math.round(defAtk * 1.25);
-    const attDefPower = Math.round((attackerCard.def || 30) * 0.4);
+    if (ELEMENT_ADVANTAGE[defenderCard.element] === attackerCard.element) {
+      defAtk = Math.round(defAtk * ELEMENT_ADVANTAGE_MULTIPLIER);
+    }
+    defAtk = Math.round(defAtk * getSpeedMultiplier(defenderCard.spd, attackerCard.spd));
+    const attDefPower = Math.round((attackerCard.def || 30) * getStyleDefenseMultiplier(attackerCard.style) * 0.4);
     const damageToAtt = Math.max(10, defAtk - attDefPower + Math.floor(Math.random() * 10));
     attackerTotalHp = Math.max(0, attackerTotalHp - damageToAtt);
 
@@ -6635,11 +5619,14 @@ app.post("/api/territory/battle", (req, res) => {
 
   const attackerWon = defenderTotalHp <= 0 || attackerTotalHp > defenderTotalHp;
   let nodeCaptured = false;
-  let pointsRewarded = 25;
-  let coresRewarded = 1;
+  let pointsRewarded = 0;
+  let coresRewarded = 0;
+
+  // Damage persists regardless of the round result, but rewards are granted only
+  // once the node is actually breached. This prevents repeatable partial-win farming.
+  targetNode.defenseHp = Math.max(0, defenderTotalHp);
 
   if (attackerWon) {
-    targetNode.defenseHp = Math.max(0, defenderTotalHp);
     if (targetNode.defenseHp <= 0) {
       // Node is breached / neutral and ready for Mythic anchor installation
       targetNode.ownerId = null;
@@ -6651,9 +5638,9 @@ app.post("/api/territory/battle", (req, res) => {
       nodeCaptured = true;
       pointsRewarded = 60;
       coresRewarded = 2;
+      user.points = (user.points || 0) + pointsRewarded;
+      user.cores = (user.cores || 0) + coresRewarded;
     }
-    user.points = (user.points || 0) + pointsRewarded;
-    user.cores = (user.cores || 0) + coresRewarded;
   }
 
   evaluateSupplyLinesAndCores(nodes);
@@ -7161,7 +6148,23 @@ function getInitializedRaidBosses(db: any, userLat?: number, userLng?: number): 
 
   // 1. Process defeated bosses: check if 10-15 min cooldown has finished, then respawn with full HP!
   db.raidBosses.forEach((b: any) => {
-    if (b && b.status === "defeated") {
+    if (!b) return;
+    const balancedBuffId = `Menahan 20% kerusakan dari elemen ${b.buffElement}.`;
+    const balancedBuffEn = `Resists 20% damage from ${b.buffElement} attacks.`;
+    const balancedDebuffId = `Lemah terhadap elemen ${b.debuffElement} (kerusakan +30%).`;
+    const balancedDebuffEn = `Weak against ${b.debuffElement} attacks (+30% damage).`;
+    if (b.buffDescription !== balancedBuffId || b.debuffDescription !== balancedDebuffId) {
+      b.buffDescription = balancedBuffId;
+      b.buffDescriptionEn = balancedBuffEn;
+      b.debuffDescription = balancedDebuffId;
+      b.debuffDescriptionEn = balancedDebuffEn;
+      shouldSave = true;
+    }
+    if (b.rewards && b.rewards.energyRefill !== 1) {
+      b.rewards.energyRefill = 1;
+      shouldSave = true;
+    }
+    if (b.status === "defeated") {
       if (!b.respawnAt) {
         const respawnMins = Math.floor(Math.random() * 6) + 10;
         b.respawnMinutes = respawnMins;
@@ -7907,13 +6910,27 @@ app.post("/api/raid/lobby/turn", (req, res) => {
   const user = getAuthUser(req, db);
   if (!user) return res.status(401).json({ error: "Unauthorized." });
 
-  const { roomId, action } = req.body;
+  const { roomId, action, expectedTurn } = req.body;
   if (!db.raidLobbies) db.raidLobbies = [];
   const room = db.raidLobbies.find((r: any) => r.id === roomId);
 
   if (!room) return res.status(404).json({ error: "Room tidak ditemukan." });
   if (room.status !== "in_battle") {
     return res.status(400).json({ error: "Pertarungan tidak aktif atau telah selesai." });
+  }
+
+  const participantSlot = room.slots.find((slot: any) => slot && slot.userId === user.id);
+  if (!participantSlot) {
+    return res.status(403).json({ error: "Hanya peserta yang terdaftar di Raid ini dapat menjalankan turn." });
+  }
+  if (action !== "attack") {
+    return res.status(400).json({ error: "Aksi Raid tidak valid." });
+  }
+  if (!Number.isInteger(expectedTurn) || expectedTurn !== room.currentTurn) {
+    return res.status(409).json({
+      error: "Turn Raid sudah diproses atau state permainan belum sinkron.",
+      room
+    });
   }
 
   const boss = room.bossSnapshot;
@@ -7938,7 +6955,7 @@ app.post("/api/raid/lobby/turn", (req, res) => {
     const cardAtk = card.atk || (cardLevel * 25 + 40);
     const bossDef = boss.def || (boss.level * 18 + 30);
 
-    let rawDamage = Math.max(25, Math.floor(cardAtk * (120 / (100 + bossDef * 0.35))));
+    let rawDamage = Math.max(25, Math.floor(cardAtk * getStyleAttackMultiplier(card.style) * (120 / (100 + bossDef * 0.35))));
 
     // Elemental Buff / Debuff Multipliers
     let elementMult = 1.0;
@@ -7946,10 +6963,10 @@ app.post("/api/raid/lobby/turn", (req, res) => {
     let isResisted = false;
 
     if (card.element === boss.debuffElement) {
-      elementMult = 1.75; // Weakness (+75% extra damage!)
+      elementMult = ELEMENT_ADVANTAGE_MULTIPLIER;
       isSuperEffective = true;
     } else if (card.element === boss.buffElement) {
-      elementMult = 0.50; // Resistance (-50% damage reduction)
+      elementMult = ELEMENT_RESISTANCE_MULTIPLIER;
       isResisted = true;
     }
 
@@ -7957,18 +6974,19 @@ app.post("/api/raid/lobby/turn", (req, res) => {
     const critMult = isCrit ? 1.5 : 1.0;
     const variance = 0.9 + Math.random() * 0.2;
 
-    const damageDealt = Math.round(rawDamage * elementMult * critMult * variance);
+    const speedMult = getSpeedMultiplier(card.spd, boss.spd);
+    const damageDealt = Math.round(rawDamage * elementMult * speedMult * critMult * variance);
     totalRoundPlayerDamage += damageDealt;
     slot.damageDealt = (slot.damageDealt || 0) + damageDealt;
 
     let effTextId = "";
     let effTextEn = "";
     if (isSuperEffective) {
-      effTextId = " 💥 SANGAT EFEKTIF (+75% Kerusakan Debuff Elemen!)";
-      effTextEn = " 💥 SUPER EFFECTIVE (+75% Element Weakness!)";
+      effTextId = " 💥 SANGAT EFEKTIF (+30% Counter Elemen!)";
+      effTextEn = " 💥 SUPER EFFECTIVE (+30% Element Counter!)";
     } else if (isResisted) {
-      effTextId = " 🛡️ DITAHAN (-50% Resistensi Buff Boss)";
-      effTextEn = " 🛡️ RESISTED (-50% Boss Buff Resistance)";
+      effTextId = " 🛡️ DITAHAN (-20% Resistensi Elemen Boss)";
+      effTextEn = " 🛡️ RESISTED (-20% Boss Element Resistance)";
     }
 
     const critTextId = isCrit ? " [CRITICAL HIT!]" : "";
@@ -7984,8 +7002,8 @@ app.post("/api/raid/lobby/turn", (req, res) => {
       isCritical: isCrit,
       isSuperEffective,
       isResisted,
-      messageId: `[Ronde ${turnNum}] Slot ${slot.slotIndex + 1}: ${card.name} (${card.element}) melancarkan "${card.skillName || 'Serangan Elemen'}" menghasilkan ${damageDealt} DMG ke ${boss.name}!${effTextId}${critTextId}`,
-      messageEn: `[Round ${turnNum}] Slot ${slot.slotIndex + 1}: ${card.name} (${card.element}) used "${card.skillName || 'Elemental Strike'}" dealing ${damageDealt} DMG to ${boss.nameEn || boss.name}!${effTextEn}${critTextEn}`,
+      messageId: `[Ronde ${turnNum}] Slot ${slot.slotIndex + 1}: ${card.name} (${card.element}) melancarkan Serangan Elemen menghasilkan ${damageDealt} DMG ke ${boss.name}!${effTextId}${critTextId}`,
+      messageEn: `[Round ${turnNum}] Slot ${slot.slotIndex + 1}: ${card.name} (${card.element}) used Elemental Strike, dealing ${damageDealt} DMG to ${boss.nameEn || boss.name}!${effTextEn}${critTextEn}`,
       timestamp: new Date().toISOString()
     });
   });
@@ -7998,11 +7016,19 @@ app.post("/api/raid/lobby/turn", (req, res) => {
     room.status = "victory";
     room.bossCurrentHp = 0;
 
-    // Distribute Shared Rewards to all participating distinct players
+    // Require a meaningful contribution so an idle slot cannot receive the
+    // same economy rewards as active combatants.
     const uniqueUserIds = Array.from(new Set(room.slots.filter((s: any) => s !== null).map((s: any) => s.userId)));
     const rewards = boss.rewards;
+    const totalRaidDamage = room.slots.reduce((sum: number, slot: any) => sum + (slot?.damageDealt || 0), 0);
+    const minimumContribution = Math.max(1, Math.ceil(totalRaidDamage * 0.05));
+    const eligibleUserIds = uniqueUserIds.filter((uId: string) =>
+      room.slots
+        .filter((slot: any) => slot?.userId === uId)
+        .reduce((sum: number, slot: any) => sum + (slot.damageDealt || 0), 0) >= minimumContribution
+    );
 
-    uniqueUserIds.forEach((uId: string) => {
+    eligibleUserIds.forEach((uId: string) => {
       const pUser = db.users.find((u: any) => u.id === uId);
       if (pUser) {
         pUser.points = (pUser.points || 0) + rewards.points;
@@ -8012,23 +7038,12 @@ app.post("/api/raid/lobby/turn", (req, res) => {
 
     // Refill energy and add XP to participating cards
     room.slots.forEach((slot: any) => {
-      if (slot && slot.card) {
+      if (slot && slot.card && eligibleUserIds.includes(slot.userId)) {
         const cIdx = db.cards.findIndex((c: any) => c.id === slot.card.id);
         if (cIdx !== -1) {
           const c = db.cards[cIdx];
           c.energy = Math.min(c.maxEnergy || 5, (c.energy || 0) + rewards.energyRefill);
-          c.xp = (c.xp || 0) + rewards.cardXp;
-          let maxXp = (c.level || 1) * 100;
-          while (c.xp >= maxXp) {
-            c.xp -= maxXp;
-            c.level = (c.level || 1) + 1;
-            c.hp = (c.hp || 100) + 15;
-            c.atk = (c.atk || 20) + 8;
-            c.def = (c.def || 15) + 6;
-            c.spd = (c.spd || 10) + 3;
-            maxXp = c.level * 100;
-          }
-          c.maxXp = maxXp;
+          applyCardXp(c, rewards.cardXp);
         }
       }
     });
@@ -8038,8 +7053,8 @@ app.post("/api/raid/lobby/turn", (req, res) => {
       actor: "Victory",
       actorType: "player",
       damage: 0,
-      messageId: `🎉🏆 KEMENANGAN RAID! ${boss.name} berhasil ditumbangkan! Seluruh ${uniqueUserIds.length} pemain menerima hadiah bersama: +${rewards.cores} Nekomon Cores, +${rewards.points} Poin, +${rewards.energyRefill} Energi, +${rewards.cardXp} Card XP!`,
-      messageEn: `🎉🏆 RAID VICTORY! ${boss.nameEn || boss.name} has been defeated! All ${uniqueUserIds.length} players receive shared rewards: +${rewards.cores} Nekomon Cores, +${rewards.points} Points, +${rewards.energyRefill} Energy, +${rewards.cardXp} Card XP!`,
+      messageId: `🎉🏆 KEMENANGAN RAID! ${boss.name} berhasil ditumbangkan! ${eligibleUserIds.length}/${uniqueUserIds.length} pemain memenuhi kontribusi minimum 5% dan menerima: +${rewards.cores} Nekomon Cores, +${rewards.points} Poin, +${rewards.energyRefill} Energi, +${rewards.cardXp} Card XP!`,
+      messageEn: `🎉🏆 RAID VICTORY! ${boss.nameEn || boss.name} has been defeated! ${eligibleUserIds.length}/${uniqueUserIds.length} players met the 5% contribution requirement and receive: +${rewards.cores} Nekomon Cores, +${rewards.points} Points, +${rewards.energyRefill} Energy, +${rewards.cardXp} Card XP!`,
       timestamp: new Date().toISOString()
     });
 
@@ -8133,7 +7148,7 @@ app.post("/api/raid/lobby/turn", (req, res) => {
         points: rewards.points,
         energyRefill: rewards.energyRefill,
         cardXp: rewards.cardXp,
-        playersCount: uniqueUserIds.length
+        playersCount: eligibleUserIds.length
       }
     });
   }
@@ -8149,17 +7164,25 @@ app.post("/api/raid/lobby/turn", (req, res) => {
   };
 
   const isAoe = chosenSkill.effectType === "aoe";
+  const missingHpRatio = 1 - Math.max(0, room.bossCurrentHp) / Math.max(1, boss.maxHp || boss.hp || 1);
+  const effectMultiplier = chosenSkill.effectType === "critical"
+    ? 1.5
+    : chosenSkill.effectType === "rage"
+      ? 1 + missingHpRatio * 0.75
+      : 1;
+  let bossHealing = 0;
 
   if (isAoe) {
     // Hits all alive slots
     aliveSlots.forEach((slot: any) => {
       const card = slot.card;
-      const cardDef = card.def || (card.level ? card.level * 15 + 20 : 30);
+      const cardDef = (card.def || (card.level ? card.level * 15 + 20 : 30)) * getStyleDefenseMultiplier(card.style);
       const bossAtk = boss.atk || (boss.level * 22 + 50);
       const skillMult = chosenSkill.powerMultiplier || 1.0;
 
-      const bossDmg = Math.max(20, Math.round(bossAtk * skillMult * (85 / (85 + cardDef * 0.4))));
+      const bossDmg = Math.max(20, Math.round(bossAtk * skillMult * effectMultiplier * getSpeedMultiplier(boss.spd, card.spd) * (85 / (85 + cardDef * 0.4))));
       slot.currentHp = Math.max(0, slot.currentHp - bossDmg);
+      if (chosenSkill.effectType === "leech") bossHealing += Math.round(bossDmg * 0.5);
 
       roundLogs.push({
         turn: turnNum,
@@ -8177,12 +7200,13 @@ app.post("/api/raid/lobby/turn", (req, res) => {
     // Target 1 alive slot randomly
     const targetSlot = aliveSlots[Math.floor(Math.random() * aliveSlots.length)];
     const card = targetSlot.card;
-    const cardDef = card.def || (card.level ? card.level * 15 + 20 : 30);
+    const cardDef = (card.def || (card.level ? card.level * 15 + 20 : 30)) * getStyleDefenseMultiplier(card.style);
     const bossAtk = boss.atk || (boss.level * 22 + 50);
     const skillMult = chosenSkill.powerMultiplier || 1.35;
 
-    const bossDmg = Math.max(30, Math.round(bossAtk * skillMult * (90 / (90 + cardDef * 0.4))));
+    const bossDmg = Math.max(30, Math.round(bossAtk * skillMult * effectMultiplier * getSpeedMultiplier(boss.spd, card.spd) * (90 / (90 + cardDef * 0.4))));
     targetSlot.currentHp = Math.max(0, targetSlot.currentHp - bossDmg);
+    if (chosenSkill.effectType === "leech") bossHealing += Math.round(bossDmg * 0.5);
 
     roundLogs.push({
       turn: turnNum,
@@ -8193,6 +7217,21 @@ app.post("/api/raid/lobby/turn", (req, res) => {
       damage: bossDmg,
       messageId: `🔥 ${boss.name} memfokuskan serangan "${chosenSkill.name}" menghantam ${card.name} (Slot ${targetSlot.slotIndex + 1}) sebesar ${bossDmg} DMG! [HP Sisa: ${targetSlot.currentHp}/${targetSlot.maxHp}]`,
       messageEn: `🔥 ${boss.nameEn || boss.name} focused strike "${chosenSkill.nameEn || chosenSkill.name}" smashing ${card.name} (Slot ${targetSlot.slotIndex + 1}) for ${bossDmg} DMG! [Remaining HP: ${targetSlot.currentHp}/${targetSlot.maxHp}]`,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  if (bossHealing > 0) {
+    const hpBeforeHealing = room.bossCurrentHp;
+    room.bossCurrentHp = Math.min(boss.maxHp || boss.hp, room.bossCurrentHp + bossHealing);
+    const actualHealing = room.bossCurrentHp - hpBeforeHealing;
+    roundLogs.push({
+      turn: turnNum,
+      actor: boss.name,
+      actorType: "boss",
+      damage: 0,
+      messageId: `🩸 Efek Leech memulihkan ${actualHealing} HP ${boss.name}.`,
+      messageEn: `🩸 Leech restored ${actualHealing} HP to ${boss.nameEn || boss.name}.`,
       timestamp: new Date().toISOString()
     });
   }

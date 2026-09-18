@@ -305,7 +305,7 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                     {isEn ? "Cancellation & Refund Policy" : "Kebijakan Pembatalan & Pengembalian Dana (Refund Policy)"}
                   </h3>
                   <p className="text-xs text-slate-400 mt-1 font-mono">
-                    {isEn ? "Clear & Transparent Refund Standards for Digital Goods & Midtrans Transactions" : "Standar Pengembalian Dana Transparan untuk Produk Digital & Pembayaran Midtrans"}
+                    {isEn ? "Real-money purchases are currently unavailable" : "Pembelian dengan uang nyata saat ini tidak tersedia"}
                   </p>
                 </div>
 
@@ -316,9 +316,9 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                   </h4>
                   <p className="text-slate-300 text-xs leading-relaxed">
                     {isEn ? (
-                      <>All purchases made on Nekomon Online (including In-game Points, Nekomon Cores, Booster Packs, and Energy Potions) are digital in nature and delivered instantly upon payment confirmation. Consequently, digital items that have been delivered and partially or fully consumed are generally non-refundable.</>
+                      <>Nekomon Online currently does not offer real-money purchases. Items available in the Shop are obtained with in-game currency or gameplay rewards, so no payment-gateway refund process applies.</>
                     ) : (
-                      <>Semua transaksi pembelian di Nekomon Online (termasuk Poin Game, Nekomon Cores, Booster Pack Kartu, dan Ramuan Energi) merupakan produk digital yang dikirimkan seketika setelah pembayaran terverifikasi. Oleh karena itu, produk digital yang telah diterima dan digunakan/dikonsumsi pada prinsipnya bersifat final dan tidak dapat dibatalkan.</>
+                      <>Nekomon Online saat ini tidak menyediakan pembelian dengan uang nyata. Item Shop diperoleh menggunakan mata uang dalam game atau hadiah gameplay, sehingga proses refund payment gateway tidak berlaku.</>
                     )}
                   </p>
                 </div>
@@ -336,15 +336,15 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                   <ul className="list-disc list-inside space-y-1 text-slate-300 text-xs pl-2">
                     {isEn ? (
                       <>
-                        <li><strong>Duplicate Payment / Double Charge:</strong> Multiple charges deducted from your payment method for a single order ID due to network glitches or gateway lag.</li>
-                        <li><strong>Item Non-Delivery:</strong> The payment was successfully captured and settled via Midtrans, but the digital points/cores/packs failed to credit to your player account within 24 hours after contacting support.</li>
-                        <li><strong>Technical System Glitch:</strong> A confirmed server-side error occurred during payment processing that prevented normal delivery of purchased assets.</li>
+                        <li><strong>Incorrect In-game Deduction:</strong> In-game currency was deducted more than once for a single action.</li>
+                        <li><strong>Item Delivery:</strong> Report missing gameplay rewards or incorrectly deducted in-game currency to support.</li>
+                        <li><strong>Technical System Glitch:</strong> A confirmed server-side error prevented normal delivery of an earned reward.</li>
                       </>
                     ) : (
                       <>
-                        <li><strong>Pembayaran Ganda (Double Billing):</strong> Terjadi pemotongan saldo lebih dari satu kali untuk ID pesanan yang sama akibat gangguan jaringan gateway perbankan.</li>
-                        <li><strong>Item Tidak Diterima (Non-Delivery):</strong> Pembayaran telah terpotong dan berstatus <em>Settlement / Success</em> di Midtrans, namun item poin/cores/kartu belum masuk ke akun pemain dalam waktu 1x24 jam setelah melapor ke bantuan.</li>
-                        <li><strong>Gangguan Teknis Server:</strong> Terjadi error sistem internal yang menyebabkan kegagalan pencatatan item secara permanen pada database akun.</li>
+                        <li><strong>Pemotongan Mata Uang Game:</strong> Mata uang dalam game terpotong lebih dari satu kali untuk satu tindakan.</li>
+                        <li><strong>Item Tidak Diterima:</strong> Laporkan hadiah gameplay yang tidak masuk atau mata uang dalam game yang terpotong keliru kepada tim bantuan.</li>
+                        <li><strong>Gangguan Teknis Server:</strong> Terjadi error sistem yang menyebabkan hadiah gameplay tidak tercatat pada akun.</li>
                       </>
                     )}
                   </ul>

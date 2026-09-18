@@ -177,7 +177,7 @@ export const CardMissions: React.FC<CardMissionsProps> = ({
     { id: "training", name: language === "id" ? "Latihan Gym Kucing" : "Cat Gym Training", recLv: "Lv. 3+", xp: "+60", pts: "+10", icon: "⚡", theme: "from-blue-500/15 via-slate-950 to-slate-950 border-blue-900/30 text-blue-400" },
     { id: "rescue", name: language === "id" ? "Penyelamatan Kitten" : "Kitten Rescue Operation", recLv: "Lv. 5+", xp: "+100", pts: "+20", icon: "🌳", theme: "from-purple-500/15 via-slate-950 to-slate-950 border-purple-900/30 text-purple-400" },
     { id: "boss", name: language === "id" ? "Pertarungan Bos Oyen" : "Ginger Cat Boss Fight", recLv: "Lv. 8+", xp: "+180", pts: "+35", icon: "👑", theme: "from-amber-500/15 via-slate-950 to-slate-950 border-amber-900/30 text-amber-400" },
-    { id: "master_trial", name: language === "id" ? "Ujian Master Nekomon (Lv. >8)" : "Master Nekomon Trial (Lv. >8)", recLv: "Lv. 8+", xp: "+300", pts: "+60", icon: "🔥", theme: "from-rose-500/15 via-slate-950 to-slate-950 border-rose-900/30 text-rose-400" }
+    { id: "master_trial", name: language === "id" ? "Ujian Master Nekomon (Lv. 8+)" : "Master Nekomon Trial (Lv. 8+)", recLv: "Lv. 8+", xp: "+300", pts: "+60", icon: "🔥", theme: "from-rose-500/15 via-slate-950 to-slate-950 border-rose-900/30 text-rose-400" }
   ];
 
   return (

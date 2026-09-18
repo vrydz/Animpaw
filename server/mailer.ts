@@ -8,7 +8,8 @@ export function getMailTransporter(): nodemailer.Transporter {
     const host = process.env.SMTP_HOST || "smtp.hostinger.com";
     const port = parseInt(process.env.SMTP_PORT || "465", 10);
     const user = process.env.SMTP_USER || "support@nekomon.online";
-    const pass = process.env.SMTP_PASS || "4rmyofDEATH##";
+    const pass = process.env.SMTP_PASS;
+    if (!pass) throw new Error("SMTP_PASS must be configured");
 
     transporter = nodemailer.createTransport({
       host,

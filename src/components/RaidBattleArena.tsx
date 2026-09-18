@@ -71,9 +71,9 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.battleLogs]);
 
-  // Polling room state if waiting for multiplayer players
+  // Keep every participant synchronized both in the lobby and during battle.
   useEffect(() => {
-    if (room.status === "waiting") {
+    if (room.status === "waiting" || room.status === "in_battle") {
       const interval = setInterval(async () => {
         try {
           const res = await fetch(`/api/raid/lobby/${room.id}`, {
@@ -86,7 +86,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
         } catch (e) {
           console.error("Room sync error:", e);
         }
-      }, 3000);
+      }, room.status === "in_battle" ? 1500 : 3000);
       return () => clearInterval(interval);
     }
   }, [room.id, room.status]);
@@ -141,10 +141,14 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
       const res = await fetch("/api/raid/lobby/turn", {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ roomId: room.id, action: "attack" })
+        body: JSON.stringify({ roomId: room.id, action: "attack", expectedTurn: room.currentTurn })
       });
 
       const data = await res.json();
+      if (res.status === 409 && data.room) {
+        setRoom(data.room);
+        return;
+      }
       if (!res.ok) throw new Error(data.error || (currentLanguage === "id" ? "Gagal menjalankan turn." : "Failed to execute turn."));
 
       setRoom(data.room);
@@ -332,13 +336,13 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-900/40 flex items-center justify-between">
                 <span className="text-[11px] text-emerald-400 font-semibold">
-                  💥 Debuff Lemah (+75%):
+                  💥 Debuff Lemah (+30%):
                 </span>
                 {getElementBadge(boss.debuffElement)}
               </div>
               <div className="p-2 rounded-lg bg-red-950/40 border border-red-900/40 flex items-center justify-between">
                 <span className="text-[11px] text-red-400 font-semibold">
-                  🛡️ Buff Kebal (-50%):
+                  🛡️ Buff Tahan (-20%):
                 </span>
                 {getElementBadge(boss.buffElement)}
               </div>

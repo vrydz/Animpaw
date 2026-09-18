@@ -436,7 +436,7 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
             <div className="flex items-center gap-1">
               <Award className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
               <span className="text-[10px] font-extrabold text-yellow-400 uppercase tracking-wider line-clamp-1">
-                SKILL: {skillName}
+                SIGNATURE: {skillName}
               </span>
             </div>
             <p className="text-[10px] text-slate-400 italic leading-snug line-clamp-1">

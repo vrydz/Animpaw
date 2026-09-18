@@ -270,13 +270,9 @@ export const GameGuide: React.FC = () => {
                     <RotateCcw className="w-5 h-5 text-yellow-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Kebijakan Refund & Transaksi Aman Payment Gateway 🛡️💳</h4>
+                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Status Transaksi Digital 🛡️</h4>
                     <p className="leading-relaxed">
-                      Nekomon Online menerapkan standar transparansi pembayaran resmi dengan gateway pembayaran terpercaya (iPaymu & Midtrans) dan perlindungan Google AdSense.
-                      <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Perlindungan Pembayaran Ganda & Item Belum Masuk:</span> Jika terjadi kegagalan sistem atau kendala transfer, Trainer dapat mengajukan klaim pengembalian dana dalam waktu 7 hari ke email resmi pengembang: <span className="text-amber-300 font-mono">support@nekomon.online</span> atau Instagram <span className="text-amber-300 font-mono">@nekomontcg</span>.
-                      <br/>
-                      <span className="text-emerald-400 font-bold font-mono">• Akses Legal Kapan Saja:</span> Baca ketentuan lengkap melalui tombol <span className="text-yellow-400 font-mono font-bold">Kebijakan Refund</span> pada footer landing page atau halaman Shop.
+                      Pembelian dengan uang nyata dan integrasi payment gateway sedang dinonaktifkan. Seluruh item Shop yang tersedia saat ini menggunakan mata uang dalam game atau hadiah gameplay.
                     </p>
                   </div>
                 </div>
@@ -314,11 +310,9 @@ export const GameGuide: React.FC = () => {
                     <CreditCard className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">16. Integrasi Payment Gateway iPaymu (VA & QRIS Resmi) 💳⚡</h4>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">16. Ekonomi Berbasis Gameplay 🎮⚡</h4>
                     <p className="leading-relaxed">
-                      Nekomon Shop telah resmi terintegrasi dengan <span className="text-emerald-400 font-bold font-mono">iPaymu Payment Gateway</span> untuk pembelian Nekomon Points dan Booster Pack secara instan dan aman.
-                      <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Virtual Account & Saluran Resmi:</span> Didukung saluran pembayaran QRIS Instan (GoPay, OVO, Dana, ShopeePay, LinkAja) serta Virtual Account Bank resmi (<span className="text-emerald-300 font-mono font-bold">No. VA iPaymu: 1179005624089327</span>). Pembayaran diverifikasi otomatis dan item langsung masuk ke akun Trainer dalam hitungan detik!
+                      Poin, Core, kartu, dan energi diperoleh melalui capture, misi, Raid, Territory, hadiah harian, dan aktivitas dalam game yang tersedia.
                     </p>
                   </div>
                 </div>
@@ -592,13 +586,9 @@ export const GameGuide: React.FC = () => {
                     <RotateCcw className="w-5 h-5 text-yellow-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Refund Policy & Secure Payment Gateway Transactions 🛡️💳</h4>
+                    <h4 className="font-bold text-yellow-300 font-mono text-xs uppercase mb-1">13. Digital Transaction Status 🛡️</h4>
                     <p className="leading-relaxed">
-                      Nekomon Online maintains transparent consumer protection policies in compliance with official secure payment gateways (iPaymu & Midtrans) and Google AdSense guidelines.
-                      <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Double Billing & Non-Delivery Protection:</span> In cases of verified payment anomalies or undelivered digital items, Trainers can submit a refund claim within 7 calendar days to: <span className="text-amber-300 font-mono">support@nekomon.online</span> or Instagram <span className="text-amber-300 font-mono">@nekomontcg</span>.
-                      <br/>
-                      <span className="text-emerald-400 font-bold font-mono">• Instant Policy Access:</span> Review complete legal terms via the <span className="text-yellow-400 font-mono font-bold">Refund Policy</span> button in the landing page footer or Shop page.
+                      Real-money purchases and payment gateway integrations are currently disabled. All available Shop items use in-game currency or gameplay rewards.
                     </p>
                   </div>
                 </div>
@@ -636,11 +626,9 @@ export const GameGuide: React.FC = () => {
                     <CreditCard className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">16. iPaymu Payment Gateway Integration (Official VA & QRIS) 💳⚡</h4>
+                    <h4 className="font-bold text-emerald-300 font-mono text-xs uppercase mb-1">16. Gameplay-Based Economy 🎮⚡</h4>
                     <p className="leading-relaxed">
-                      Nekomon Shop is officially connected to <span className="text-emerald-400 font-bold font-mono">iPaymu Payment Gateway</span> for secure, seamless digital microtransactions (Nekomon Points & Booster Packs).
-                      <br className="my-1"/>
-                      <span className="text-yellow-400 font-bold font-mono">• Official Virtual Account & Channels:</span> Supports Instant QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja) and Bank Virtual Accounts (<span className="text-emerald-300 font-mono font-bold">Official iPaymu VA: 1179005624089327</span>). Transactions are instantly verified, crediting purchased points and booster packs to your Trainer vault within seconds!
+                      Points, Cores, cards, and energy are earned through captures, missions, Raids, Territory, daily rewards, and other available in-game activities.
                     </p>
                   </div>
                 </div>
@@ -808,8 +796,8 @@ export const GameGuide: React.FC = () => {
               <div className="mt-4 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg text-[11px] text-yellow-400 leading-relaxed font-sans">
                 <span className="font-bold font-mono text-xs block mb-0.5">💡 {language === "id" ? "STRATEGI COMBAT:" : "COMBAT STRATEGY:"}</span>
                 {language === "id" 
-                  ? "Jika Nekomon Anda memiliki statistik SPD (Speed) yang lebih tinggi daripada lawan, Anda akan menyerang terlebih dahulu di setiap ronde pertempuran! Pastikan memilih kartu yang sesuai di menu taktis."
-                  : "If your Nekomon's SPD (Speed) statistic is higher than your opponent's, you will strike first in every combat round! Choose your team tactically."}
+                  ? "SPD (Speed) memengaruhi tempo dan damage serangan di Arena, Territory, serta Raid hingga maksimal ±15%. SPD penting, tetapi tidak dapat mengalahkan strategi elemen dan pertahanan sendirian."
+                  : "SPD (Speed) affects attack tempo and damage in Arena, Territory, and Raid by up to ±15%. It matters without overpowering elemental strategy and defense."}
               </div>
             </div>
           </motion.div>

@@ -42,7 +42,8 @@ export async function syncToFirestore(data: any) {
     if (Array.isArray(data.users)) {
       for (const u of data.users) {
         if (!u || !u.id) continue;
-        await fsDb.collection("users").doc(u.id).set(u, { merge: true }).catch(err => {
+        const { password, ...safeUser } = u;
+        await fsDb.collection("users").doc(u.id).set(safeUser, { merge: true }).catch(err => {
           console.warn("Firestore user sync warning:", err?.message || err);
         });
       }

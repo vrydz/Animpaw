@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
+import { BattleAtmosphere, BattleCardMotion } from "./arena/BattleAtmosphere";
 import { Card } from "../types";
 import { 
   Swords, 
@@ -76,200 +77,6 @@ interface BattlePlayerState {
   energy: number;
   card: Card;
   hasSubmitted: boolean;
-}
-
-interface ElementalEffectOverlayProps {
-  element: string;
-  animationType: "slash" | "impact" | null;
-}
-
-function ElementalEffectOverlay({ element, animationType }: ElementalEffectOverlayProps) {
-  if (!animationType) return null;
-
-  const normalized = (element || "").toLowerCase();
-  const isFire = normalized.includes("api") || normalized.includes("fire");
-  const isWater = normalized.includes("air") || normalized.includes("water");
-  const isEarth = normalized.includes("tanah") || normalized.includes("earth");
-  const isWind = normalized.includes("angin") || normalized.includes("wind");
-  const isThunder = normalized.includes("petir") || normalized.includes("thunder");
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 1.2 }}
-        transition={{ duration: 0.4 }}
-        className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center overflow-hidden rounded-xl"
-      >
-        {/* FIRE particles & flame explosion */}
-        {isFire && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div 
-              initial={{ scale: 0.4, opacity: 0.9 }}
-              animate={{ scale: [0.4, 1.5, 1.1], opacity: [0.9, 1, 0] }}
-              transition={{ duration: 0.55 }}
-              className="absolute w-full h-full bg-gradient-to-r from-orange-500/80 via-red-600/50 to-amber-500/80 rounded-xl shadow-[0_0_50px_rgba(249,115,22,1)]"
-            />
-            {[...Array(9)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ 
-                  x: (Math.random() - 0.5) * 40, 
-                  y: 20, 
-                  scale: Math.random() * 0.9 + 0.4, 
-                  opacity: 1 
-                }}
-                animate={{ 
-                  y: -70 - Math.random() * 30, 
-                  x: (Math.random() - 0.5) * 80, 
-                  scale: 0, 
-                  opacity: 0,
-                  rotate: Math.random() * 360 
-                }}
-                transition={{ duration: 0.55, delay: i * 0.03 }}
-                className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-t from-red-600 via-orange-400 to-yellow-200 shadow-[0_0_12px_rgba(251,146,60,1)]"
-              />
-            ))}
-            <Flame className="w-16 h-16 text-amber-300 animate-bounce drop-shadow-[0_0_20px_rgba(245,158,11,1)] z-10" />
-          </div>
-        )}
-
-        {/* WATER ripples & splash droplets */}
-        {isWater && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              initial={{ scale: 0.2, opacity: 1 }}
-              animate={{ scale: 1.9, opacity: 0 }}
-              transition={{ duration: 0.55, repeat: 1 }}
-              className="absolute w-24 h-24 rounded-full border-4 border-cyan-300 bg-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.9)]"
-            />
-            <motion.div
-              initial={{ scale: 0.1, opacity: 1 }}
-              animate={{ scale: 1.4, opacity: 0 }}
-              transition={{ duration: 0.45, delay: 0.1 }}
-              className="absolute w-16 h-16 rounded-full border-2 border-blue-400 bg-blue-600/40"
-            />
-            {[...Array(8)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ x: 0, y: 0, scale: 0.5, opacity: 1 }}
-                animate={{ 
-                  x: Math.cos((i * Math.PI) / 4) * 50, 
-                  y: Math.sin((i * Math.PI) / 4) * 50, 
-                  scale: [0.8, 1.3, 0], 
-                  opacity: 0 
-                }}
-                transition={{ duration: 0.5, delay: i * 0.03 }}
-                className="absolute w-4 h-4 rounded-full bg-gradient-to-br from-cyan-300 to-blue-500 shadow-[0_0_10px_rgba(56,189,248,0.9)]"
-              />
-            ))}
-            <Droplets className="w-16 h-16 text-cyan-300 animate-pulse drop-shadow-[0_0_20px_rgba(6,182,212,1)] z-10" />
-          </div>
-        )}
-
-        {/* EARTH rock fracture & floating leaves */}
-        {isEarth && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              initial={{ scale: 0.3, opacity: 1 }}
-              animate={{ scale: 1.5, opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="absolute w-28 h-28 rounded-2xl border-4 border-emerald-400 bg-emerald-950/60 shadow-[0_0_40px_rgba(16,185,129,0.9)]"
-            />
-            {[...Array(8)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-                animate={{ 
-                  x: (Math.random() - 0.5) * 95, 
-                  y: (Math.random() - 0.5) * 95, 
-                  rotate: Math.random() * 360, 
-                  scale: [1, 0.4, 0], 
-                  opacity: 0 
-                }}
-                transition={{ duration: 0.55, delay: i * 0.03 }}
-                className="absolute w-4 h-4 bg-gradient-to-tr from-emerald-600 via-green-400 to-lime-300 rounded-sm shadow-[0_0_12px_rgba(52,211,153,1)]"
-              />
-            ))}
-            <Sprout className="w-16 h-16 text-emerald-300 animate-bounce drop-shadow-[0_0_20px_rgba(52,211,153,1)] z-10" />
-          </div>
-        )}
-
-        {/* WIND tornado gust & air blades */}
-        {isWind && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              initial={{ rotate: 0, scale: 0.3, opacity: 1 }}
-              animate={{ rotate: 360, scale: 1.6, opacity: 0 }}
-              transition={{ duration: 0.5, ease: "linear" }}
-              className="absolute w-28 h-28 rounded-full border-4 border-dashed border-teal-300 bg-teal-400/20 shadow-[0_0_35px_rgba(45,212,191,0.9)]"
-            />
-            {[...Array(6)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ x: -60, y: (i - 3) * 12, opacity: 0, scaleX: 0.2 }}
-                animate={{ x: 60, opacity: [0, 1, 0], scaleX: [0.2, 1.6, 0.2] }}
-                transition={{ duration: 0.4, delay: i * 0.05 }}
-                className="absolute w-16 h-1.5 bg-gradient-to-r from-transparent via-teal-200 to-transparent shadow-[0_0_10px_rgba(153,246,228,1)] rotate-[-15deg]"
-              />
-            ))}
-            <Wind className="w-16 h-16 text-teal-300 animate-spin drop-shadow-[0_0_20px_rgba(45,212,191,1)] z-10" />
-          </div>
-        )}
-
-        {/* THUNDER electric arc lightning bolts */}
-        {isThunder && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: [0, 1, 0.2, 1, 0], scale: [0.5, 1.3, 1.1, 1.4, 0] }}
-              transition={{ duration: 0.45 }}
-              className="absolute w-full h-full bg-yellow-400/40 shadow-[0_0_60px_rgba(250,204,21,1)]"
-            />
-            {[...Array(8)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ x: 0, y: 0, opacity: 1 }}
-                animate={{ 
-                  x: Math.cos((i * Math.PI) / 4) * 60, 
-                  y: Math.sin((i * Math.PI) / 4) * 60, 
-                  opacity: [1, 0.8, 0], 
-                  scale: [0.5, 1.5, 0] 
-                }}
-                transition={{ duration: 0.4, delay: i * 0.02 }}
-                className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-yellow-200 to-amber-500 shadow-[0_0_15px_rgba(253,224,71,1)]"
-              />
-            ))}
-            <LightningIcon className="w-16 h-16 text-yellow-300 animate-pulse drop-shadow-[0_0_25px_rgba(250,204,21,1)] z-10" />
-          </div>
-        )}
-
-        {/* Fallback Slash / Impact overlay */}
-        {!isFire && !isWater && !isEarth && !isWind && !isThunder && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            {animationType === "slash" ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8, rotate: -45 }}
-                animate={{ opacity: 1, scale: 1.2, rotate: -15 }}
-                exit={{ opacity: 0, scale: 1.5 }}
-                transition={{ duration: 0.25 }}
-                className="w-[140%] h-3 bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_15px_rgba(239,68,68,0.8)] rotate-[35deg]"
-              />
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.3 }}
-                animate={{ opacity: 1, scale: 1.3 }}
-                exit={{ opacity: 0, scale: 1.8 }}
-                transition={{ duration: 0.25 }}
-                className="w-12 h-12 rounded-full border-4 border-yellow-400 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.8)] animate-ping"
-              />
-            )}
-          </div>
-        )}
-      </motion.div>
-    </AnimatePresence>
-  );
 }
 
 export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaViewProps) {
@@ -394,25 +201,8 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
   } | null>(null);
 
   // Battle Visual Animations & Round Resolvers
-  const [meAnimation, setMeAnimation] = useState<"slash" | "impact" | null>(null);
-  const [opponentAnimation, setOpponentAnimation] = useState<"slash" | "impact" | null>(null);
-  const [meAttackElement, setMeAttackElement] = useState<string>("Air");
-  const [oppAttackElement, setOppAttackElement] = useState<string>("Api");
-
   const lastRoundRef = useRef<number>(0);
   const lastStatusRef = useRef<string>("none");
-
-  const triggerMeAnimation = (type: "slash" | "impact", element?: string) => {
-    setMeAnimation(type);
-    if (element) setMeAttackElement(element);
-    setTimeout(() => setMeAnimation(null), 550);
-  };
-
-  const triggerOpponentAnimation = (type: "slash" | "impact", element?: string) => {
-    setOpponentAnimation(type);
-    if (element) setOppAttackElement(element);
-    setTimeout(() => setOpponentAnimation(null), 550);
-  };
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -420,53 +210,13 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
   const searchIntervalRef = useRef<any>(null);
 
   const triggerVictoryConfetti = () => {
-    try {
-      // Stage 1: Explosive center explosion
-      confetti({
-        particleCount: 95,
-        spread: 110,
-        origin: { y: 0.5 },
-        colors: ["#eab308", "#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#ffffff"],
-        zIndex: 9999,
-      });
-
-      // Stage 2: Dual side cannons
-      setTimeout(() => {
-        confetti({
-          particleCount: 55,
-          angle: 60,
-          spread: 75,
-          origin: { x: 0.05, y: 0.65 },
-          colors: ["#eab308", "#f59e0b", "#ef4444", "#10b981"],
-          zIndex: 9999,
-        });
-        confetti({
-          particleCount: 55,
-          angle: 120,
-          spread: 75,
-          origin: { x: 0.95, y: 0.65 },
-          colors: ["#3b82f6", "#ec4899", "#8b5cf6", "#eab308"],
-          zIndex: 9999,
-        });
-      }, 220);
-
-      // Stage 3: Golden Star Shower
-      setTimeout(() => {
-        confetti({
-          particleCount: 45,
-          spread: 130,
-          startVelocity: 35,
-          decay: 0.92,
-          gravity: 0.75,
-          origin: { y: 0.35 },
-          shapes: ["star"],
-          colors: ["#fbbf24", "#f59e0b", "#fef08a"],
-          zIndex: 9999,
-        });
-      }, 500);
-    } catch (e) {
-      console.error("Confetti trigger error:", e);
-    }
+    if (document.hidden || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    confetti({
+      particleCount: window.innerWidth < 640 ? 14 : 28,
+      spread: 65, startVelocity: 18, ticks: 100, gravity: .65,
+      origin: { y: .6 }, colors: ["#d9bd80", "#91b7ca", "#f0e5cb"],
+      disableForReducedMotion: true, zIndex: 9999,
+    });
   };
 
   // Trigger Victory Confetti / Defeat Sound & Haptics on Rewards
@@ -615,28 +365,28 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
               try {
                 audio.playElementSound(myElement);
               } catch (_) {}
-              triggerOpponentAnimation(Math.random() < 0.5 ? "slash" : "impact", myElement);
+
               
               // Opponent attacks second (staggered by 450ms): plays opponent's sound, triggers elemental animation overlay on our card
               setTimeout(() => {
                 try {
                   audio.playElementSound(oppElement);
                 } catch (_) {}
-                triggerMeAnimation(Math.random() < 0.5 ? "slash" : "impact", oppElement);
+
               }, 450);
             } else {
               // Opponent attacks first: play opponent's element sound, trigger elemental animation overlay on our card
               try {
                 audio.playElementSound(oppElement);
               } catch (_) {}
-              triggerMeAnimation(Math.random() < 0.5 ? "slash" : "impact", oppElement);
+
               
               // Me attacks second (staggered by 450ms): plays our sound, triggers elemental animation overlay on opponent card
               setTimeout(() => {
                 try {
                   audio.playElementSound(myElement);
                 } catch (_) {}
-                triggerOpponentAnimation(Math.random() < 0.5 ? "slash" : "impact", myElement);
+
               }, 450);
             }
           }
@@ -751,7 +501,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
       try {
         audio.playElementSound(elem);
       } catch (_) {}
-      triggerOpponentAnimation(action === "skill" ? "impact" : "slash", elem);
+
     } else {
       try {
         audio.playCaptureSound();
@@ -794,7 +544,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
     const isLobby = battleMode === "lobby";
 
     return (
-      <div className="flex-1 flex flex-col bg-slate-950 font-sans text-slate-200">
+      <BattleAtmosphere victory={!!rewards && ((myBattleState?.hp ?? 0) > 0 || rewards.pointsGained >= 20)}>
         {/* Error HUD */}
         <AnimatePresence>
           {errorMsg && (
@@ -1021,17 +771,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
 
             {/* PLAYER A (ME) */}
             {myBattleState && (
-              <motion.div
-                animate={
-                  meAnimation === "slash" || meAnimation === "impact"
-                    ? {
-                        x: [0, -10, 10, -10, 10, 0],
-                        y: [0, 5, -5, 5, -5, 0],
-                        filter: ["brightness(1)", "brightness(1.8)", "brightness(1)"],
-                      }
-                    : { x: 0, y: 0, filter: "brightness(1)" }
-                }
-                transition={{ duration: 0.35 }}
+              <BattleCardMotion hp={myBattleState.hp} targetHp={opponentBattleState?.hp} side="left"
                 className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between gap-2.5 shadow-lg relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
@@ -1055,10 +795,6 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
                     <div className="text-[11px] font-mono text-slate-600">Cat Card</div>
                   )}
                   {/* Elemental Visual Effect Overlay for Player A */}
-                  <ElementalEffectOverlay 
-                    element={meAttackElement} 
-                    animationType={meAnimation} 
-                  />
                   {/* Element Icon overlay */}
                   <div className="absolute bottom-2 right-2 bg-slate-900/90 border border-slate-800 p-1 rounded-lg">
                     {renderElementIcon(myBattleState.card.element, "w-4 h-4")}
@@ -1111,7 +847,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
                     </span>
                   </div>
                 )}
-              </motion.div>
+              </BattleCardMotion>
             )}
 
             {/* PLAYER B (OPPONENT) */}
@@ -1164,17 +900,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
               </div>
             ) : opponentBattleState ? (
               /* Revealed opponent card once battle commences */
-              <motion.div
-                animate={
-                  opponentAnimation === "slash" || opponentAnimation === "impact"
-                    ? {
-                        x: [0, 10, -10, 10, -10, 0],
-                        y: [0, -5, 5, -5, 5, 0],
-                        filter: ["brightness(1)", "brightness(1.8)", "brightness(1)"],
-                      }
-                    : { x: 0, y: 0, filter: "brightness(1)" }
-                }
-                transition={{ duration: 0.35 }}
+              <BattleCardMotion hp={opponentBattleState.hp} targetHp={myBattleState?.hp} side="right"
                 className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between gap-2.5 shadow-lg relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-rose-500" />
@@ -1198,10 +924,6 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
                     <div className="text-[11px] font-mono text-slate-600">Cat Card</div>
                   )}
                   {/* Elemental Visual Effect Overlay for Player B */}
-                  <ElementalEffectOverlay 
-                    element={oppAttackElement} 
-                    animationType={opponentAnimation} 
-                  />
                   <div className="absolute bottom-2 right-2 bg-slate-900/90 border border-slate-800 p-1 rounded-lg">
                     {renderElementIcon(opponentBattleState.card.element, "w-4 h-4")}
                   </div>
@@ -1253,7 +975,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
                     </span>
                   </div>
                 )}
-              </motion.div>
+              </BattleCardMotion>
             ) : null}
 
           </div>
@@ -1465,7 +1187,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
             );
           })()}
         </AnimatePresence>
-      </div>
+      </BattleAtmosphere>
     );
   }
 

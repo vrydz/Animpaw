@@ -1,21 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if true;
-    }
-    match /captures/{captureId} {
-      allow read, write: if true;
-    }
-    match /cards/{cardId} {
-      allow read, write: if true;
-    }
-    match /trades/{tradeId} {
-      allow read, write: if true;
-    }
     match /{document=**} {
-      allow read, write: if true;
+      // Game state is authoritative on the server. Direct client Firestore
+      // access is forbidden until collection-specific ownership rules exist.
+      allow read, write: if false;
     }
   }
 }
-

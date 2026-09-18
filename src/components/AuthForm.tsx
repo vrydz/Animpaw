@@ -180,12 +180,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
       const response = await fetch("/api/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: googleUser.email,
-          displayName: googleUser.displayName || "",
-          uid: googleUser.uid,
-          photoURL: googleUser.photoURL || ""
-        }),
+        body: JSON.stringify({ idToken: await googleUser.getIdToken() }),
       });
 
       const data = await response.json();

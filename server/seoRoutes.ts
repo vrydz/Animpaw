@@ -89,12 +89,12 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">1. Ketentuan Pembelian Barang Digital</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Semua pembelian item digital (seperti paket Nekomon Cores atau fitur penempaan khusus) bersifat instan. Setelah item berhasil dikreditkan ke akun pemain, transaksi secara umum bersifat final dan tidak dapat dibatalkan.
+        Pembelian dengan uang nyata sedang tidak tersedia. Item digital saat ini diperoleh melalui mata uang dalam game dan aktivitas gameplay.
       </p>
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">2. Perlindungan Potongan Ganda & Item Belum Masuk</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Jika terjadi kesalahan sistem di mana saldo terpotong ganda atau item tidak masuk setelah pembayaran terkonfirmasi oleh payment gateway (Midtrans), pemain berhak mengajukan pengembalian dana atau pengiriman ulang item dalam batas waktu 7 hari kalender.
+        Jika hadiah gameplay tidak masuk atau mata uang dalam game terpotong secara keliru, pemain dapat menghubungi tim bantuan untuk pemeriksaan dan koreksi data.
       </p>
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">3. Cara Mengajukan Klaim</h2>

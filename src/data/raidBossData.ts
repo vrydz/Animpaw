@@ -142,7 +142,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 3,
       points: 150,
-      energyRefill: 25,
+      energyRefill: 1,
       cardXp: 200
     },
     isActive: true,
@@ -194,7 +194,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 4,
       points: 260,
-      energyRefill: 30,
+      energyRefill: 1,
       cardXp: 320
     },
     isActive: true,
@@ -246,7 +246,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 5,
       points: 340,
-      energyRefill: 35,
+      energyRefill: 1,
       cardXp: 360
     },
     isActive: true,
@@ -298,7 +298,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 6,
       points: 460,
-      energyRefill: 40,
+      energyRefill: 1,
       cardXp: 460
     },
     isActive: true,
@@ -350,7 +350,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 8,
       points: 680,
-      energyRefill: 50,
+      energyRefill: 1,
       cardXp: 620
     },
     isActive: true,
@@ -406,7 +406,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 3,
       points: 190,
-      energyRefill: 25,
+      energyRefill: 1,
       cardXp: 260
     },
     isActive: true,
@@ -458,7 +458,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 5,
       points: 390,
-      energyRefill: 35,
+      energyRefill: 1,
       cardXp: 410
     },
     isActive: true,
@@ -510,7 +510,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 5,
       points: 420,
-      energyRefill: 35,
+      energyRefill: 1,
       cardXp: 430
     },
     isActive: true,
@@ -562,7 +562,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 6,
       points: 490,
-      energyRefill: 40,
+      energyRefill: 1,
       cardXp: 490
     },
     isActive: true,
@@ -614,7 +614,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 7,
       points: 580,
-      energyRefill: 45,
+      energyRefill: 1,
       cardXp: 560
     },
     isActive: true,
@@ -670,7 +670,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 3,
       points: 160,
-      energyRefill: 25,
+      energyRefill: 1,
       cardXp: 220
     },
     isActive: true,
@@ -722,7 +722,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 4,
       points: 320,
-      energyRefill: 30,
+      energyRefill: 1,
       cardXp: 350
     },
     isActive: true,
@@ -774,7 +774,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 5,
       points: 400,
-      energyRefill: 35,
+      energyRefill: 1,
       cardXp: 420
     },
     isActive: true,
@@ -826,7 +826,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 6,
       points: 470,
-      energyRefill: 40,
+      energyRefill: 1,
       cardXp: 470
     },
     isActive: true,
@@ -878,7 +878,7 @@ export const RAID_BOSS_TEMPLATES: Array<Omit<RaidBoss, "id" | "latitude" | "long
     rewards: {
       cores: 7,
       points: 560,
-      energyRefill: 45,
+      energyRefill: 1,
       cardXp: 540
     },
     isActive: true,
@@ -1123,10 +1123,10 @@ export function createRaidBossInstance(
     element: tpl.element,
     buffElement: tpl.buffElement,
     debuffElement: tpl.debuffElement,
-    buffDescription: tpl.buffDescription,
-    buffDescriptionEn: tpl.buffDescriptionEn,
-    debuffDescription: tpl.debuffDescription,
-    debuffDescriptionEn: tpl.debuffDescriptionEn,
+    buffDescription: `Menahan 20% kerusakan dari elemen ${tpl.buffElement}.`,
+    buffDescriptionEn: `Resists 20% damage from ${tpl.buffElement} attacks.`,
+    debuffDescription: `Lemah terhadap elemen ${tpl.debuffElement} (kerusakan +30%).`,
+    debuffDescriptionEn: `Weak against ${tpl.debuffElement} attacks (+30% damage).`,
     hp,
     maxHp: hp,
     atk,
