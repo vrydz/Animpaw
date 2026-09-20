@@ -1,0 +1,75 @@
+.p1-surface[data-paused=true] *, .p1-surface[data-paused=true] *::before, .p1-surface[data-paused=true] *::after { animation-play-state: paused !important; }
+.card-reveal { --reveal-color: #cbd5e1; --reveal-duration: 650ms; position: relative; max-width: 100%; min-width: 0; margin-inline: auto; }
+.card-reveal-art { position: relative; isolation: isolate; border: 1px solid var(--reveal-color); border-radius: 20px; background: #080f1e; }
+.card-reveal-result { position: relative; z-index: 1; }
+.card-reveal[data-ready=true] .card-reveal-result { animation: reveal-arrive var(--reveal-duration) cubic-bezier(.2,.7,.3,1) both; }
+.card-reveal--evolution { width: 260px; }
+.card-reveal--evolution .card-reveal-art { aspect-ratio: 4/5; overflow: hidden; }
+.card-reveal--evolution .card-reveal-result { position: absolute; inset: 0; opacity: 0; }
+.card-reveal--evolution img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+.card-reveal-before { position: absolute; inset: 0; }
+.card-reveal--evolution[data-ready=true] .card-reveal-result { animation: evolution-arrive var(--reveal-duration) ease-out both; }
+.card-reveal--evolution[data-ready=true] .card-reveal-before { animation: evolution-depart var(--reveal-duration) ease-out both; }
+.card-reveal-energy { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; border-radius: inherit; }
+.card-reveal-ring { position: absolute; inset: 20%; border: 1px solid var(--reveal-color); border-radius: 50%; animation: reveal-ring var(--reveal-duration) ease-out both; }
+.card-reveal-energy i { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; border-radius: 50%; background: var(--reveal-color); animation: reveal-ray var(--reveal-duration) ease-out both; }
+.card-reveal-caption { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 7px; padding: 10px; color: var(--reveal-color); background: #080f1e; border: 1px solid var(--reveal-color); border-radius: 10px; margin-top: 10px; font: 700 12px/1.5 ui-monospace,monospace; }
+.card-reveal-caption span { color: #cbd5e1; font-size: 10px; }
+.card-reveal .nekomon-card { width: min(380px, 100%); }
+.forge-charge-ring { position: absolute; inset: 18%; border: 1px solid #e2e8f0; border-radius: 50%; pointer-events: none; animation: reveal-ring 1500ms ease-out both; }
+.result-feedback { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #d4b47766; border-radius: 12px; color: #f5d594; background: #101725; font: 700 12px/1.5 ui-monospace,monospace; animation: reveal-arrive 550ms ease-out both; }
+.result-feedback[data-kind=defeat] { color: #cbd5e1; border-color: #64748b; }
+@keyframes reveal-arrive { from { opacity: .35; transform: translateY(9px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes reveal-ring { from { opacity: .6; transform: scale(.7); } to { opacity: 0; transform: scale(1.4); } }
+@keyframes reveal-ray { from { opacity: 0; transform: rotate(var(--ray-angle)) translateX(18px); } 25% { opacity: .55; } to { opacity: 0; transform: rotate(var(--ray-angle)) translateX(100px); } }
+@keyframes evolution-arrive { 0%, 25% { opacity: 0; transform: scale(.97); } 100% { opacity: 1; transform: none; } }
+@keyframes evolution-depart { 0%, 15% { opacity: 1; } 65%, 100% { opacity: 0; } }
+.p1-surface[data-reduced=true] *, .p1-surface[data-reduced=true] *::before, .p1-surface[data-reduced=true] *::after { animation: none !important; transition: none !important; }
+.p1-surface[data-reduced=true] .card-reveal-energy, .p1-surface[data-reduced=true] .forge-charge-ring { display: none; }
+.p1-surface[data-reduced=true] .card-reveal[data-ready=true] .card-reveal-result { opacity: 1; transform: none; }
+.p1-surface[data-reduced=true] .card-reveal[data-ready=true] .card-reveal-before { display: none; }
+.p1-surface[data-paused=true] .nekomon-card, .p1-surface[data-reduced=true] .nekomon-card { transform: none !important; }
+@media (max-width: 640px) { .card-reveal-energy i:nth-of-type(n+4) { display: none; } .card-reveal--evolution { width: 220px; } }
+@media (prefers-reduced-motion: reduce) {
+  .result-feedback { animation: none; }
+  .card-reveal *, .nekomon-card *, .nekomon-card { animation: none !important; transition: none !important; }
+  .nekomon-card { transform: none !important; }
+  .card-reveal-energy, .forge-charge-ring { display: none; }
+  .card-reveal[data-ready=true] .card-reveal-result { opacity: 1; transform: none; }
+  .card-reveal[data-ready=true] .card-reveal-before { display: none; }
+}
+
+/* P2: static card shadow and frame-batched tilt; no full-card opacity pulse. */
+.nekomon-card { max-width: 100%; transform: perspective(1000px) rotateX(0deg) rotateY(0deg); transition: transform 220ms ease-out; box-shadow: 0 10px 24px -12px #0009, 0 0 14px var(--card-shadow, #0000); }
+.nekomon-card[data-tilted=true] { transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-3px); }
+.card-pointer-shine { position: absolute; inset: 0; pointer-events: none; z-index: 20; opacity: 0; background: radial-gradient(circle at var(--shine-x,50%) var(--shine-y,50%), #ffffff1c, transparent 48%); }
+.nekomon-card[data-tilted=true] .card-pointer-shine { opacity: 1; }
+.card-reveal[data-ready=false] .card-reveal-art { background: linear-gradient(135deg, #111c30, #080f1e); }
+.result-feedback { position: relative; isolation: isolate; overflow: hidden; }
+.result-feedback > svg { flex-shrink: 0; }
+.result-feedback > span:not(.cinematic-host) { position: relative; z-index: 1; }
+/* P3: four finite edge streaks + seal, never a full-screen flash or blocking overlay. */
+.cinematic-host { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: inherit; z-index: 3; }
+.cinematic-accent { position: absolute; inset: 0; color: var(--reveal-color, #e4bd78); }
+.cinematic-accent i { position: absolute; width: 1px; height: 30%; background: linear-gradient(transparent,currentColor,transparent); opacity: 0; animation: cinematic-edge 1000ms ease-out both; }
+.cinematic-accent i:nth-child(1) { left: 8%; top: 12%; }
+.cinematic-accent i:nth-child(2) { right: 8%; top: 54%; animation-delay: 80ms; }
+.cinematic-accent i:nth-child(3) { left: 18%; top: 60%; animation-delay: 120ms; }
+.cinematic-accent i:nth-child(4) { right: 18%; top: 4%; animation-delay: 160ms; }
+.cinematic-accent b { position: absolute; inset: 12%; border: 1px solid currentColor; border-radius: 20%; opacity: 0; animation: cinematic-seal 1100ms ease-out both; }
+.cinematic-accent[data-kind=evolution] b { border-radius: 50%; }
+.cinematic-accent[data-kind=victory] b { inset: 8%; border-radius: 8px; }
+@keyframes cinematic-edge { 0% { opacity: 0; transform: translateY(18px) scaleY(.6); } 25% { opacity: .55; } 100% { opacity: 0; transform: translateY(-24px) scaleY(1); } }
+@keyframes cinematic-seal { 0% { opacity: 0; transform: scale(.88); } 25% { opacity: .35; } 100% { opacity: 0; transform: scale(1.12); } }
+html[data-vfx-quality=low] :is(.cinematic-host,.card-reveal-energy,.card-pointer-shine,.arena-mote,.raid-mote,.territory-energy-particles) { display: none; }
+html[data-vfx-quality=low] :is(.raid-sky,.raid-horizon,.raid-orbit,.raid-portrait-idle,.arena-light,.nekomon-card *) { animation: none !important; }
+html[data-vfx-quality=low] .nekomon-card { transform: none !important; }
+@media (max-width:640px), (pointer:coarse) {
+  html[data-vfx-quality=auto] .cinematic-host { display: none; }
+  .card-pointer-shine { display: none; }
+  .cinematic-accent i:nth-child(n+3) { display: none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .cinematic-host,.card-pointer-shine { display: none; }
+  .nekomon-card { transform: none !important; transition: none !important; }
+}

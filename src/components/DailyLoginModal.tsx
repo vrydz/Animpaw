@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Sparkles, Gift, Flame, Trophy, Check, Calendar, Zap, Loader2, X, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { audio } from "../lib/audio";
+import { PresentationScope } from "./feedback/PresentationScope";
+import { ResultFeedback } from "./feedback/ResultFeedback";
 import { haptics } from "../lib/vibration";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -97,11 +99,14 @@ export const DailyLoginModal: React.FC<DailyLoginModalProps> = ({
     return () => clearInterval(interval);
   }, [claimedToday]);
 
+  const [justClaimed, setJustClaimed] = useState(false);
+  useEffect(() => { if (!isOpen) setJustClaimed(false); }, [isOpen]);
+
   const handleClaimBonus = async () => {
     if (claimedToday || isClaiming) return;
     setIsClaiming(true);
     setErrorMsg(null);
-    haptics.victory();
+    haptics.tap();
 
     try {
       if (token) {
@@ -121,10 +126,12 @@ export const DailyLoginModal: React.FC<DailyLoginModalProps> = ({
           localStorage.setItem("nekomon_daily_login_streak_v2", String(data.dailyStreak || currentStreak));
           
           setClaimedToday(true);
+          haptics.victory();
+          setJustClaimed(true);
           setCurrentStreak(data.dailyStreak || currentStreak);
           
           try {
-            audio.playUnboxingExplosion("Petir");
+            audio.playFeedback('reward');
           } catch (_) {}
 
           onClaimSuccess(
@@ -146,9 +153,11 @@ export const DailyLoginModal: React.FC<DailyLoginModalProps> = ({
         localStorage.setItem("nekomon_daily_login_streak_v2", String(currentStreak));
 
         setClaimedToday(true);
+        haptics.victory();
+        setJustClaimed(true);
         
         try {
-          audio.playUnboxingExplosion("Petir");
+          audio.playFeedback('reward');
         } catch (_) {}
 
         onClaimSuccess(
@@ -169,6 +178,7 @@ export const DailyLoginModal: React.FC<DailyLoginModalProps> = ({
   if (!isOpen) return null;
 
   return (
+    <PresentationScope observe={false}>
     <AnimatePresence>
       <motion.div
         key="daily-login-backdrop"
@@ -184,6 +194,7 @@ export const DailyLoginModal: React.FC<DailyLoginModalProps> = ({
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
           className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 overflow-hidden font-mono"
         >
+          {justClaimed && <ResultFeedback kind="reward">{language === "id" ? "Hadiah berhasil diterima" : "Rewards received successfully"}</ResultFeedback>}
           {/* Header Background Glow */}
           <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-amber-500/15 via-yellow-500/5 to-transparent pointer-events-none" />
 
@@ -313,5 +324,6 @@ export const DailyLoginModal: React.FC<DailyLoginModalProps> = ({
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    </PresentationScope>
   );
 };

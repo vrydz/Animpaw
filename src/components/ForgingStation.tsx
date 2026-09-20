@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Capture, Card } from "../types";
 import { Sparkles, Flame, Droplet, Trees, Wind, Zap, RefreshCw, AlertTriangle, Hammer, Compass, Eye, CircleDot } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { NekomonCard } from "./NekomonCard";
+import { PresentationScope } from "./feedback/PresentationScope";
+import { CardReveal } from "./feedback/CardReveal";
 import { audio } from "../lib/audio";
 import { useLanguage } from "../context/LanguageContext";
 import { haptics } from "../lib/vibration";
@@ -127,23 +129,23 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
   // Custom reveal and unboxing states
   const [isRevealed, setIsRevealed] = useState<boolean>(false);
   const [isUnboxing, setIsUnboxing] = useState<boolean>(false);
+  const reduced = useReducedMotion();
+  const revealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (revealTimer.current) clearTimeout(revealTimer.current); }, []);
 
   const handleStartReveal = () => {
     if (isUnboxing || !forgedCard) return;
     setIsUnboxing(true);
-    haptics.unboxing();
+    if (!reduced) haptics.tap();
 
     try {
-      audio.playUnboxingExplosion(forgedCard.element);
+      audio.playFeedback('summon');
     } catch (_) {}
 
-    setTimeout(() => {
+    revealTimer.current = setTimeout(() => {
       setIsRevealed(true);
       setIsUnboxing(false);
-      haptics.victory();
-      try {
-        audio.playRevealSound(selectedStyle);
-      } catch (_) {}
+      if (!reduced) haptics.tap();
     }, 1500);
   };
 
@@ -210,7 +212,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl w-full max-w-4xl mx-auto flex flex-col gap-6 relative">
+    <PresentationScope className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl w-full max-w-4xl mx-auto flex flex-col gap-6 relative">
       
       {/* Header section */}
       <div className="flex justify-between items-start gap-4 border-b border-slate-800 pb-4">
@@ -299,7 +301,7 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
               <div className="flex flex-col items-center justify-center max-w-md w-full text-center relative py-6">
                 
                 {/* Element-themed Background Aura Light */}
-                <div className={`absolute -z-10 w-72 h-72 rounded-full blur-[90px] opacity-45 transition-all duration-1000 ${
+                <div className={`absolute -z-10 w-60 h-60 rounded-full opacity-10 transition-all duration-1000 ${
                   getElementRevealDetails(forgedCard.element).glow
                 }`} />
 
@@ -327,27 +329,18 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
                   />
                 </div>
 
-                {/* Blinding flash overlay on explosion */}
-                {isUnboxing && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: [0, 1, 1, 0], scale: [1, 2.2, 4.5, 6] }}
-                    transition={{ duration: 1.5, times: [0, 0.2, 0.8, 1] }}
-                    className={`absolute inset-0 z-20 rounded-full mix-blend-screen pointer-events-none filter blur-md ${
-                      getElementRevealDetails(forgedCard.element).glow
-                    }`}
-                  />
-                )}
+                {/* Local seal pulse: no full-card whiteout. */}
+                {isUnboxing && <span className="forge-charge-ring" aria-hidden="true" />}
 
                 {/* Floating Unboxing capsule / card pack container */}
                 <motion.div
                   animate={isUnboxing ? {
-                    x: [0, -8, 8, -8, 8, -6, 6, -4, 4, 0],
-                    y: [0, 6, -8, 6, -8, 4, -4, 2, -2, 0],
-                    scale: [1, 1.05, 0.95, 1.1, 0.9, 1.15, 0.85, 1.2, 0.8, 1.1],
-                    rotate: [0, -3, 3, -4, 4, -2, 2, -1, 1, 0]
+                    x: [0, -2, 2, -2, 2, 0],
+                    y: [0, -2, 0],
+                    scale: [1, 1.015, 1],
+                    rotate: [0, -.5, .5, 0]
                   } : {
-                    y: [0, -12, 0],
+                    y: [0, -4, 0],
                   }}
                   transition={isUnboxing ? {
                     duration: 1.5,
@@ -456,20 +449,9 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
             ) : (
               /* --- THE ORIGINAL CARD DISPLAY & CONTROLS AFTER REVEAL --- */
               <div className="flex flex-col md:flex-row items-center justify-center gap-8 w-full max-w-4xl">
-                {/* The brand new card with entrance scale/tilt */}
-                <motion.div
-                  initial={{ rotateY: 180, scale: 0.5 }}
-                  animate={{ rotateY: 0, scale: 1 }}
-                  transition={{ type: "spring", damping: 12 }}
-                  className="relative"
-                >
-                  {/* Dynamic background lighting behind card */}
-                  <div className={`absolute inset-0 rounded-3xl blur-[40px] opacity-35 -z-10 ${
-                    getElementRevealDetails(forgedCard.element).glow
-                  }`} />
-
+                <CardReveal key={forgedCard.id} card={forgedCard} language={language}>
                   <NekomonCard card={forgedCard} size="lg" />
-                </motion.div>
+                </CardReveal>
 
                 {/* Success details & collector claim controls */}
                 <div className="flex flex-col gap-4 max-w-md text-left">
@@ -731,6 +713,6 @@ export const ForgingStation: React.FC<ForgingStationProps> = ({
         </div>
       )}
 
-    </div>
+    </PresentationScope>
   );
 };

@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { MotionConfig, useReducedMotion } from 'motion/react';
 import './battleAtmosphere.css';
+import type { ArenaActionCue } from './arenaFeedback';
 
 const motes = Array.from({ length: 10 }, (_, i) => ({
   left: `${7 + (i * 29) % 88}%`, top: `${12 + (i * 17) % 76}%`,
@@ -30,12 +31,14 @@ export function BattleAtmosphere({ children, victory = false }: React.PropsWithC
 }
 
 // Presentation only; HP deltas are confirmed state, never predicted damage.
-export const BattleCardMotion = memo(function BattleCardMotion({ children, hp, targetHp, side, className, status }: React.PropsWithChildren<{
+export const BattleCardMotion = memo(function BattleCardMotion({ children, hp, targetHp, side, className, status, actionCue, language = 'id' }: React.PropsWithChildren<{
   hp: number; targetHp?: number; side: 'left' | 'right'; className?: string;
   status?: 'critical' | 'buff' | 'debuff';
+  actionCue?: ArenaActionCue; language?: 'id' | 'en';
 }>) {
   const root = useRef<HTMLDivElement>(null);
   const previous = useRef({ hp, targetHp, status });
+  const previousAction = useRef(actionCue?.id);
   const [cue, setCue] = useState<{ kind: string; label: string; id: number } | null>(null);
   const reduced = useReducedMotion();
   useEffect(() => {
@@ -43,9 +46,11 @@ export const BattleCardMotion = memo(function BattleCardMotion({ children, hp, t
     previous.current = { hp, targetHp, status };
     if (document.hidden) return;
     const damage = before.hp - hp;
-    const attacking = targetHp !== undefined && before.targetHp !== undefined && targetHp < before.targetHp;
+    const newAction = actionCue?.id !== previousAction.current;
+    previousAction.current = actionCue?.id;
+    const attacking = newAction && (actionCue?.action === 'attack' || actionCue?.action === 'skill');
     const kind = hp <= 0 && before.hp > 0 ? 'defeat' : damage < 0 ? 'heal' : damage > 0 ? 'damage' : status !== before.status ? status : undefined;
-    if (kind) setCue({ kind, label: kind === 'heal' ? `+${-damage}` : kind === 'damage' ? `−${damage}` : kind.toUpperCase(), id: Date.now() });
+    if (kind) setCue({ kind, label: kind === 'heal' ? `+${-damage} HP` : kind === 'damage' ? `−${damage} HP` : kind === 'defeat' ? (language === 'id' ? 'TUMBANG' : 'DEFEATED') : kind.toUpperCase(), id: Date.now() });
     let animation: Animation | undefined;
     if (!reduced && root.current && (attacking || damage > 0)) {
       const direction = side === 'left' ? 1 : -1;
@@ -56,7 +61,7 @@ export const BattleCardMotion = memo(function BattleCardMotion({ children, hp, t
       ], { duration: 340, easing: 'cubic-bezier(.2,.7,.3,1)' });
     }
     return () => animation?.cancel();
-  }, [hp, targetHp, status, reduced, side]);
+  }, [hp, targetHp, status, reduced, side, actionCue, language]);
   useEffect(() => {
     if (!cue) return;
     const timer = window.setTimeout(() => setCue(null), 950);
@@ -64,6 +69,11 @@ export const BattleCardMotion = memo(function BattleCardMotion({ children, hp, t
   }, [cue]);
   return <div ref={root} className={`arena-card ${className || ''}`} data-side={side} data-defeated={hp <= 0}>
     {children}
+    {actionCue?.action && <div className="arena-action-feedback" role="status" aria-live="polite" data-action={actionCue.action}>
+      <small>{language === 'id' ? 'Aksi terakhir terkonfirmasi:' : 'Last confirmed action:'}</small>
+      <span>{actionCue.action === 'defend' ? (language === 'id' ? '◈ BERTAHAN • mitigasi damage' : '◈ DEFEND • damage mitigated') : actionCue.action === 'skill' ? '✦ SKILL' : (language === 'id' ? '↗ SERANGAN' : '↗ ATTACK')}</span>
+      {actionCue.advantage && actionCue.action !== 'defend' && <strong>{language === 'id' ? '↑ UNGGUL ELEMEN' : '↑ ELEMENT ADVANTAGE'}</strong>}
+    </div>}
     {cue && <div key={cue.id} className={`arena-cue arena-cue--${cue.kind}`} aria-hidden="true"><span>{cue.label}</span></div>}
   </div>;
 });

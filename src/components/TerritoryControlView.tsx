@@ -31,13 +31,15 @@ import {
   Hourglass,
   Timer
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import confetti from "canvas-confetti";
 import { BeaconNode, Card, User, TerritoryBattleLog, WarResetCountdown } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { haptics } from "../lib/vibration";
 import { audio } from "../lib/audio";
 import { NekomonCard } from "./NekomonCard";
+import { TerritoryBeacon, TerritoryCaptureScene, TerritoryLegend, TerritoryMapAtmosphere, TerritoryStatus, useTerritoryFeedback, useTerritoryMotion } from './territory/TerritoryPresentation';
+import { territoryLabels, territoryState } from './territory/territoryVisuals';
 
 interface TerritoryControlViewProps {
   user: User;
@@ -53,6 +55,9 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   onRefreshUser
 }) => {
   const { language } = useLanguage();
+  const territoryFeedback = useTerritoryFeedback();
+  const territoryMotion = useTerritoryMotion();
+  const mapMotion = useTerritoryMotion();
 
   // State
   const [nodes, setNodes] = useState<BeaconNode[]>([]);
@@ -142,12 +147,10 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
         setPlayerNodesCount(data.playerNodesCount || 0);
         setWarResetCountdown(data.warResetCountdown || null);
         
-        if (selectedNode) {
-          const updated = (data.nodes || []).find((n: BeaconNode) => n.id === selectedNode.id);
-          if (updated) setSelectedNode(updated);
-        } else if (data.nodes && data.nodes.length > 0) {
-          setSelectedNode(data.nodes[0]);
-        }
+        // Preserve the highlighted node across the existing polling cycle.
+        // Read current UI selection, not the selection captured when the interval started.
+        setSelectedNode(current => (data.nodes || []).find((node: BeaconNode) => node.id === current?.id)
+          || current || data.nodes?.[0] || null);
       }
     } catch (err) {
       console.error("Error fetching territory nodes:", err);
@@ -261,7 +264,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
           "success"
         );
         try {
-          audio.playVictorySound();
+          audio.playFeedback("reward");
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
         } catch (_) {}
         onRefreshUser();
@@ -298,7 +301,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
           "success"
         );
         try {
-          audio.playVictorySound();
+          audio.playFeedback("reward");
           confetti({ particleCount: 70, spread: 60 });
         } catch (_) {}
         setShowFactionModal(false);
@@ -368,6 +371,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
       return;
     }
 
+    const visualId = territoryFeedback.begin(selectedNode, 'capture');
     try {
       setIsSubmittingCapture(true);
       setCaptureError(null);
@@ -387,6 +391,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
       const data = await res.json();
       if (res.ok && data.success) {
+        territoryFeedback.finish(visualId, 'captured', data.node);
         const tierCores = getNodeTierCores(selectedNode.tier);
         showToast(
           data.message || (
@@ -400,17 +405,18 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
           setWarResetCountdown(data.warResetCountdown);
         }
         try {
-          audio.playVictorySound();
-          confetti({ particleCount: 70, spread: 70, origin: { y: 0.5 } });
+          audio.playFeedback("victory");
         } catch (_) {}
         setShowCaptureModal(false);
         setShowTransferConfirmModal(false);
         onRefreshUser();
         fetchTerritoryNodes();
       } else {
+        territoryFeedback.finish(visualId, 'failed');
         setCaptureError(data.error || "Gagal merebut beacon.");
       }
     } catch (_) {
+      territoryFeedback.finish(visualId, 'failed');
       setCaptureError("Koneksi gagal.");
     } finally {
       setIsSubmittingCapture(false);
@@ -435,6 +441,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
       return;
     }
 
+    const visualId = territoryFeedback.begin(selectedNode, 'battle');
     try {
       setIsBattling(true);
       setBattleLogs([]);
@@ -454,6 +461,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
       const data = await res.json();
       if (res.ok && data.success) {
+        territoryFeedback.finish(visualId, data.nodeCaptured ? 'breached' : 'resolved', data.node);
         setBattleLogs(data.turns || []);
         setBattleResult({
           won: data.won,
@@ -463,18 +471,18 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
         });
         if (data.won) {
           try {
-            audio.playVictorySound();
-            if (data.nodeCaptured) {
-              confetti({ particleCount: 60, spread: 80 });
-            }
+            // A successful clash is not yet territory ownership.
+            audio.playFeedback("attack");
           } catch (_) {}
         }
         onRefreshUser();
         fetchTerritoryNodes();
       } else {
+        territoryFeedback.finish(visualId, 'failed');
         showToast(data.error || "Gagal memulai pertempuran.", "error");
       }
     } catch (_) {
+      territoryFeedback.finish(visualId, 'failed');
       showToast("Kesalahan server.", "error");
     } finally {
       setIsBattling(false);
@@ -532,7 +540,10 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
   const vanguardPercent = 100 - sentinelPercent;
 
   return (
-    <div className="flex flex-col gap-5 w-full font-mono select-none">
+    <MotionConfig reducedMotion="user">
+    <div ref={territoryMotion.ref} className="territory-view flex flex-col gap-5 w-full font-mono select-none"
+      data-paused={!territoryMotion.active} data-reduced={territoryMotion.reduced}
+      data-modal={showCaptureModal || showBattleModal || showReinforceModal || showInfoModal || showFactionModal}>
       
       {/* TOAST POPUP NOTIFICATION */}
       <AnimatePresence>
@@ -721,7 +732,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
 
       {/* FACTION INFLUENCE METER */}
       <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
-        <div className="flex items-center justify-between text-xs font-bold">
+        <div className="territory-influence-heading flex items-center justify-between text-xs font-bold">
           <span className="flex items-center gap-1.5 text-cyan-400">
             <Shield className="w-3.5 h-3.5 text-cyan-400" />
             SENTINEL ({sentinelPercent}%)
@@ -730,7 +741,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
             {language === "id" ? "KONTROL TERITORI PULAU" : "ISLAND TERRITORY DOMINANCE"}
           </span>
           <span className="flex items-center gap-1.5 text-red-400">
-            VANGUARD ({vanguardPercent}%)
+            VANGUARD ({sentinelNodes + vanguardNodes > 0 ? vanguardPercent : 0}%)
             <Swords className="w-3.5 h-3.5 text-red-400" />
           </span>
         </div>
@@ -741,16 +752,19 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
           />
           <div 
             className="h-full bg-gradient-to-r from-amber-500 to-red-600 transition-all duration-700" 
-            style={{ width: `${vanguardPercent}%` }} 
+            style={{ width: `${sentinelNodes + vanguardNodes > 0 ? vanguardPercent : 0}%` }}
           />
         </div>
       </div>
+
+      <TerritoryLegend language={language} />
 
       {/* MAIN INTERACTIVE STRATEGIC TERRITORY MAP */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* Left Side: Map Graphic / Interconnected Graph Canvas */}
-        <div className="lg:col-span-8 bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-2xl relative overflow-hidden min-h-[460px] flex flex-col justify-between">
+        <div ref={mapMotion.ref} data-paused={!mapMotion.active} className="territory-map lg:col-span-8 min-w-0 bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-2xl relative overflow-hidden min-h-[460px] flex flex-col justify-between">
+          <TerritoryMapAtmosphere />
           
           {/* Map Grid Background Texture */}
           <div className="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-25 pointer-events-none" />
@@ -773,7 +787,9 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
           </div>
 
           {/* SVG Connection Lines Rendering (Supply Lines) */}
-          <div className="relative w-full h-[380px] my-2">
+          <p className="territory-map-hint">{language === 'id' ? 'Geser peta untuk menjelajah • pilih Beacon untuk detail' : 'Scroll map to explore • select a Beacon for details'}</p>
+          <div className="territory-map-scroll" tabIndex={0} role="region" aria-label={language === 'id' ? 'Peta wilayah yang dapat digeser' : 'Scrollable territory map'}>
+          <div className="territory-map-surface">
             <svg className="absolute inset-0 w-full h-full pointer-events-none">
               {nodes.map(node => {
                 return (node.connectedNodeIds || []).map(targetId => {
@@ -820,18 +836,22 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
               const ElemIcon = elem.icon;
               const nodeCooldownSec = getNodeCooldownRemaining(node);
               const adjacentCooldown = getAdjacentCooldownForPlayer(node);
+              const visualState = territoryState(node, user.id, playerFaction, territoryFeedback.event);
 
               return (
-                <motion.div
+                <motion.button
                   key={node.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`${language === 'id' ? node.name : node.nameEn || node.name} — ${territoryLabels[visualState][language]}`}
                   onClick={() => {
                     setSelectedNode(node);
                     haptics.tap();
                   }}
-                  whileHover={{ scale: 1.12 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={territoryMotion.reduced ? undefined : { scale: 1.04 }}
+                  whileTap={territoryMotion.reduced ? undefined : { scale: 0.98 }}
                   style={{ left: `${node.x}%`, top: `${node.y}%` }}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 flex flex-col items-center group`}
+                  className={`territory-map-node absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 flex flex-col items-center group`}
                 >
                   {/* Visual 2-Hour Cooldown Timer Badge on Map */}
                   {nodeCooldownSec > 0 && (
@@ -860,62 +880,39 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                   )}
 
                   {/* Node Anchor Icon */}
-                  <div className={`relative w-11 h-11 rounded-2xl flex items-center justify-center transition-all shadow-xl ${
-                    node.isBase
-                      ? node.baseFaction === "Sentinel"
-                        ? "bg-gradient-to-br from-cyan-600 to-blue-900 border-2 border-cyan-400 ring-4 ring-cyan-500/20 text-white"
-                        : "bg-gradient-to-br from-red-600 to-amber-900 border-2 border-amber-400 ring-4 ring-amber-500/20 text-white"
-                      : isPlayerOwned
-                      ? node.isActive
-                        ? "bg-gradient-to-br from-emerald-500 to-teal-800 border-2 border-emerald-300 ring-4 ring-emerald-500/30 text-white shadow-emerald-500/30"
-                        : "bg-gradient-to-br from-amber-600 to-slate-900 border-2 border-dashed border-red-400 text-amber-200"
-                      : node.ownerId
-                      ? node.ownerFaction === "Sentinel"
-                        ? "bg-gradient-to-br from-blue-700 to-slate-950 border-2 border-cyan-500/80 text-cyan-200"
-                        : "bg-gradient-to-br from-red-700 to-slate-950 border-2 border-red-500/80 text-red-200"
-                      : "bg-slate-900 border-2 border-slate-700 hover:border-amber-400 text-slate-400 hover:text-amber-300"
-                  } ${isSelected ? "ring-4 ring-amber-400 scale-110 shadow-2xl" : ""}`}>
-                    
+                  <TerritoryBeacon node={node} faction={playerFaction} userId={user.id} selected={isSelected} event={territoryFeedback.event}>
                     {/* Node Center Icon */}
                     {node.isBase ? (
-                      <Crown className="w-5 h-5 animate-pulse" />
+                      <Crown className="w-5 h-5" />
                     ) : node.anchorCard ? (
-                      <ElemIcon className="w-5 h-5 animate-spin-slow" />
+                      <ElemIcon className="w-5 h-5" />
                     ) : (
                       <ElemIcon className="w-4 h-4" />
                     )}
 
                     {/* Active Supply Line Beacon Pulse Indicator */}
                     {node.isActive && node.ownerId && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border border-slate-950 animate-ping" />
+                      <span className="absolute -top-1 -left-1 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950" title={language === 'id' ? 'Jalur suplai aktif' : 'Supply line active'} />
                     )}
 
                     {/* Cut-off Warning Icon */}
                     {!node.isActive && node.ownerId && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 border border-slate-950 flex items-center justify-center text-[8px] text-white font-bold animate-bounce" title="Supply line terputus!">
+                      <span className="absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full bg-red-500 border border-slate-950 flex items-center justify-center text-[8px] text-white font-bold" title="Supply line terputus!">
                         !
                       </span>
                     )}
 
-                    {/* Tier Star Badge */}
-                    <span className="absolute -bottom-1.5 px-1 py-0.2 rounded-full bg-slate-950 border border-slate-700 text-[8px] font-black text-amber-400">
-                      T{node.tier}
-                    </span>
-                  </div>
+                  </TerritoryBeacon>
 
                   {/* Node Label Tooltip */}
-                  <span className={`mt-1.5 px-2 py-0.5 rounded-md text-[9px] font-black tracking-tight whitespace-nowrap backdrop-blur-md shadow-md border ${
-                    isSelected
-                      ? "bg-amber-400 text-slate-950 border-amber-300 font-bold"
-                      : isPlayerOwned
-                      ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
-                      : "bg-slate-900/80 text-slate-300 border-slate-800"
-                  }`}>
+                  <span className="territory-node-name" title={language === 'id' ? node.name : node.nameEn || node.name}>
                     {language === "id" ? node.name : (node.nameEn || node.name)}
                   </span>
-                </motion.div>
+                  <TerritoryStatus state={visualState} language={language} />
+                </motion.button>
               );
             })}
+          </div>
           </div>
 
           {/* Map Legend */}
@@ -926,9 +923,6 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
               </span>
               <span className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> Vanguard
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" /> Milikmu
               </span>
               <span className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block" /> Netral
@@ -952,7 +946,9 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
             const selectedAdjacentCooldown = getAdjacentCooldownForPlayer(selectedNode);
 
             return (
-              <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col gap-4">
+              <div className="min-w-0 bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col gap-4">
+                <TerritoryCaptureScene node={nodes.find(node => node.id === selectedNode.id) || selectedNode} userId={user.id} faction={playerFaction} language={language} event={territoryFeedback.event}
+                  obscured={showCaptureModal || showBattleModal || showReinforceModal || showInfoModal || showFactionModal} />
                 
                 {/* Header Info */}
                 <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
@@ -1300,6 +1296,8 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                     <X className="w-4 h-4" />
                   </button>
                 </div>
+
+                <TerritoryCaptureScene node={selectedNode} userId={user.id} faction={playerFaction} language={language} event={territoryFeedback.event} mode="capture" ready={!!selectedAnchorCardId} />
 
                 {/* HQ Badge & Requirement */}
                 {isHQ && (
@@ -1660,7 +1658,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-red-500/40 p-6 rounded-2xl shadow-2xl max-w-xl w-full flex flex-col gap-4 text-xs font-mono"
+              className="territory-battle-dialog bg-slate-900 border border-red-500/40 p-6 rounded-2xl shadow-2xl max-w-xl w-full flex flex-col gap-4 text-xs font-mono"
             >
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
@@ -1680,6 +1678,8 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                   <X className="w-4 h-4" />
                 </button>
               </div>
+
+              <TerritoryCaptureScene node={selectedNode} userId={user.id} faction={playerFaction} language={language} event={territoryFeedback.event} mode="battle" ready={selectedAttackerCardIds.length > 0} />
 
               {/* Battle Overview */}
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
@@ -1765,7 +1765,7 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
                 }`}>
                   <h4 className="text-base font-black uppercase">
                     {battleResult.won 
-                      ? (battleResult.nodeCaptured ? "BEACON BERHASIL DIREBUT!" : "SERANGAN GARNISUN BERHASIL!")
+                      ? (battleResult.nodeCaptured ? (language === 'id' ? 'PERTAHANAN DITEMBUS — PASANG ANCHOR' : 'DEFENSE BREACHED — DEPLOY ANCHOR') : "SERANGAN GARNISUN BERHASIL!")
                       : "SERANGAN GAGAL / BERTAHAN!"}
                   </h4>
                   <p className="text-xs text-slate-300">
@@ -2131,5 +2131,6 @@ export const TerritoryControlView: React.FC<TerritoryControlViewProps> = ({
       </AnimatePresence>
 
     </div>
+    </MotionConfig>
   );
 };

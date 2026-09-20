@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { RaidLobbyRoom, User } from "../types";
+import { RaidBossPortrait, RaidEnvironment, RaidSlotFeedback, RaidTurnFeedback, useRaidPresentation } from './raid/RaidPresentation';
 import {
   Swords,
   Shield,
@@ -42,12 +43,19 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
   const [loadingTurn, setLoadingTurn] = useState<boolean>(false);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [autoBattle, setAutoBattle] = useState<boolean>(false);
-  const [bossHitAnim, setBossHitAnim] = useState<boolean>(false);
-  const [playerHitAnim, setPlayerHitAnim] = useState<number | null>(null);
   const [victoryRewards, setVictoryRewards] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   const logsEndRef = useRef<HTMLDivElement | null>(null);
+  const victoryPanelRef = useRef<HTMLDivElement | null>(null);
+  const presentation = useRaidPresentation(room);
+
+  useEffect(() => {
+    if (room.status !== 'victory') return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    victoryPanelRef.current?.focus({ preventScroll: true });
+    return () => { if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true }); };
+  }, [room.status]);
 
   const getAuthHeaders = () => {
     const activeToken = token || localStorage.getItem("nekomon_token") || localStorage.getItem("token") || "";
@@ -68,8 +76,10 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
 
   // Auto scroll logs
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [room.battleLogs]);
+    // Scroll only the log panel, never pull the player's viewport off the boss.
+    const panel = logsEndRef.current?.parentElement?.parentElement;
+    panel?.scrollTo({ top: panel.scrollHeight, behavior: presentation.reduced ? 'instant' : 'smooth' });
+  }, [room.battleLogs.length, presentation.reduced]);
 
   // Keep every participant synchronized both in the lobby and during battle.
   useEffect(() => {
@@ -134,8 +144,6 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
 
     setLoadingTurn(true);
     setErrorMsg("");
-    setBossHitAnim(true);
-    setTimeout(() => setBossHitAnim(false), 600);
 
     try {
       const res = await fetch("/api/raid/lobby/turn", {
@@ -214,7 +222,8 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 p-3 sm:p-6 pb-24 max-w-5xl mx-auto flex flex-col justify-between">
+    <div className="raid-scene min-h-screen bg-neutral-950 text-neutral-100 p-3 sm:p-6 pb-24 max-w-5xl mx-auto flex flex-col justify-between"
+      data-paused={!presentation.active} data-reduced={presentation.reduced} data-pressure={presentation.pressure} data-state={room.status}>
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-neutral-800">
         <button
@@ -251,7 +260,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
           <span
             className={`px-2.5 py-1 rounded-full text-xs font-bold ${
               room.status === "in_battle"
-                ? "bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse"
+                ? "bg-red-500/20 text-red-400 border border-red-500/40"
                 : room.status === "waiting"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
                 : room.status === "victory"
@@ -278,24 +287,10 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
       )}
 
       {/* BOSS STAGE (TOP SECTION) */}
-      <div className="relative rounded-2xl bg-gradient-to-b from-red-950/40 via-neutral-900 to-neutral-950 border border-red-900/50 p-5 sm:p-6 mb-5 shadow-2xl overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,_var(--tw-gradient-stops))] from-red-600/10 via-transparent to-transparent pointer-events-none"></div>
-
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 relative z-10">
-          {/* Boss Artwork with dynamic hit animation */}
-          <div
-            className={`w-32 h-32 sm:w-44 sm:h-44 rounded-2xl overflow-hidden bg-neutral-950 border-2 border-red-500/60 shadow-2xl shrink-0 transition-transform duration-200 ${
-              bossHitAnim ? "scale-95 brightness-150 ring-4 ring-red-500" : "scale-100"
-            }`}
-          >
-            <img
-              src={boss.imageUrl}
-              alt={boss.name}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </div>
+      <div ref={presentation.stageRef} className="raid-stage">
+        <RaidEnvironment />
+        <div className="raid-boss-layout">
+          <RaidBossPortrait room={room} cue={presentation.cue} reduced={presentation.reduced} active={presentation.active} />
 
           {/* Boss HP & Meta Info */}
           <div className="flex-1 w-full min-w-0 text-center sm:text-left">
@@ -309,7 +304,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
               {getElementBadge(boss.element)}
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               {currentLanguage === "id" ? boss.name : boss.nameEn || boss.name}
             </h2>
             <p className="text-xs text-neutral-400 mt-0.5">
@@ -324,16 +319,14 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
                   {room.bossCurrentHp.toLocaleString()} / {room.bossMaxHp.toLocaleString()} ({bossHpPercent}%)
                 </span>
               </div>
-              <div className="w-full h-4 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800 p-0.5 shadow-inner">
-                <div
-                  className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full transition-all duration-300"
-                  style={{ width: `${bossHpPercent}%` }}
-                ></div>
+              <div className="raid-hp-track" role="progressbar" aria-label="Boss HP" aria-valuenow={room.bossCurrentHp} aria-valuemin={0} aria-valuemax={room.bossMaxHp}>
+                <div className="raid-hp-trail" style={{ transform: `scaleX(${bossHpPercent / 100})` }} />
+                <div className="raid-hp-fill" style={{ transform: `scaleX(${bossHpPercent / 100})` }} />
               </div>
             </div>
 
             {/* Buff & Debuff Indicators */}
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-2 text-xs">
               <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-900/40 flex items-center justify-between">
                 <span className="text-[11px] text-emerald-400 font-semibold">
                   💥 Debuff Lemah (+30%):
@@ -347,6 +340,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
                 {getElementBadge(boss.buffElement)}
               </div>
             </div>
+            <RaidTurnFeedback room={room} cue={presentation.cue} language={currentLanguage} />
           </div>
         </div>
       </div>
@@ -431,7 +425,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
               <div
                 key={slotIdx}
                 id={`combat-slot-${slotIdx}`}
-                className={`rounded-xl bg-neutral-900 border p-3 flex flex-col justify-between transition-all shadow-md ${
+                className={`raid-slot rounded-xl bg-neutral-900 border p-3 flex flex-col justify-between shadow-md ${
                   isFallen
                     ? "border-red-900/40 opacity-60 bg-red-950/20"
                     : "border-neutral-800 hover:border-indigo-500/40"
@@ -478,10 +472,10 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
                   </div>
                   <div className="w-full h-2 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800">
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
+                      className={`h-full rounded-full transition-transform duration-300 origin-left ${
                         isFallen ? "bg-red-900" : "bg-emerald-500"
                       }`}
-                      style={{ width: `${hpPercent}%` }}
+                      style={{ transform: `scaleX(${hpPercent / 100})` }}
                     ></div>
                   </div>
                 </div>
@@ -491,6 +485,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
                   <span>Damage:</span>
                   <span className="font-bold text-amber-400">{slot.damageDealt?.toLocaleString() || 0} DMG</span>
                 </div>
+                <RaidSlotFeedback cue={presentation.cue} index={slotIdx} />
               </div>
             );
           })}
@@ -537,7 +532,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
                 onClick={() => setAutoBattle(!autoBattle)}
                 className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${
                   autoBattle
-                    ? "bg-red-600 text-white border-red-500 animate-pulse"
+                    ? "bg-red-600 text-white border-red-500"
                     : "bg-neutral-800 text-neutral-300 border-neutral-700 hover:bg-neutral-700"
                 }`}
               >
@@ -591,8 +586,15 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
 
       {/* VICTORY MODAL OVERLAY */}
       {room.status === "victory" && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-emerald-500/50 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-300">
+        <div className="raid-victory-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div ref={victoryPanelRef} className="raid-victory-panel bg-neutral-900 border border-emerald-500/50 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl relative overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="raid-victory-title" tabIndex={-1}
+            onKeyDown={event => {
+              // This dialog has a single action. Keep keyboard focus out of the covered arena.
+              if (event.key === 'Tab') {
+                event.preventDefault();
+                victoryPanelRef.current?.querySelector('button')?.focus();
+              }
+            }}>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none"></div>
 
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 mx-auto flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
@@ -603,7 +605,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
               {currentLanguage === "id" ? "Raid Boss Tumbang!" : "Raid Boss Defeated!"}
             </span>
 
-            <h2 className="text-2xl font-black text-white mt-2">
+            <h2 id="raid-victory-title" className="text-2xl font-black text-white mt-2">
               {currentLanguage === "id" ? "KEMENANGAN BERSAMA! 🎉" : "SHARED VICTORY! 🎉"}
             </h2>
             <p className="text-xs text-neutral-400 mt-1">
@@ -613,7 +615,7 @@ export const RaidBattleArena: React.FC<RaidBattleArenaProps> = ({
             </p>
 
             {/* Shared Rewards Box */}
-            <div className="mt-5 p-4 rounded-xl bg-neutral-950 border border-neutral-800 text-left space-y-2">
+            <div className="raid-rewards mt-5 p-4 rounded-xl bg-neutral-950 border border-neutral-800 text-left space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-neutral-400 flex items-center gap-1.5">
                   <Sparkles size={14} className="text-amber-400" /> Nekomon Cores (Shared)

@@ -18,6 +18,7 @@ import {
   Share2,
   Info
 } from "lucide-react";
+import { VisualSettings } from "./feedback/VisualSettings";
 import { audio, BGMTheme } from "../lib/audio";
 import { useLanguage, Language } from "../context/LanguageContext";
 
@@ -41,6 +42,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [bgmOn, setBgmOn] = useState<boolean>(() => audio.getPlayingStatus());
   const [volume, setVolume] = useState<number>(() => audio.getBgmVolume());
   const [currentTheme, setCurrentTheme] = useState<BGMTheme>(() => audio.getBgmTheme());
+  const [sfxVolume, setSfxVolume] = useState(() => audio.getSfxVolume());
   const [sfxTested, setSfxTested] = useState<string | null>(null);
 
   useEffect(() => {
@@ -256,6 +258,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               exit={{ opacity: 0, y: -10 }}
               className="flex flex-col gap-6"
             >
+              <section className="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3">
+                <label htmlFor="feedback-sfx-volume" className="block text-sm font-bold text-slate-100">{language === "id" ? "Volume efek suara (SFX)" : "Sound effects volume (SFX)"} • {Math.round(sfxVolume * 100)}%</label>
+                <input id="feedback-sfx-volume" className="w-full accent-amber-400" type="range" min="0" max="1" step="0.05" value={sfxVolume}
+                  onChange={event => { const value = Number(event.target.value); setSfxVolume(value); audio.setSfxVolume(value); }} />
+                <p className="text-xs text-slate-400">{language === "id" ? "0% mematikan efek suara tanpa mengubah musik." : "0% mutes effects without changing music."}</p>
+                <button type="button" className="px-3 py-2 rounded-lg bg-slate-800 text-amber-200 text-xs" onClick={() => { audio.init(); audio.playFeedback('reward'); }}>{language === "id" ? "Uji suara hadiah" : "Test reward sound"}</button>
+              </section>
+              <VisualSettings language={language} />
               {/* Master BGM Card */}
               <div className="bg-slate-900/80 border border-slate-800 p-5 sm:p-6 rounded-3xl shadow-xl flex flex-col gap-5">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-4">

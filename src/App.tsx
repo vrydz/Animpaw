@@ -14,8 +14,6 @@ import { AnimatedCounter } from "./components/AnimatedCounter";
 import { ShopView } from "./components/ShopView";
 import { DailyLoginModal } from "./components/DailyLoginModal";
 import { NekomonDex } from "./components/NekomonDex";
-import { InterstitialAdModal } from "./components/InterstitialAdModal";
-import { RewardedAdModal } from "./components/RewardedAdModal";
 import { AchievementShareModal } from "./components/AchievementShareModal";
 import { SettingsView } from "./components/SettingsView";
 import { NekomonCard } from "./components/NekomonCard";
@@ -41,7 +39,6 @@ import {
   Monitor, 
   Wifi, 
   Battery, 
-  Clock,
   CircleDot,
   Volume2,
   VolumeX,
@@ -54,7 +51,6 @@ import {
   ArrowLeftRight,
   ShoppingBag,
   Gift,
-  Tv,
   BookOpen,
   Coins,
   Flame,
@@ -414,76 +410,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, [token, user]);
 
-  // Ads Simulation State (AdMob & Unity Ads)
-  const [showInterstitialAd, setShowInterstitialAd] = useState<boolean>(false);
-  const [pendingTab, setPendingTab] = useState<"camera" | "spot_map" | "territory" | "events" | "raid" | "gallery" | "dex" | "profile" | "missions" | "arena" | "leaderboard" | "trading" | "mail" | "guide" | "shop" | null>(null);
-  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
-  const [interstitialFreq, setInterstitialFreq] = useState<"random" | "always" | "off">("random");
-
-  const [showRewardedAdModal, setShowRewardedAdModal] = useState<boolean>(false);
-  const [rewardedAdType, setRewardedAdType] = useState<"points_50" | "cores_5" | "standard">("standard");
-
-  // Rewarded Ad Cooldown State (4 Hours Cooldown = 14400 seconds)
-  const FOUR_HOURS_SECONDS = 4 * 60 * 60; // 14,400 seconds
-
-  const formatCooldownTime = (seconds: number, lang: "id" | "en" = "id") => {
-    if (seconds <= 0) return "";
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return lang === "id" ? `${hours}j ${minutes}m ${secs}s` : `${hours}h ${minutes}m ${secs}s`;
-    }
-    if (minutes > 0) {
-      return lang === "id" ? `${minutes}m ${secs}s` : `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
-  };
-
-  const [rewardedAdCooldown, setRewardedAdCooldown] = useState<number>(() => {
-    const saved = localStorage.getItem("nekomon_rewarded_ad_cooldown_end");
-    if (saved) {
-      const end = parseInt(saved, 10);
-      const now = Date.now();
-      if (end > now) return Math.ceil((end - now) / 1000);
-    }
-    return 0;
-  });
-
-  // Sync with user's lastRewardedAdClaim timestamp from server
   useEffect(() => {
-    if (user && user.lastRewardedAdClaim) {
-      const lastClaimTime = new Date(user.lastRewardedAdClaim).getTime();
-      const endTime = lastClaimTime + (FOUR_HOURS_SECONDS * 1000);
-      const now = Date.now();
-      if (endTime > now) {
-        const remaining = Math.ceil((endTime - now) / 1000);
-        setRewardedAdCooldown(remaining);
-        localStorage.setItem("nekomon_rewarded_ad_cooldown_end", endTime.toString());
-      }
-    }
-  }, [user?.lastRewardedAdClaim]);
+    if (!token || !user?.id) return;
 
-  useEffect(() => {
-    if (rewardedAdCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setRewardedAdCooldown((prev) => {
-        if (prev <= 1) {
-          localStorage.removeItem("nekomon_rewarded_ad_cooldown_end");
-          return 0;
-        }
-        return prev - 1;
+    const sendHeartbeat = () => {
+      fetch("/api/user/heartbeat", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {
+        // Presence updates are best-effort and must not interrupt gameplay.
       });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [rewardedAdCooldown]);
+    };
 
-  const startAdCooldown = (seconds = FOUR_HOURS_SECONDS) => {
-    const endTime = Date.now() + seconds * 1000;
-    localStorage.setItem("nekomon_rewarded_ad_cooldown_end", endTime.toString());
-    setRewardedAdCooldown(seconds);
-  };
+    sendHeartbeat();
+    const interval = window.setInterval(sendHeartbeat, 60_000);
+    return () => window.clearInterval(interval);
+  }, [token, user?.id]);
 
   // Landing Page Legal Pages Modal State
   const [showLandingLegalModal, setShowLandingLegalModal] = useState<boolean>(false);
@@ -589,65 +531,7 @@ export default function App() {
     setIsMobileMenuDropdownOpen(false);
     if (targetTab === mobileTab) return;
     setShowForgeModal(false);
-
-    const newCount = tabSwitchCount + 1;
-    setTabSwitchCount(newCount);
-
-    let triggerAd = false;
-    if (interstitialFreq === "always") {
-      triggerAd = true;
-    } else if (interstitialFreq === "random") {
-      // Triggers randomly after at least 1 switch (approx 35% probability)
-      if (newCount >= 2 && Math.random() < 0.35) {
-        triggerAd = true;
-      }
-    }
-
-    if (triggerAd) {
-      setPendingTab(targetTab);
-      setShowInterstitialAd(true);
-    } else {
-      setMobileTab(targetTab);
-    }
-  };
-
-  const handleCloseInterstitial = () => {
-    setShowInterstitialAd(false);
-    if (pendingTab) {
-      setMobileTab(pendingTab);
-      setPendingTab(null);
-    }
-  };
-
-  const handleOpenRewardedAd = (type: "points_50" | "cores_5" | "standard" = "standard") => {
-    if (rewardedAdCooldown > 0) {
-      const cooldownStr = formatCooldownTime(rewardedAdCooldown, language);
-      setNotification({
-        message: language === "id"
-          ? `Fitur rewarded ads di Shop hanya bisa diklaim setiap 4 jam sekali! Mohon tunggu ${cooldownStr} lagi.`
-          : `Shop rewarded ad can only be claimed once every 4 hours! Please wait ${cooldownStr}.`,
-        type: "warning"
-      });
-      return;
-    }
-    setRewardedAdType(type);
-    setShowRewardedAdModal(true);
-  };
-
-  const handleRewardClaimed = (updatedUser: any, rewardMsg: string) => {
-    startAdCooldown(FOUR_HOURS_SECONDS); // 4 hours cooldown (14,400 seconds)
-    if (updatedUser) {
-      setUser(prev => prev ? {
-        ...prev,
-        points: updatedUser.points,
-        cores: updatedUser.cores,
-        lastRewardedAdClaim: updatedUser.lastRewardedAdClaim || new Date().toISOString()
-      } : updatedUser);
-    }
-    setNotification({
-      message: rewardMsg,
-      type: "success"
-    });
+    setMobileTab(targetTab);
   };
 
   const hasCheckedDailyBonus = useRef<boolean>(false);
@@ -980,16 +864,9 @@ export default function App() {
 
   // Photo captured callback (+10 points base + optional spot bonus + geolocation)
   const handleCapture = async (base64Photo: string, spotId?: string, spotName?: string, lat?: number, lng?: number, locationName?: string) => {
-    if (!token) return;
+    if (!token) return false;
     const currentSpot = activeSpotToCapture;
     try {
-      // Play retro captured chime!
-      try {
-        audio.playCaptureSound();
-      } catch (e) {
-        console.warn("Capture audio failed:", e);
-      }
-
       const response = await fetch("/api/capture", {
         method: "POST",
         headers: {
@@ -1009,6 +886,7 @@ export default function App() {
 
       if (response.ok) {
         const data = await response.json();
+        try { audio.playCaptureSound(); } catch (_) {}
         if (currentSpot) {
           setNotification({
             message: `Berhasil memotret kucing di spot [${currentSpot.name}] (< ${currentSpot.radiusMeters}m)! Bonus +${currentSpot.bonusPoints} Poin (${currentSpot.boostedElement})! 📍`,
@@ -1074,6 +952,7 @@ export default function App() {
 
         // Auto-switch to gallery tab to review the new photo!
         setMobileTab("gallery");
+        return true;
       } else {
         const errorData = await response.json();
         setNotification({
@@ -1092,6 +971,7 @@ export default function App() {
         type: "error"
       });
     }
+    return false;
   };
 
   // Delete captured photo from gallery callback
@@ -1907,8 +1787,8 @@ export default function App() {
                   </h4>
                   <p className="text-slate-400 leading-relaxed">
                     {language === "id"
-                      ? "Kami menampilkan banner iklan AdSense non-intrusif dan rewarded video opsional untuk mendukung operasional server. Pengguna dapat membaca kebijakan privasi kami."
-                      : "We display non-intrusive AdSense banners and optional rewarded videos to support game server operations. Players can review our privacy policy."}
+                      ? "Kami menampilkan banner iklan AdSense non-intrusif pada area konten yang sesuai untuk membantu operasional server. Pengguna dapat membaca kebijakan privasi kami."
+                      : "We display non-intrusive AdSense banners in suitable content areas to support game server operations. Players can review our privacy policy."}
                   </p>
                 </div>
               </div>
@@ -2093,58 +1973,6 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    disabled={rewardedAdCooldown > 0}
-                    onClick={() => handleOpenRewardedAd("standard")}
-                    className={`relative overflow-hidden flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] tracking-wider font-black uppercase border transition-all shadow-md ${
-                      rewardedAdCooldown > 0
-                        ? "bg-slate-900 border-slate-700 text-slate-400 cursor-not-allowed select-none"
-                        : "bg-gradient-to-r from-pink-500 to-rose-600 hover:brightness-110 text-white cursor-pointer active:scale-95 border-pink-400/30"
-                    }`}
-                    title={
-                      rewardedAdCooldown > 0
-                        ? (language === "id"
-                            ? `Iklan rewarded siap dalam ${formatCooldownTime(rewardedAdCooldown, "id")}. (Klaim setiap 4 jam)`
-                            : `Rewarded ad ready in ${formatCooldownTime(rewardedAdCooldown, "en")}. (Claim every 4h)`)
-                        : (language === "id"
-                            ? "Tonton video iklan berhadiah untuk klaim Poin & Cores gratis"
-                            : "Watch rewarded video ad to claim free Points & Cores")
-                    }
-                  >
-                    {rewardedAdCooldown > 0 && (
-                      <div
-                        className="absolute inset-y-0 left-0 bg-pink-500/20 border-r border-pink-400/40 transition-all duration-1000 ease-linear pointer-events-none"
-                        style={{ width: `${(rewardedAdCooldown / FOUR_HOURS_SECONDS) * 100}%` }}
-                      />
-                    )}
-
-                    {rewardedAdCooldown > 0 ? (
-                      <>
-                        <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin relative z-10" />
-                        <span className="relative z-10 font-mono text-amber-300">
-                          {formatCooldownTime(rewardedAdCooldown, language)}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Gift className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-                        <span>{language === "id" ? "+POIN & CORE" : "+PTS & CORE"}</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setPendingTab(mobileTab);
-                      setShowInterstitialAd(true);
-                    }}
-                    className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-400 font-extrabold text-[10px] transition-all border border-slate-800 cursor-pointer"
-                    title="Iklan Interstitial Google AdSense"
-                  >
-                    <Tv className="w-3.5 h-3.5 text-amber-400" />
-                    <span>AdSense</span>
-                  </button>
-
                   {isDeveloper && (
                     <button
                       onClick={() => setShowDatabaseBackupModal(true)}
@@ -2878,8 +2706,6 @@ export default function App() {
                       user={user} 
                       cards={cards}
                       onRefreshCards={() => token && fetchGallery(token)}
-                      onRequestRewardedAd={(type) => handleOpenRewardedAd(type)}
-                      rewardedAdCooldown={rewardedAdCooldown}
                       onPurchaseSuccess={(updatedPoints, updatedCores, addedCards) => {
                         setUser(prev => prev ? { ...prev, points: updatedPoints, cores: updatedCores } : null);
                         if (addedCards && addedCards.length > 0) {
@@ -3001,22 +2827,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Interstitial Ad Simulator Modal */}
-      <InterstitialAdModal
-        isOpen={showInterstitialAd}
-        onClose={handleCloseInterstitial}
-        targetTabName={pendingTab ? t(`nav.${pendingTab}`) : undefined}
-      />
-
-      {/* Rewarded Video Ad Simulator Modal */}
-      <RewardedAdModal
-        isOpen={showRewardedAdModal}
-        onClose={() => setShowRewardedAdModal(false)}
-        token={token}
-        rewardType={rewardedAdType}
-        onRewardClaimed={handleRewardClaimed}
-      />
 
       {/* Daily 24-Hour Login Bonus Modal */}
       <DailyLoginModal

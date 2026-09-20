@@ -185,9 +185,10 @@ async function bootSyncFirestore() {
       syncToFirestore(current).catch((err) => console.warn("Credential backfill notice:", err));
       console.log("Database initialized & restored from Firestore successfully.");
     }
-    isFirestoreLoaded = true;
   } catch (err) {
     console.warn("Boot Firestore sync warning:", err);
+  } finally {
+    isFirestoreLoaded = true;
   }
 }
 
@@ -202,13 +203,10 @@ async function ensureFirestoreLoaded() {
 // Trigger initial boot sync
 ensureFirestoreLoaded();
 
-// Express middleware for API routes to await Firestore sync
-app.use("/api", async (req, res, next) => {
-  try {
-    await ensureFirestoreLoaded();
-  } catch (e) {
-    console.warn("Middleware Firestore sync wait notice:", e);
-  }
+// Firestore restoration is best-effort and must never block authentication or
+// health endpoints. The local JSON database remains available during startup.
+app.use("/api", (_req, _res, next) => {
+  if (!isFirestoreLoaded) void ensureFirestoreLoaded();
   next();
 });
 
@@ -790,7 +788,7 @@ app.post("/api/auth/register", (req, res) => {
 
 // Auth: Send Email Verification Link & Code via Real Hostinger SMTP (support@nekomon.online)
 app.post("/api/auth/send-verification", authWriteRateLimit, async (req, res) => {
-  const { email, password, isEn } = req.body;
+  const { email, password, isEn, ageConfirmed } = req.body;
   if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
     return res.status(400).json({ error: "Email dan password wajib diisi." });
   }
@@ -806,6 +804,9 @@ app.post("/api/auth/send-verification", authWriteRateLimit, async (req, res) => 
   }
   if (!isValidPassword(cleanPassword)) {
     return res.status(400).json({ error: "Password harus terdiri dari 8 hingga 128 karakter." });
+  }
+  if (ageConfirmed !== true) {
+    return res.status(400).json({ error: "Konfirmasi usia minimal 13 tahun dan persetujuan kebijakan wajib diberikan." });
   }
 
   const db = readDB();
@@ -833,6 +834,7 @@ app.post("/api/auth/send-verification", authWriteRateLimit, async (req, res) => 
     password: hashPassword(cleanPassword),
     verified: false,
     failedAttempts: 0,
+    ageConfirmedAt: new Date().toISOString(),
     expiresAt,
     createdAt: new Date().toISOString()
   };
@@ -1077,6 +1079,9 @@ app.post("/api/auth/complete-register", authWriteRateLimit, (req, res) => {
   if (!verification.verified) {
     return res.status(400).json({ error: "Email Anda belum diverifikasi. Silakan klik link verifikasi di email Anda atau masukkan kode OTP." });
   }
+  if (!verification.ageConfirmedAt) {
+    return res.status(400).json({ error: "Konfirmasi usia tidak ditemukan. Silakan ulangi proses pendaftaran." });
+  }
 
   const newUser = {
     id: "user_" + Math.random().toString(36).substr(2, 9),
@@ -1094,6 +1099,7 @@ app.post("/api/auth/complete-register", authWriteRateLimit, (req, res) => {
     stats: { wins: 0, losses: 0, winStreak: 0, bestStreak: 0, totalMatches: 0 },
     profileLevel: 1,
     profileExp: 0,
+    ageConfirmedAt: verification.ageConfirmedAt,
     createdAt: new Date().toISOString()
   };
 
@@ -1297,7 +1303,7 @@ app.post("/api/auth/login", loginRateLimit, (req, res) => {
 
 // Auth: Google Sign-In
 app.post("/api/auth/google", loginRateLimit, async (req, res) => {
-  const { idToken } = req.body;
+  const { idToken, ageConfirmed } = req.body;
   if (!idToken || typeof idToken !== "string") return res.status(400).json({ error: "Google ID token wajib ada." });
   let claims: any;
   try {
@@ -1317,6 +1323,9 @@ app.post("/api/auth/google", loginRateLimit, async (req, res) => {
   let user = db.users.find((u: any) => u.email?.toLowerCase() === cleanEmail || (uid && u.id === uid));
 
   if (!user) {
+    if (ageConfirmed !== true) {
+      return res.status(400).json({ error: "Konfirmasi usia minimal 13 tahun dan persetujuan kebijakan wajib diberikan untuk akun baru." });
+    }
     let baseName = displayName ? displayName.replace(/[^a-zA-Z0-9_]/g, "_") : cleanEmail.split("@")[0];
     if (!baseName || baseName.length < 3) baseName = "Trainer_" + Math.random().toString(36).substring(2, 6);
 
@@ -1334,6 +1343,7 @@ app.post("/api/auth/google", loginRateLimit, async (req, res) => {
       points: 100,
       cores: 5,
       avatarUrl: photoURL || "",
+      ageConfirmedAt: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
     db.users.push(user);
@@ -1477,19 +1487,7 @@ function getAuthUser(req: express.Request, db: any) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
   const session = verifySessionToken(authHeader.slice("Bearer ".length).trim());
   if (!session) return null;
-  const foundUser = db.users?.find((u: any) => u.id === session.sub && u.username?.toLowerCase() === session.username.toLowerCase()) || null;
-
-  if (foundUser) {
-    const now = Date.now();
-    const lastSeenMs = foundUser.lastSeen ? new Date(foundUser.lastSeen).getTime() : 0;
-    // Refresh user activity timestamp every 30 seconds
-    if (now - lastSeenMs > 30000) {
-      foundUser.lastSeen = new Date(now).toISOString();
-      writeDB(db);
-    }
-  }
-
-  return foundUser || null;
+  return db.users?.find((u: any) => u.id === session.sub && u.username?.toLowerCase() === session.username.toLowerCase()) || null;
 }
 
 // User Heartbeat endpoint to maintain online status and sync activity history
@@ -3490,108 +3488,10 @@ app.all([
   "/api/shop/buy-points", "/api/shop/buy-booster"
 ], (_req, res) => res.status(410).json({ error: "Pembayaran sementara tidak tersedia." }));
 
-// Rewarded Ad completion endpoint (AdMob / Unity Ads integration - 4 hours cooldown)
-app.post("/api/ads/reward", (req, res) => {
-  const db = readDB();
-  const user = getAuthUser(req, db);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  // 4 Hours Cooldown enforcement (4 hours = 4 * 60 * 60 * 1000 = 14,400,000 ms)
-  const COOLDOWN_HOURS = 4;
-  const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
-  const now = Date.now();
-
-  if (user.lastRewardedAdClaim) {
-    const lastClaimTime = new Date(user.lastRewardedAdClaim).getTime();
-    const elapsed = now - lastClaimTime;
-    if (elapsed < COOLDOWN_MS) {
-      const remainingMs = COOLDOWN_MS - elapsed;
-      const remainingSeconds = Math.ceil(remainingMs / 1000);
-      const hours = Math.floor(remainingSeconds / 3600);
-      const minutes = Math.floor((remainingSeconds % 3600) / 60);
-      const seconds = remainingSeconds % 60;
-
-      let timeString = "";
-      if (hours > 0) {
-        timeString = `${hours} jam ${minutes} menit ${seconds} detik`;
-      } else if (minutes > 0) {
-        timeString = `${minutes} menit ${seconds} detik`;
-      } else {
-        timeString = `${seconds} detik`;
-      }
-
-      return res.status(429).json({
-        error: `Fitur rewarded ad di Shop hanya bisa diklaim setiap 4 jam sekali. Mohon tunggu ${timeString} lagi.`,
-        cooldownRemainingMs: remainingMs,
-        cooldownSeconds: remainingSeconds,
-        nextClaimAvailableAt: new Date(lastClaimTime + COOLDOWN_MS).toISOString()
-      });
-    }
-  }
-
-  const { rewardType } = req.body;
-  let pointsGained = 0;
-  let coresGained = 0;
-  let rewardTitle = "";
-
-  if (rewardType === "cores_5") {
-    coresGained = 5;
-    rewardTitle = "+5 Nekomon Cores";
-  } else if (rewardType === "points_50") {
-    pointsGained = 50;
-    rewardTitle = "+50 Poin Ekstra";
-  } else if (rewardType === "points_100") {
-    pointsGained = 100;
-    rewardTitle = "+100 Poin Ekstra";
-  } else {
-    // Standard rewarded ad (Balanced)
-    pointsGained = 30;
-    coresGained = 2;
-    rewardTitle = "+30 Poin & +2 Nekomon Cores";
-  }
-
-  user.points = (user.points || 0) + pointsGained;
-  user.cores = (user.cores || 0) + coresGained;
-  user.lastRewardedAdClaim = new Date(now).toISOString();
-
-  if (!db.transactions) db.transactions = [];
-  const tx = {
-    id: "tx_ad_" + Math.random().toString(36).substr(2, 9),
-    userId: user.id,
-    type: "rewarded_ad",
-    packageId: "rewarded_ad_" + (rewardType || "standard"),
-    packageName: "Iklan Video Berhadiah (" + rewardTitle + ")",
-    price: 0,
-    priceCurrency: "FREE",
-    pointsAdded: pointsGained,
-    createdAt: new Date().toISOString()
-  };
-  db.transactions.push(tx);
-
-  const uIdx = db.users.findIndex((u: any) => u.id === user.id);
-  if (uIdx !== -1) {
-    db.users[uIdx] = user;
-    writeDB(db);
-  }
-
-  res.json({
-    success: true,
-    message: `Selamat! Klaim Iklan Berhadiah Berhasil: ${rewardTitle}`,
-    pointsGained,
-    coresGained,
-    user: {
-      id: user.id,
-      username: user.username,
-      points: user.points,
-      cores: user.cores || 0,
-      lastRewardedAdClaim: user.lastRewardedAdClaim
-    },
-    transaction: tx,
-    nextClaimAvailableAt: new Date(now + COOLDOWN_MS).toISOString(),
-    cooldownSeconds: COOLDOWN_HOURS * 3600
-  });
+// Rewarded ads remain disabled until a policy-compliant integration can verify
+// ad completion independently before granting an in-game reward.
+app.post("/api/ads/reward", (_req, res) => {
+  res.status(410).json({ error: "Iklan berhadiah sementara tidak tersedia." });
 });
 
 // 3. Fetch transaction history
@@ -7546,6 +7446,25 @@ const SEO_PATHS = [
   "/disclaimer",
   "/guide", "/game-guide", "/panduan"
 ];
+const PUBLIC_PAGE_PATHS = new Set(["/", ...SEO_PATHS]);
+
+function normalizePagePath(pathname: string) {
+  return pathname.toLowerCase().replace(/\/+$/, "") || "/";
+}
+
+function rejectUnknownHtmlRoute(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const acceptsHtml = String(req.headers.accept || "").includes("text/html");
+  if (req.method !== "GET" || !acceptsHtml || PUBLIC_PAGE_PATHS.has(normalizePagePath(req.path))) {
+    return next();
+  }
+
+  res.status(404).type("html").send(`<!doctype html>
+    <html lang="id"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1"><title>404 - Halaman Tidak Ditemukan</title></head>
+    <body style="margin:0;background:#020617;color:#e2e8f0;font-family:system-ui,sans-serif;display:grid;min-height:100vh;place-items:center">
+      <main style="max-width:560px;padding:32px;text-align:center"><h1>404</h1><p>Halaman yang Anda cari tidak ditemukan.</p><a href="/" style="color:#facc15">Kembali ke Nekomon Online</a></main>
+    </body></html>`);
+}
 
 async function startServer() {
   // Always serve sw.js with strict no-cache headers to trigger immediate worker retirement
@@ -7554,10 +7473,18 @@ async function startServer() {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
     res.sendFile(path.join(process.cwd(), "public", "sw.js"));
   });
+  app.use(rejectUnknownHtmlRoute);
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        watch: {
+          // Runtime persistence changes frequently (heartbeat, battle state, etc.)
+          // and must not be treated as source-code changes by the dev server.
+          ignored: ["**/server/db.json"],
+        },
+      },
       appType: "spa",
     });
 

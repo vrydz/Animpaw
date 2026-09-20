@@ -11,7 +11,6 @@ export interface User {
   lastLevel8BonusAt?: string;
   captureStreak?: number;
   lastCaptureDate?: string;
-  lastRewardedAdClaim?: string;
   lastSeen?: string;
   isOnline?: boolean;
 }
@@ -429,7 +428,6 @@ export interface RaidBattleLog {
   messageEn: string;
   timestamp: string;
 }
-
 
 
 

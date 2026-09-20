@@ -1,7 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { useCardTilt } from "./feedback/useCardTilt";
+import { useVisualPreferences } from "./feedback/visualPreferences";
+import "./feedback/presentation.css";
 import { Card } from "../types";
 import { Sparkles, Flame, Droplet, Trees, Wind, Zap, Award, Shield } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { getAnimeNekomonSpeciesArtwork } from "../data/nekomonSpeciesData";
 
 interface NekomonCardProps {
@@ -12,13 +15,16 @@ interface NekomonCardProps {
 
 export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = "md" }) => {
   const { name, element, style, rarity, hp, atk, def, skillName, skillDesc, imageUrl } = card;
+  const reduced = useReducedMotion();
 
-  const fallbackArt = getAnimeNekomonSpeciesArtwork(
+  const visual = useVisualPreferences();
+  const tilt = useCardTilt(!!reduced || visual.quality === "low");
+  const fallbackArt = useMemo(() => getAnimeNekomonSpeciesArtwork(
     name || "Nekomon",
     (element as any) || "Api",
     (style as any) || "Sentinel",
     (rarity as any) || "Common"
-  );
+  ), [name, element, style, rarity]);
 
   const [imgSrc, setImgSrc] = useState<string>(() => {
     if (imageUrl && typeof imageUrl === "string" && imageUrl.trim() !== "") {
@@ -127,7 +133,7 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
     },
     Mythic: {
       border: "border-pink-500",
-      glow: "shadow-[0_0_35px_rgba(236,72,153,0.7)] animate-pulse",
+      glow: "shadow-[0_0_25px_rgba(236,72,153,0.35)]",
       badge: "bg-gradient-to-r from-pink-500 to-purple-600 text-white border-pink-400",
       labelColor: "text-pink-400"
     }
@@ -204,75 +210,16 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
     return null;
   };
 
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
-  const [glowX, setGlowX] = useState(50);
-  const [glowY, setGlowY] = useState(50);
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const card = cardRef.current;
-    const rect = card.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    // Smooth responsive tilt angle (-12 to 12 degrees)
-    const rX = ((mouseY / height) - 0.5) * -12;
-    const rY = ((mouseX / width) - 0.5) * 12;
-    
-    // Spot highlight coords
-    const gX = (mouseX / width) * 100;
-    const gY = (mouseY / height) * 100;
-
-    setRotateX(rX);
-    setRotateY(rY);
-    setGlowX(gX);
-    setGlowY(gY);
-  };
-
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    setRotateX(0);
-    setRotateY(0);
-  };
-
   return (
     <motion.div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      ref={tilt.ref}
+      onMouseMove={tilt.move}
+      onMouseLeave={tilt.reset}
       onClick={onClick}
-      className={`relative rounded-3xl border-4 ${rarityConfig.border} ${rarityConfig.glow} bg-slate-950 text-slate-100 flex flex-col overflow-hidden cursor-pointer ${sizeConfig} select-none pb-7`}
-      style={{
-        transform: isHovered
-          ? `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${size === "sm" ? 1.025 : 1.05}) translateY(-5px)`
-          : "perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1) translateY(0px)",
-        boxShadow: isHovered
-          ? `0 25px 50px -12px rgba(0,0,0,0.85), 0 0 35px ${elementConfig.glowColor}, 0 0 20px rgba(255, 255, 255, 0.15)`
-          : `0 10px 30px -10px rgba(0,0,0,0.7), 0 0 20px ${elementConfig.glowColor}`,
-        transition: isHovered 
-          ? "transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease" 
-          : "transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease"
-      }}
+      className={`nekomon-card relative rounded-3xl border-4 ${rarityConfig.border} ${rarityConfig.glow} bg-slate-950 text-slate-100 flex flex-col overflow-hidden cursor-pointer ${sizeConfig} select-none pb-7`}
+      style={{ '--card-shadow': elementConfig.glowColor } as React.CSSProperties}
     >
-      {/* Holographic Dynamic Glow/Shine overlay on hover */}
-      {isHovered && (
-        <div 
-          className="absolute inset-0 pointer-events-none z-30 opacity-45 mix-blend-color-dodge transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(circle at ${glowX}% ${glowY}%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 55%), radial-gradient(circle at ${100 - glowX}% ${100 - glowY}%, rgba(0, 0, 0, 0.25) 0%, transparent 70%)`
-          }}
-        />
-      )}
+      <div className="card-pointer-shine" aria-hidden="true" />
       {/* Background Gradient */}
       <div className={`absolute inset-0 bg-gradient-to-b ${elementConfig.gradient} opacity-95 z-0`} />
 
@@ -307,6 +254,8 @@ export const NekomonCard: React.FC<NekomonCardProps> = ({ card, onClick, size = 
         <div className="relative aspect-[4/5] w-full rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-900 shadow-inner group">
           <img
             src={imgSrc}
+            decoding="async"
+            loading={size === "sm" ? "lazy" : "eager"}
             alt={name}
             referrerPolicy="no-referrer"
             onError={() => {

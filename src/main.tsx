@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { LanguageProvider } from './context/LanguageContext';
 import './index.css';
+import { FeedbackAudioSession } from './components/feedback/PresentationScope';
 
 // Register PWA Service Worker in production only
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
@@ -38,9 +39,9 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LanguageProvider>
+      <FeedbackAudioSession />
       <App />
     </LanguageProvider>
   </StrictMode>,
 );
-
 

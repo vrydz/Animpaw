@@ -5,6 +5,8 @@ import { Camera, Hammer, Download, Image as ImageIcon, Calendar, Sparkles, X, Ch
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
 import { audio } from "../lib/audio";
+import { PresentationScope } from "./feedback/PresentationScope";
+import { CardReveal } from "./feedback/CardReveal";
 
 // Cute custom illustrations generated via Imagen
 const emptyDeckCat = new URL("../assets/images/empty_deck_cat_1784259732166.jpg", import.meta.url).href;
@@ -72,7 +74,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   useEffect(() => {
     if (activeTab === "cards" && activeDisplayedCard) {
       try {
-        audio.playElementSound(activeDisplayedCard.element);
+        audio.playCardSelectSound();
       } catch (e) {
         console.error("Failed to play element sound:", e);
       }
@@ -93,7 +95,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
     setSelectedCard(card);
     if (card) {
       try {
-        audio.playElementSound(card.element);
+        audio.playCardSelectSound();
       } catch (e) {}
     }
   };
@@ -251,7 +253,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <PresentationScope className="w-full flex flex-col gap-6">
       
       {/* Tab Selectors */}
       <div className="flex border-b border-slate-800 bg-slate-950 p-1.5 rounded-xl max-w-md mx-auto w-full font-mono text-xs">
@@ -688,6 +690,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
               ) : evolveSuccess ? (
                 /* Card Evolution Success Screen */
                 <div className="flex flex-col gap-5 my-2">
+                  <CardReveal key={evolveSuccess.newCard.id + evolveSuccess.newCard.rarity} card={evolveSuccess.newCard} previousCard={evolveSuccess.oldCard} language={language} />
                   {/* Big Sparkling Icon */}
                   <div className="flex flex-col items-center text-center gap-2">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 p-0.5 animate-bounce">
@@ -1495,6 +1498,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({
         )}
       </AnimatePresence>
 
-    </div>
+    </PresentationScope>
   );
 };

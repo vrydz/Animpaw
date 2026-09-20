@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { Server } from "http";
 import { getElementalMultiplier, getSkillPowerMultiplier, getSpeedMultiplier, getStyleAttackMultiplier, getStyleDefenseMultiplier } from "../src/lib/combatBalance";
 import { applyCardXp } from "../src/lib/cardProgression";
+import { verifySessionToken } from "./security";
 
 interface ChatMessage {
   id: string;
@@ -139,24 +140,32 @@ export function initWebSocket(server: Server, readDB: () => any, writeDB: (data:
 
         // 1. AUTHENTICATION
         if (msg.type === "auth") {
-          clearTimeout(authTimeout);
           const { token } = msg;
-          if (!token) {
+          if (!token || typeof token !== "string") {
             ws.send(JSON.stringify({ type: "error", error: "Token is required" }));
+            ws.close(4003, "Authentication failed");
             return;
           }
 
           try {
-            const decoded = Buffer.from(token, "base64").toString("utf8");
-            const [id, username] = decoded.split(":");
+            const session = verifySessionToken(token);
+            if (!session) {
+              ws.send(JSON.stringify({ type: "error", error: "Invalid or expired session" }));
+              ws.close(4003, "Authentication failed");
+              return;
+            }
             const db = readDB();
-            const user = db.users.find((u: any) => u.id === id && u.username.toLowerCase() === username.toLowerCase());
+            const user = db.users.find((u: any) =>
+              u.id === session.sub && u.username?.toLowerCase() === session.username.toLowerCase()
+            );
 
             if (!user) {
               ws.send(JSON.stringify({ type: "error", error: "Invalid credentials" }));
+              ws.close(4003, "Authentication failed");
               return;
             }
 
+            clearTimeout(authTimeout);
             currentUserId = user.id;
             
             // Overwrite existing connection for same user if any
@@ -182,6 +191,7 @@ export function initWebSocket(server: Server, readDB: () => any, writeDB: (data:
             console.log(`WebSocket user authenticated: ${user.username}`);
           } catch (err) {
             ws.send(JSON.stringify({ type: "error", error: "Auth failed" }));
+            ws.close(4003, "Authentication failed");
           }
         }
 

@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { BattleAtmosphere, BattleCardMotion } from "./arena/BattleAtmosphere";
+import { arenaOutcome, arenaRoundFeedback, type ArenaSnapshot } from "./arena/arenaFeedback";
 import { Card } from "../types";
+import { ResultFeedback } from "./feedback/ResultFeedback";
+import { ELEMENT_ADVANTAGE, ELEMENT_ADVANTAGE_MULTIPLIER } from "../lib/combatBalance";
 import { 
   Swords, 
   Send, 
@@ -79,9 +82,24 @@ interface BattlePlayerState {
   hasSubmitted: boolean;
 }
 
+function getSessionUserId(token: string) {
+  try {
+    const payload = token.split(".")[0];
+    if (!payload || typeof window === "undefined") return "";
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const parsed = JSON.parse(window.atob(padded));
+    return typeof parsed.sub === "string" ? parsed.sub : "";
+  } catch {
+    return "";
+  }
+}
+
 export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaViewProps) {
   const { language, t } = useLanguage();
   const [ws, setWs] = useState<WebSocket | null>(null);
+  const [wsConnectionStatus, setWsConnectionStatus] = useState<"connecting" | "authenticated" | "disconnected" | "error">("disconnected");
+  const [wsReconnectAttempt, setWsReconnectAttempt] = useState(0);
   const [activeTab, setActiveTab] = useState<"lobby" | "online" | "history">("lobby");
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -104,21 +122,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
         if (res.ok) {
           const data = await res.json();
           if (data.success && Array.isArray(data.history)) {
-            let myUserId = userId || "";
-            if (!myUserId && token) {
-              try {
-                if (typeof window !== "undefined" && window.atob) {
-                  const decoded = window.atob(token);
-                  myUserId = decoded.split(":")[0] || "";
-                }
-              } catch (_) {}
-              if (!myUserId && typeof Buffer !== "undefined") {
-                try {
-                  const decodedToken = Buffer.from(token, "base64").toString("utf8");
-                  myUserId = decodedToken.split(":")[0] || "";
-                } catch (_) {}
-              }
-            }
+            const myUserId = userId || getSessionUserId(token);
 
             const serverRecords: BattleHistoryRecord[] = data.history.map((item: any) => {
               const isWin = item.winnerId === myUserId || (!item.loserId && item.winnerId);
@@ -201,8 +205,10 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
   } | null>(null);
 
   // Battle Visual Animations & Round Resolvers
-  const lastRoundRef = useRef<number>(0);
-  const lastStatusRef = useRef<string>("none");
+  const previousSnapshot = useRef<ArenaSnapshot | null>(null);
+  const [roundFeedback, setRoundFeedback] = useState<ReturnType<typeof arenaRoundFeedback>>(null);
+  const [confirmedOutcome, setConfirmedOutcome] = useState<"win" | "loss" | null>(null);
+  const rewardReceived = useRef(false);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -222,19 +228,20 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
   // Trigger Victory Confetti / Defeat Sound & Haptics on Rewards
   useEffect(() => {
     if (rewards) {
-      const isWin = (myBattleState?.hp ?? 0) > 0 || rewards.pointsGained >= 20;
+      const isWin = confirmedOutcome === "win";
       if (isWin) {
         triggerVictoryConfetti();
         try {
           haptics.victory();
+          audio.playFeedback("victory");
         } catch (_) {}
-      } else {
+      } else if (confirmedOutcome === "loss") {
         try {
-          audio.playDefeat();
+          audio.playFeedback("defeat");
         } catch (_) {}
       }
     }
-  }, [rewards]);
+  }, [rewards, confirmedOutcome]);
 
   // Auto-select a card if none selected
   useEffect(() => {
@@ -245,7 +252,14 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
 
   // Connect WebSocket
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setWsConnectionStatus("disconnected");
+      return;
+    }
+
+    let intentionalClose = false;
+    let reconnectTimer: number | undefined;
+    setWsConnectionStatus("connecting");
 
     // Establish socket connection to current host
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -264,12 +278,16 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
 
         if (msg.type === "auth_ok") {
           console.log("WebSocket Auth OK!");
+          setWsConnectionStatus("authenticated");
         }
 
         if (msg.type === "error") {
           setErrorMsg(msg.error);
           setTimeout(() => setErrorMsg(null), 4000);
           setQueueStatus("idle");
+          if (/auth|credential|session|token/i.test(msg.error || "")) {
+            setWsConnectionStatus("error");
+          }
         }
 
         if (msg.type === "presence") {
@@ -293,6 +311,10 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
 
         if (msg.type === "battle_found") {
           setBattleId(msg.battleId);
+          previousSnapshot.current = null;
+          rewardReceived.current = false;
+          setRoundFeedback(null);
+          setConfirmedOutcome(null);
           setMyRole(msg.role);
           setBattleMode("lobby");
           setQueueStatus("idle");
@@ -324,11 +346,21 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
         }
 
         if (msg.type === "battle_state") {
-          const prevRound = lastRoundRef.current;
-          const prevStatus = lastStatusRef.current;
-          
-          lastRoundRef.current = msg.round;
-          lastStatusRef.current = msg.status;
+          const feedback = arenaRoundFeedback(previousSnapshot.current, msg);
+          previousSnapshot.current = msg;
+          setBattleId(msg.battleId);
+          setConfirmedOutcome(arenaOutcome(msg, userId || getSessionUserId(token)));
+          if (feedback) {
+            setRoundFeedback(feedback);
+            if (!document.hidden) {
+              // No speculative attack on submit, no sound for defend, no guessed SPD order.
+              const attacks = [feedback.me, feedback.opponent].filter(cue => cue.action === "attack" || cue.action === "skill");
+              try {
+                if (attacks.length > 0) audio.playFeedback("attack");
+                else if (feedback.me.action === "defend" || feedback.opponent.action === "defend") audio.playFeedback("defend");
+              } catch (_) {}
+            }
+          }
 
           setBattleMode("active");
           setCountdown(null);
@@ -349,60 +381,14 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
             }
           }
 
-          // Trigger fight animations and element sound effects when a round resolves
-          if (
-            (msg.round > prevRound && prevRound > 0) || 
-            (msg.status === "ended" && prevStatus === "active")
-          ) {
-            const myElement = msg.me?.card?.element || "Api";
-            const oppElement = msg.opponent?.card?.element || "Air";
-            
-            const mySpd = msg.me?.card?.spd || 50;
-            const oppSpd = msg.opponent?.card?.spd || 50;
-
-            if (mySpd >= oppSpd) {
-              // Me attacks first: play our element sound, trigger elemental animation overlay on opponent card
-              try {
-                audio.playElementSound(myElement);
-              } catch (_) {}
-
-              
-              // Opponent attacks second (staggered by 450ms): plays opponent's sound, triggers elemental animation overlay on our card
-              setTimeout(() => {
-                try {
-                  audio.playElementSound(oppElement);
-                } catch (_) {}
-
-              }, 450);
-            } else {
-              // Opponent attacks first: play opponent's element sound, trigger elemental animation overlay on our card
-              try {
-                audio.playElementSound(oppElement);
-              } catch (_) {}
-
-              
-              // Me attacks second (staggered by 450ms): plays our sound, triggers elemental animation overlay on opponent card
-              setTimeout(() => {
-                try {
-                  audio.playElementSound(myElement);
-                } catch (_) {}
-
-              }, 450);
-            }
-          }
+          // Action feedback is derived above from confirmed round logs.
         }
 
         if (msg.type === "battle_rewards") {
+          if (rewardReceived.current) return;
+          rewardReceived.current = true;
           setRewards(msg);
-          if (msg.leveledUp) {
-            try {
-              audio.playRevealSound("Sentinel");
-            } catch (_) {}
-          } else {
-            try {
-              audio.playCaptureSound();
-            } catch (_) {}
-          }
+          // Outcome audio is emitted once by the confirmed rewards effect.
         }
 
       } catch (err) {
@@ -410,16 +396,30 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
       }
     };
 
+    socket.onerror = () => {
+      setWsConnectionStatus("error");
+      setErrorMsg(language === "id" ? "Koneksi Arena bermasalah. Sistem akan mencoba menyambung kembali." : "Arena connection failed. Reconnecting automatically.");
+      setTimeout(() => setErrorMsg(null), 4000);
+    };
+
     socket.onclose = () => {
       console.log("Arena WebSocket disconnected.");
+      setWs(prev => prev === socket ? null : prev);
+      setQueueStatus("idle");
+      if (!intentionalClose) {
+        setWsConnectionStatus("disconnected");
+        reconnectTimer = window.setTimeout(() => setWsReconnectAttempt(value => value + 1), 1500);
+      }
     };
 
     setWs(socket);
 
     return () => {
+      intentionalClose = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
       socket.close();
     };
-  }, [token, selectedCardId]);
+  }, [token, selectedCardId, wsReconnectAttempt, userId]);
 
   // Handle Search Timer
   useEffect(() => {
@@ -450,7 +450,11 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
 
   // Matchmaking queues
   const joinQueue = () => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN || wsConnectionStatus !== "authenticated") {
+      setErrorMsg(language === "id" ? "Koneksi Arena belum siap. Tunggu beberapa detik lalu coba kembali." : "Arena connection is not ready. Wait a moment and try again.");
+      setTimeout(() => setErrorMsg(null), 3500);
+      return;
+    }
     if (!selectedCardId) {
       setErrorMsg(language === "id" ? "Harap pilih Nekomon Card terlebih dahulu!" : "Please select a Nekomon Card first!");
       setTimeout(() => setErrorMsg(null), 3000);
@@ -495,18 +499,8 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
       return;
     }
 
-    haptics.battleHit();
-    if (action === "attack" || action === "skill") {
-      const elem = myBattleState.card.element || "Api";
-      try {
-        audio.playElementSound(elem);
-      } catch (_) {}
-
-    } else {
-      try {
-        audio.playCaptureSound();
-      } catch (_) {}
-    }
+    haptics.tap();
+    try { audio.playCardSelectSound(); } catch (_) {}
     ws.send(JSON.stringify({ type: "battle_action", battleId, action }));
   };
 
@@ -544,7 +538,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
     const isLobby = battleMode === "lobby";
 
     return (
-      <BattleAtmosphere victory={!!rewards && ((myBattleState?.hp ?? 0) > 0 || rewards.pointsGained >= 20)}>
+      <BattleAtmosphere victory={!!rewards && confirmedOutcome === "win"}>
         {/* Error HUD */}
         <AnimatePresence>
           {errorMsg && (
@@ -771,7 +765,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
 
             {/* PLAYER A (ME) */}
             {myBattleState && (
-              <BattleCardMotion hp={myBattleState.hp} targetHp={opponentBattleState?.hp} side="left"
+              <BattleCardMotion hp={myBattleState.hp} targetHp={opponentBattleState?.hp} side="left" actionCue={roundFeedback?.me} language={language}
                 className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between gap-2.5 shadow-lg relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
@@ -900,7 +894,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
               </div>
             ) : opponentBattleState ? (
               /* Revealed opponent card once battle commences */
-              <BattleCardMotion hp={opponentBattleState.hp} targetHp={myBattleState?.hp} side="right"
+              <BattleCardMotion hp={opponentBattleState.hp} targetHp={myBattleState?.hp} side="right" actionCue={roundFeedback?.opponent} language={language}
                 className="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl flex flex-col justify-between gap-2.5 shadow-lg relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-rose-500" />
@@ -1058,7 +1052,7 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
         {/* REWARDS OVERLAY MODAL */}
         <AnimatePresence>
           {rewards && (() => {
-            const isWin = (myBattleState?.hp ?? 0) > 0 || rewards.pointsGained >= 20;
+            const isWin = confirmedOutcome === "win";
             return (
               <motion.div 
                 initial={{ opacity: 0 }}
@@ -1110,17 +1104,18 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
                           : "text-slate-200"
                       }`}
                     >
-                      {isWin 
-                        ? (language === "id" ? "VICTORY! KEMENANGAN ARENA 🏆" : "VICTORY! ARENA CHAMPION 🏆") 
+                      {confirmedOutcome === null ? (language === "id" ? "HASIL BELUM TERKONFIRMASI" : "OUTCOME NOT CONFIRMED") : isWin
+                        ? (language === "id" ? "VICTORY! KEMENANGAN ARENA 🏆" : "VICTORY! ARENA CHAMPION 🏆")
                         : (language === "id" ? "DEFEAT / TETAP SEMANGAT 🛡️" : "DEFEAT / HARD FOUGHT 🛡️")}
                     </motion.h3>
                     <p className="text-xs text-slate-400 font-mono">
-                      {isWin
+                      {confirmedOutcome === null ? (language === "id" ? "Hadiah diterima. Identitas pemenang belum tersedia." : "Rewards received. Winner identity is not available yet.") : isWin
                         ? (language === "id" ? "Strategi & elemen Nekomon Anda berhasil melumpuhkan lawan!" : "Your strategy and elemental power dominated the arena!")
                         : (language === "id" ? "Pertandingan sengit! Terus latih kartu Nekomon Anda untuk rematch." : "Fierce match! Train your Nekomon cards for the rematch.")}
                     </p>
                   </div>
 
+                  {confirmedOutcome && <ResultFeedback kind={confirmedOutcome === "win" ? "victory" : "defeat"}>{language === "id" ? "Hasil dan hadiah dikonfirmasi server" : "Result and rewards confirmed by server"}</ResultFeedback>}
                   {/* Reward Metrics */}
                   <div className="grid grid-cols-2 gap-3 w-full font-mono text-xs relative z-10">
                     <div className="bg-slate-950/90 p-3 rounded-2xl border border-slate-800 flex flex-col gap-1 shadow-inner">
@@ -1347,11 +1342,13 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
                   ) : (
                     <button
                       onClick={joinQueue}
-                      disabled={selectedPlayerCard && (selectedPlayerCard.energy ?? 5) < 1}
+                      disabled={wsConnectionStatus !== "authenticated" || !!(selectedPlayerCard && (selectedPlayerCard.energy ?? 5) < 1)}
                       className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 disabled:from-slate-800 disabled:to-slate-800 text-slate-950 disabled:text-slate-500 font-black py-3.5 rounded-xl text-xs transition-all tracking-widest flex items-center justify-center gap-2 shadow-md shadow-yellow-500/5 cursor-pointer disabled:cursor-not-allowed"
                     >
                       <Swords className="w-4 h-4" />
-                      {selectedPlayerCard && (selectedPlayerCard.energy ?? 5) < 1
+                      {wsConnectionStatus !== "authenticated"
+                        ? (language === "id" ? "MENGHUBUNGKAN ARENA..." : "CONNECTING TO ARENA...")
+                        : selectedPlayerCard && (selectedPlayerCard.energy ?? 5) < 1
                         ? (language === "id" ? "ENERGI NEKOMON HABIS (0/5)" : "ENERGY DEPLETED (0/5)")
                         : (language === "id" ? "MULAI PVP ARENA ⚔️ (-1 ENERGI)" : "START PVP ARENA ⚔️ (-1 ENERGY)")}
                     </button>
@@ -1381,23 +1378,23 @@ export function ArenaView({ cards, token, userId, onBattleEndRefresh }: ArenaVie
             {/* Elements RPS Mechanics Help Sheet */}
             <div className="bg-slate-900/40 border border-slate-800/50 p-3 rounded-2xl shrink-0 font-mono">
               <span className="text-[9px] font-extrabold text-slate-400 tracking-widest uppercase block mb-1.5">
-                {language === "id" ? "KEUNGGULAN SIKLUS 5 ELEMEN (+40% PWR)" : "5-ELEMENT CYCLE ADVANTAGES (+40% PWR)"}
+                {language === "id" ? "KEUNGGULAN SIKLUS 5 ELEMEN" : "5-ELEMENT CYCLE ADVANTAGES"} (+{Math.round((ELEMENT_ADVANTAGE_MULTIPLIER - 1) * 100)}% PWR)
               </span>
               <div className="grid grid-cols-5 gap-1 text-[8.5px] text-center text-slate-400">
                 <div className="bg-slate-950/60 p-1 rounded border border-slate-900">
-                  <span className="text-blue-400 font-bold">💧 {language === "id" ? "Air" : "Water"}</span> {language === "id" ? "kalahkan" : "beats"} Api/Tanah
+                  <span className="text-blue-400 font-bold">💧 {language === "id" ? "Air" : "Water"}</span> {language === "id" ? "kalahkan" : "beats"} {ELEMENT_ADVANTAGE.Air}
                 </div>
                 <div className="bg-slate-950/60 p-1 rounded border border-slate-900">
-                  <span className="text-red-400 font-bold">🔥 {language === "id" ? "Api" : "Fire"}</span> {language === "id" ? "kalahkan" : "beats"} Angin/Petir
+                  <span className="text-red-400 font-bold">🔥 {language === "id" ? "Api" : "Fire"}</span> {language === "id" ? "kalahkan" : "beats"} {ELEMENT_ADVANTAGE.Api}
                 </div>
                 <div className="bg-slate-950/60 p-1 rounded border border-slate-900">
-                  <span className="text-teal-400 font-bold">🌪️ {language === "id" ? "Angin" : "Wind"}</span> {language === "id" ? "kalahkan" : "beats"} Tanah/Air
+                  <span className="text-teal-400 font-bold">🌪️ {language === "id" ? "Angin" : "Wind"}</span> {language === "id" ? "kalahkan" : "beats"} {ELEMENT_ADVANTAGE.Angin}
                 </div>
                 <div className="bg-slate-950/60 p-1 rounded border border-slate-900">
-                  <span className="text-amber-600 font-bold">🪵 {language === "id" ? "Tanah" : "Earth"}</span> {language === "id" ? "kalahkan" : "beats"} Petir/Api
+                  <span className="text-amber-600 font-bold">🪵 {language === "id" ? "Tanah" : "Earth"}</span> {language === "id" ? "kalahkan" : "beats"} {ELEMENT_ADVANTAGE.Tanah}
                 </div>
                 <div className="bg-slate-950/60 p-1 rounded border border-slate-900">
-                  <span className="text-yellow-400 font-bold">⚡ {language === "id" ? "Petir" : "Lightning"}</span> {language === "id" ? "kalahkan" : "beats"} Air/Angin
+                  <span className="text-yellow-400 font-bold">⚡ {language === "id" ? "Petir" : "Lightning"}</span> {language === "id" ? "kalahkan" : "beats"} {ELEMENT_ADVANTAGE.Petir}
                 </div>
               </div>
             </div>

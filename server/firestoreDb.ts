@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from "firebase-admin/app";
+import { applicationDefault, cert, initializeApp, getApps, getApp } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 import fs from "fs";
 import path from "path";
@@ -17,11 +17,31 @@ const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_P
 const databaseId = process.env.FIREBASE_DATABASE_ID || process.env.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId;
 
 let firestoreInstance: Firestore | null = null;
+let firestoreInitializationAttempted = false;
 
 export function initFirestoreDb(): Firestore | null {
   if (firestoreInstance) return firestoreInstance;
+  if (firestoreInitializationAttempted) return null;
+  firestoreInitializationAttempted = true;
   try {
-    const adminApp = getApps().length === 0 ? initializeApp({ projectId }) : getApp();
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+    const canUseApplicationDefault = Boolean(
+      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+      process.env.GOOGLE_CLOUD_PROJECT ||
+      process.env.K_SERVICE
+    );
+    const appOptions: any = { projectId };
+    if (serviceAccountJson) {
+      appOptions.credential = cert(JSON.parse(serviceAccountJson));
+    } else if (canUseApplicationDefault) {
+      appOptions.credential = applicationDefault();
+    }
+
+    const adminApp = getApps().length === 0 ? initializeApp(appOptions) : getApp();
+    if (!serviceAccountJson && !canUseApplicationDefault) {
+      console.warn("Firestore sync disabled: Firebase Admin credentials are not configured. Local database fallback remains active.");
+      return null;
+    }
     if (databaseId) {
       firestoreInstance = getFirestore(adminApp, databaseId);
     } else {
@@ -30,8 +50,29 @@ export function initFirestoreDb(): Firestore | null {
     console.log("Firestore Admin initialized successfully with databaseId:", databaseId);
   } catch (err) {
     console.warn("Firestore Admin init notice:", err);
+    if (getApps().length === 0) {
+      try {
+        initializeApp({ projectId });
+      } catch {
+        // Google authentication will report a clear error if app initialization also fails.
+      }
+    }
   }
   return firestoreInstance;
+}
+
+async function readCollectionWithTimeout(fsDb: Firestore, collectionName: string) {
+  try {
+    return await Promise.race([
+      fsDb.collection(collectionName).get(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Firestore ${collectionName} read timed out`)), 8_000);
+      })
+    ]);
+  } catch (err: any) {
+    console.warn(`Firestore ${collectionName} read skipped:`, err?.message || err);
+    return { docs: [] };
+  }
 }
 
 export async function syncToFirestore(data: any) {
@@ -135,16 +176,29 @@ export async function loadFromFirestore(): Promise<any | null> {
   if (!fsDb) return null;
 
   try {
-    const usersSnap = await fsDb.collection("users").get().catch(() => ({ docs: [] }));
-    const credentialsSnap = await fsDb.collection("authCredentials").get().catch(() => ({ docs: [] }));
-    const capturesSnap = await fsDb.collection("captures").get().catch(() => ({ docs: [] }));
-    const cardsSnap = await fsDb.collection("cards").get().catch(() => ({ docs: [] }));
-    const tradesSnap = await fsDb.collection("trades").get().catch(() => ({ docs: [] }));
-    const communitySpotsSnap = await fsDb.collection("communitySpots").get().catch(() => ({ docs: [] }));
-    const battleHistorySnap = await fsDb.collection("battleHistory").get().catch(() => ({ docs: [] }));
-    const transactionsSnap = await fsDb.collection("transactions").get().catch(() => ({ docs: [] }));
-    const officialMailsSnap = await fsDb.collection("officialMails").get().catch(() => ({ docs: [] }));
-    const directMessagesSnap = await fsDb.collection("directMessages").get().catch(() => ({ docs: [] }));
+    const [
+      usersSnap,
+      credentialsSnap,
+      capturesSnap,
+      cardsSnap,
+      tradesSnap,
+      communitySpotsSnap,
+      battleHistorySnap,
+      transactionsSnap,
+      officialMailsSnap,
+      directMessagesSnap
+    ] = await Promise.all([
+      readCollectionWithTimeout(fsDb, "users"),
+      readCollectionWithTimeout(fsDb, "authCredentials"),
+      readCollectionWithTimeout(fsDb, "captures"),
+      readCollectionWithTimeout(fsDb, "cards"),
+      readCollectionWithTimeout(fsDb, "trades"),
+      readCollectionWithTimeout(fsDb, "communitySpots"),
+      readCollectionWithTimeout(fsDb, "battleHistory"),
+      readCollectionWithTimeout(fsDb, "transactions"),
+      readCollectionWithTimeout(fsDb, "officialMails"),
+      readCollectionWithTimeout(fsDb, "directMessages")
+    ]);
 
     const passwordByUserId = new Map<string, string>(
       credentialsSnap.docs.map(doc => [doc.id, doc.data().passwordHash] as [string, string])

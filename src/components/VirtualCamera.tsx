@@ -25,7 +25,7 @@ import { haptics } from "../lib/vibration";
 import { NekomonSpot } from "../types";
 
 interface VirtualCameraProps {
-  onCapture: (base64Photo: string, spotId?: string, spotName?: string, lat?: number, lng?: number, locationName?: string) => Promise<void>;
+  onCapture: (base64Photo: string, spotId?: string, spotName?: string, lat?: number, lng?: number, locationName?: string) => Promise<boolean>;
   userPoints: number;
   activeSpot?: NekomonSpot | null;
   onClearSpot?: () => void;
@@ -84,8 +84,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
   // AR Scanner Overlay States
   const [arEnabled, setArEnabled] = useState<boolean>(true);
   const [arTheme, setArTheme] = useState<"cyan" | "emerald" | "amber">("cyan");
-  const [targetLockConfidence, setTargetLockConfidence] = useState<number>(85);
-  const [detectedFeatureText, setDetectedFeatureText] = useState<string>("Sinyal Kucing Terdeteksi");
+  const [detectedFeatureText, setDetectedFeatureText] = useState<string>("");
   const [boxCoords, setBoxCoords] = useState<{ x: number; y: number; w: number; h: number }>({
     x: 25,
     y: 30,
@@ -143,15 +142,9 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
   useEffect(() => {
     if (!cameraActive || !arEnabled) return;
 
-    const features = [
-      language === "id" ? "Pola Telinga Kucing Terdeteksi 🐾" : "Cat Ear Pattern Detected 🐾",
-      language === "id" ? "Deteksi Panas Feline Matrix (98.4%)" : "Feline Heat Matrix (98.4%)",
-      language === "id" ? "Mata & Kumis Nekomon Terunci 🎯" : "Nekomon Eye & Whiskers Locked 🎯",
-      language === "id" ? "Deteksi Gerakan Ekor & Aura 🌟" : "Tail & Aura Motion Tracked 🌟",
-      activeSpot 
-        ? `${language === "id" ? "Target Spot Matched:" : "Target Spot Matched:"} ${activeSpot.targetCatName}` 
-        : language === "id" ? "Aura Nekomon Liar Terkonfirmasi!" : "Wild Nekomon Aura Confirmed!"
-    ];
+    const features = language === "id"
+      ? ["Panduan framing", "Posisikan kucing di tengah", "Verifikasi setelah disimpan"]
+      : ["Framing guide", "Center the cat in the frame", "Verified after submission"];
 
     let frameCount = 0;
     const interval = setInterval(() => {
@@ -164,10 +157,6 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
       const newH = 42 + Math.cos(frameCount * 0.15) * 3;
       
       setBoxCoords({ x: Math.max(10, newX), y: Math.max(15, newY), w: newW, h: newH });
-
-      // Dynamic confidence score pulsing between 82% and 99%
-      const conf = Math.floor(84 + Math.sin(frameCount * 0.3) * 12 + Math.random() * 3);
-      setTargetLockConfidence(Math.min(99, Math.max(75, conf)));
 
       // Rotate detected text every few ticks
       if (frameCount % 18 === 0) {
@@ -264,7 +253,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
     if (!capturedDraft) return;
     setIsCapturing(true);
     try {
-      await onCapture(
+      const confirmed = await onCapture(
         capturedDraft,
         activeSpot?.id,
         activeSpot?.name,
@@ -272,6 +261,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
         currentLocation?.lng,
         activeSpot?.name || (currentLocation ? `GPS (${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)})` : undefined)
       );
+      if (!confirmed) return;
       setShowPointsToast(true);
       setTimeout(() => setShowPointsToast(false), 3000);
       setCapturedDraft(null);
@@ -328,11 +318,7 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
           >
             <Sparkles className="w-5 h-5 animate-bounce" />
             <span>
-              {activeSpot
-                ? `Kucing Spot Tangkap! +${10 + activeSpot.bonusPoints} Poin (${activeSpot.boostedElement}) 🐾`
-                : language === "id"
-                ? "Kucing Ditangkap! +10 Poin 🐾"
-                : "Cat Captured! +10 Points 🐾"}
+              {language === "id" ? "Foto diterima server ✓" : "Photo accepted by server ✓"}
             </span>
           </motion.div>
         )}
@@ -499,11 +485,10 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
                 <div className="absolute top-4 left-6 right-16 flex items-center justify-between text-[10px] font-mono bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-slate-300 shadow-lg">
                   <div className="flex items-center gap-1.5">
                     <Activity className={`w-3.5 h-3.5 ${currentTheme.text} animate-pulse`} />
-                    <span className="font-bold uppercase tracking-wider">AR SCANNER V2.4</span>
+                    <span className="font-bold uppercase tracking-wider">AR • {language === "id" ? "SIMULASI" : "SIMULATION"}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">LOCK:</span>
-                    <strong className={`${currentTheme.text} font-black`}>{targetLockConfidence}%</strong>
+                    <span className="text-slate-400">{language === "id" ? "Bukan deteksi AI" : "Not AI detection"}</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                   </div>
                 </div>
@@ -528,17 +513,17 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
                   <div className="flex items-center justify-between">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-wider ${currentTheme.badge} flex items-center gap-1 shadow-sm`}>
                       <Target className="w-3 h-3 animate-spin" />
-                      NEKOMON LOCK
+                      {language === "id" ? "PANDUAN FOTO" : "PHOTO GUIDE"}
                     </span>
                     <span className="text-[9px] font-mono text-white/90 bg-slate-950/90 px-1.5 py-0.5 rounded font-bold border border-slate-700">
-                      {targetLockConfidence > 90 ? "PROBABILITY 99%" : "MATCHING..."}
+                      {language === "id" ? "BELUM DIVERIFIKASI" : "NOT VERIFIED"}
                     </span>
                   </div>
 
                   {/* Center Target Crosshair within Bounding Box */}
                   <div className="self-center my-auto relative flex items-center justify-center">
                     <div className={`w-10 h-10 border border-dashed ${currentTheme.border} rounded-full animate-spin-slow flex items-center justify-center`}>
-                      <div className={`w-2 h-2 rounded-full ${targetLockConfidence > 90 ? "bg-emerald-400" : "bg-cyan-400"} animate-ping`} />
+                      <div className={`w-2 h-2 rounded-full bg-cyan-400 animate-ping`} />
                     </div>
                   </div>
 
@@ -554,10 +539,10 @@ export const VirtualCamera: React.FC<VirtualCameraProps> = ({
                 {/* 4. Bottom Grid Scanner Lines */}
                 <div className="absolute bottom-16 left-6 right-6 flex items-center justify-between text-[9px] font-mono text-slate-400 pointer-events-none">
                   <span className="bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800">
-                    DIST: ~1.2m
+                    {language === "id" ? "Overlay dekoratif" : "Decorative overlay"}
                   </span>
                   <span className="bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800 text-amber-300">
-                    AURA MATRIX: STABLE
+                    {language === "id" ? "Validasi saat Simpan" : "Validated on Save"}
                   </span>
                 </div>
               </div>

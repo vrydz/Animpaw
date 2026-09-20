@@ -1,11 +1,19 @@
 // Procedural Web Audio API sound generator for Nekomon Game Companion.
 // No external assets are loaded to guarantee 100% offline-ready reliability, zero latency, and zero CORS issues.
 
+import { feedbackNotes, type FeedbackSound } from "../components/feedback/feedbackProfiles";
+
 export type BGMTheme = "cozy" | "battle" | "shrine" | "vanguard";
 
-class AudioEngine {
+export class AudioEngine {
   private ctx: AudioContext | null = null;
   private bgmGainNode: GainNode | null = null;
+  private sfxGainNode: GainNode | null = null;
+  private sfxVolume = 0.7;
+  private pageActive = true;
+  private feedbackVoices = 0;
+  private feedbackOscillators = new Set<OscillatorNode>();
+  private lastFeedback = new Map<FeedbackSound, number>();
   private bgmOscs: { osc: OscillatorNode; gain: GainNode }[] = [];
   private bgmInterval: any = null;
   private isBgmPlaying = false;
@@ -15,6 +23,8 @@ class AudioEngine {
 
   constructor() {
     try {
+      const savedSfx = Number(localStorage.getItem("nekomon_sfx_volume") ?? 0.7);
+      if (Number.isFinite(savedSfx)) this.sfxVolume = Math.max(0, Math.min(1, savedSfx));
       const savedVol = localStorage.getItem("nekomon_bgm_volume");
       if (savedVol !== null) {
         const parsed = parseFloat(savedVol);
@@ -36,9 +46,61 @@ class AudioEngine {
       this.bgmGainNode.connect(this.ctx.destination);
       this.bgmGainNode.gain.setValueAtTime(this.bgmVolume * this.masterVolume, this.ctx.currentTime);
     }
-    if (this.ctx.state === "suspended") {
-      this.ctx.resume();
+    if (!this.sfxGainNode) {
+      this.sfxGainNode = this.ctx.createGain();
+      this.sfxGainNode.gain.setValueAtTime(this.sfxVolume, this.ctx.currentTime);
+      this.sfxGainNode.connect(this.ctx.destination);
     }
+    if (this.pageActive && !document.hidden && this.ctx.state === "suspended") {
+      void this.ctx.resume().catch(() => {});
+    }
+  }
+
+  getSfxVolume() { return this.sfxVolume; }
+
+  setSfxVolume(volume: number) {
+    if (!Number.isFinite(volume)) return;
+    this.sfxVolume = Math.max(0, Math.min(1, volume));
+    try { localStorage.setItem("nekomon_sfx_volume", String(this.sfxVolume)); } catch (_) {}
+    if (this.ctx && this.sfxGainNode) this.sfxGainNode.gain.setTargetAtTime(this.sfxVolume, this.ctx.currentTime, .03);
+  }
+
+  setPageActive(active: boolean) {
+    this.pageActive = active;
+    if (!this.ctx) return;
+    if (!active) {
+      for (const oscillator of this.feedbackOscillators) { try { oscillator.stop(); } catch (_) {} }
+      void this.ctx.suspend().catch(() => {});
+    }
+    else if (this.ctx.state === 'suspended') void this.ctx.resume().catch(() => {});
+  }
+
+  // New feedback never queues stale audio or creates a context before user activation.
+  playFeedback(kind: FeedbackSound, rarity = 'Common') {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running' || !this.pageActive || document.hidden || this.sfxVolume === 0 || !this.sfxGainNode) return;
+    const now = ctx.currentTime;
+    if (now - (this.lastFeedback.get(kind) ?? -Infinity) < .18) return;
+    const notes = feedbackNotes(kind, rarity);
+    if (this.feedbackVoices + notes.length > 8) return;
+    this.lastFeedback.set(kind, now);
+    const heavy = kind.startsWith('raid-') || kind === 'critical';
+    const duration = heavy ? .34 : .22;
+    notes.forEach((frequency, index) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const start = now + index * .075;
+      osc.type = heavy ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(this.masterVolume * (heavy ? .36 : .24), start + .015);
+      gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+      osc.connect(gain); gain.connect(this.sfxGainNode!);
+      this.feedbackVoices++;
+      this.feedbackOscillators.add(osc);
+      osc.onended = () => { this.feedbackVoices--; this.feedbackOscillators.delete(osc); osc.disconnect(); gain.disconnect(); };
+      osc.start(start); osc.stop(start + duration + .02);
+    });
   }
 
   // Set BGM Volume (0.0 to 1.0)
@@ -78,6 +140,7 @@ class AudioEngine {
 
   // Plays a procedural retro chime
   playCaptureSound() {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
     
@@ -93,13 +156,14 @@ class AudioEngine {
     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
     
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.sfxGainNode!);
     osc.start(now);
     osc.stop(now + 0.4);
   }
 
   // 1. Plays the dramatic Forging rumble/sweep
   playForgingSound() {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
 
@@ -141,7 +205,7 @@ class AudioEngine {
 
     rumbleGain.connect(filter);
     sweepGain.connect(filter);
-    filter.connect(this.ctx.destination);
+    filter.connect(this.sfxGainNode!);
 
     rumble.start(now);
     sweep.start(now);
@@ -152,6 +216,7 @@ class AudioEngine {
 
   // 2. Plays a custom success reveal fanfare depending on style
   playRevealSound(style: "Sentinel" | "Vanguard") {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
 
@@ -176,7 +241,7 @@ class AudioEngine {
         gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 1.2);
 
         osc.connect(gain);
-        gain.connect(this.ctx!.destination);
+        gain.connect(this.sfxGainNode!);
 
         osc.start(now + timeOffset);
         osc.stop(now + timeOffset + 1.5);
@@ -200,7 +265,7 @@ class AudioEngine {
         gain.gain.exponentialRampToValueAtTime(0.01, now + 1.6);
 
         osc.connect(gain);
-        gain.connect(this.ctx!.destination);
+        gain.connect(this.sfxGainNode!);
 
         osc.start(now);
         osc.stop(now + 1.8);
@@ -297,6 +362,7 @@ class AudioEngine {
     };
 
     const playNextStep = () => {
+      if (!this.pageActive || document.hidden || this.ctx?.state !== "running") return;
       if (!this.ctx || !this.isBgmPlaying || !this.bgmGainNode) return;
       const now = this.ctx.currentTime;
 
@@ -351,6 +417,7 @@ class AudioEngine {
 
   // Plays procedural element-specific sound effects (Fire, Water, Earth, Wind, Lightning)
   playElementSound(element: string) {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -386,7 +453,7 @@ class AudioEngine {
       osc1.connect(filter);
       osc2.connect(filter);
       filter.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc1.start(now);
       osc2.start(now);
@@ -409,7 +476,7 @@ class AudioEngine {
         gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.22);
 
         osc.connect(gain);
-        gain.connect(this.ctx!.destination);
+        gain.connect(this.sfxGainNode!);
 
         osc.start(now + timeOffset);
         osc.stop(now + timeOffset + 0.24);
@@ -434,7 +501,7 @@ class AudioEngine {
 
       osc.connect(gain);
       subOsc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       subOsc.start(now);
@@ -463,7 +530,7 @@ class AudioEngine {
 
       osc1.connect(gain);
       osc2.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc1.start(now);
       osc2.start(now);
@@ -485,7 +552,7 @@ class AudioEngine {
         gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.065);
 
         osc.connect(gain);
-        gain.connect(this.ctx!.destination);
+        gain.connect(this.sfxGainNode!);
 
         osc.start(now + timeOffset);
         osc.stop(now + timeOffset + 0.075);
@@ -502,7 +569,7 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       osc.stop(now + 0.28);
@@ -511,6 +578,7 @@ class AudioEngine {
 
   // Plays a dynamic unboxing burst sound that adjusts to the card element
   playUnboxingExplosion(element: string) {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -527,7 +595,7 @@ class AudioEngine {
     bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
     bassOsc.connect(bassGain);
-    bassGain.connect(this.ctx.destination);
+    bassGain.connect(this.sfxGainNode!);
     bassOsc.start(now);
     bassOsc.stop(now + 0.6);
 
@@ -550,7 +618,7 @@ class AudioEngine {
 
       osc.connect(filter);
       filter.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       osc.stop(now + 0.8);
@@ -567,7 +635,7 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       osc.stop(now + 0.9);
@@ -583,7 +651,7 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       osc.stop(now + 0.85);
@@ -600,7 +668,7 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       osc.stop(now + 0.9);
@@ -618,7 +686,7 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       osc.stop(now + 0.75);
@@ -634,7 +702,7 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now);
       osc.stop(now + 0.65);
@@ -643,6 +711,7 @@ class AudioEngine {
 
   // Plays victory / level up fanfare sound effect
   playVictory() {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -661,7 +730,7 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.35);
 
       osc.connect(gain);
-      gain.connect(this.ctx!.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now + timeOffset);
       osc.stop(now + timeOffset + 0.38);
@@ -670,6 +739,7 @@ class AudioEngine {
 
   // Plays defeat / battle loss sound effect
   playDefeat() {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -690,16 +760,16 @@ class AudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + 0.38);
 
       osc.connect(gain);
-      gain.connect(this.ctx!.destination);
+      gain.connect(this.sfxGainNode!);
 
       osc.start(now + timeOffset);
       osc.stop(now + timeOffset + 0.42);
     });
   }
 
-  // Aliases for RewardedAdModal and other flows
+  // Aliases retained for capture and level-up flows
   playCaptureSuccess() {
-    this.playCaptureSound();
+    this.playFeedback("reward");
   }
 
   playLevelUp() {
@@ -707,10 +777,11 @@ class AudioEngine {
   }
 
   playVictorySound() {
-    this.playVictory();
+    this.playFeedback("reward");
   }
 
   playCardSelectSound() {
+    if (!this.pageActive || document.hidden || this.sfxVolume === 0) return;
     this.init();
     if (!this.ctx) return;
     try {
@@ -723,7 +794,7 @@ class AudioEngine {
       gain.gain.setValueAtTime(0.08 * this.masterVolume, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.sfxGainNode!);
       osc.start(now);
       osc.stop(now + 0.09);
     } catch (_) {}

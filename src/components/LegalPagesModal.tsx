@@ -12,7 +12,6 @@ import {
   Instagram,
   RotateCcw,
   AlertTriangle,
-  CreditCard,
   CheckCircle2,
   Phone,
   MapPin,
@@ -146,7 +145,7 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                     {isEn ? "Privacy Policy" : "Kebijakan Privasi (Privacy Policy)"}
                   </h3>
                   <p className="text-xs text-slate-400 mt-1 font-mono">
-                    {isEn ? "Last updated: August 2026 • Applies to https://nekomon.online" : "Terakhir diperbarui: Agustus 2026 • Berlaku untuk domain https://nekomon.online"}
+                    {isEn ? "Last updated: September 2026 • Applies to https://nekomon.online" : "Terakhir diperbarui: September 2026 • Berlaku untuk domain https://nekomon.online"}
                   </p>
                 </div>
 
@@ -160,30 +159,34 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
 
                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                   <h4 className="font-bold text-yellow-400 text-xs font-mono uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4" /> {isEn ? "1. Google AdSense Advertising & DART Cookie Disclosure" : "1. Pengungkapan Iklan Google AdSense & Cookie DART"}
+                    <ShieldCheck className="w-4 h-4" /> {isEn ? "1. Advertising, Cookies & Consent" : "1. Iklan, Cookie & Persetujuan"}
                   </h4>
                   <ul className="list-disc list-inside space-y-1.5 text-slate-300 text-xs">
                     {isEn ? (
                       <>
-                        <li>Google is a third-party vendor on our site. It uses cookies, known as DART cookies, to serve ads to our site visitors based upon their visit to our website and other sites across the internet.</li>
+                        <li>Third-party vendors, including Google, may use advertising cookies to serve and measure ads based on visits to this site and other sites.</li>
+                        <li>Ad requests stay disabled until our production advertising configuration and consent-management requirements are ready. In regions where consent is required, a Google-certified consent management platform must collect the applicable choice before ad requests are made.</li>
                         <li>
-                          Visitors may choose to decline the use of DART cookies by visiting the Google Ad and Content Network Privacy Policy at:{" "}
-                          <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline hover:text-yellow-300 font-mono">
-                            https://policies.google.com/technologies/ads
+                          Users can review how Google uses data and manage personalized advertising at:{" "}
+                          <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline hover:text-yellow-300 font-mono">
+                            Google Partner Sites
                           </a>
+                          {" / "}
+                          <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline hover:text-yellow-300 font-mono">Ads Settings</a>.
                         </li>
-                        <li>Third-party ad servers or networks use technologies like cookies, JavaScript, or Web Beacons in their respective advertisements displayed on Nekomon Online.</li>
                       </>
                     ) : (
                       <>
-                        <li>Google adalah salah satu vendor pihak ketiga di situs kami. Google menggunakan cookie (DART cookie) untuk menayangkan iklan kepada pengunjung situs kami berdasarkan kunjungan ke <span className="text-yellow-400 font-mono">https://nekomon.online</span> dan situs lain di internet.</li>
+                        <li>Vendor pihak ketiga, termasuk Google, dapat menggunakan cookie iklan untuk menayangkan dan mengukur iklan berdasarkan kunjungan ke situs ini dan situs lain.</li>
+                        <li>Permintaan iklan dinonaktifkan sampai konfigurasi iklan produksi dan persyaratan pengelolaan persetujuan siap. Di wilayah yang mewajibkan persetujuan, CMP tersertifikasi Google harus merekam pilihan yang berlaku sebelum permintaan iklan dilakukan.</li>
                         <li>
-                          Pengunjung dapat memilih untuk menolak penggunaan cookie DART dengan mengunjungi Kebijakan Privasi jaringan iklan Google di:{" "}
-                          <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline hover:text-yellow-300 font-mono">
-                            https://policies.google.com/technologies/ads
+                          Pengguna dapat mempelajari penggunaan data oleh Google dan mengatur iklan yang dipersonalisasi di:{" "}
+                          <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline hover:text-yellow-300 font-mono">
+                            Google Partner Sites
                           </a>
+                          {" / "}
+                          <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline hover:text-yellow-300 font-mono">Ads Settings</a>.
                         </li>
-                        <li>Server iklan pihak ketiga menggunakan teknologi standar seperti cookie, JavaScript, atau Web Beacon untuk mengukur efektivitas kampanye iklan.</li>
                       </>
                     )}
                   </ul>
@@ -201,13 +204,17 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                       <>
                         <li>Email address and unique username for player account authentication.</li>
                         <li>Cat photos voluntarily uploaded for AI vision detection and digital card forging.</li>
+                        <li>Optional device location used for nearby community spots and raids, only after browser permission.</li>
                         <li>In-game telemetry including player level, forged cards, and match score points.</li>
+                        <li>A timestamp recording confirmation that a newly registered player meets the minimum age requirement; date of birth is not collected.</li>
                       </>
                     ) : (
                       <>
                         <li>Alamat email dan nama akun (username) untuk otentikasi akun trainer.</li>
                         <li>Foto kucing yang Anda unggah secara sukarela untuk dianalisis oleh AI dan ditempa menjadi kartu digital.</li>
+                        <li>Lokasi perangkat yang bersifat opsional untuk spot komunitas dan raid terdekat, hanya setelah izin browser diberikan.</li>
                         <li>Data telemetry permainan seperti skor poin, level kartu, dan riwayat aktivitas internal.</li>
+                        <li>Waktu konfirmasi bahwa pemain baru memenuhi usia minimum; tanggal lahir tidak dikumpulkan.</li>
                       </>
                     )}
                   </ul>
@@ -218,13 +225,31 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                     {isEn ? "3. Data Protection & Security" : "3. Keamanan Data Pengguna"}
                   </h4>
                   <p>
-                    {isEn ? "All user credentials and game records are stored using secure encrypted infrastructure. We never sell, rent, or distribute personal information to unauthorized third parties." : "Semua otentikasi dan data pengguna disimpan menggunakan infrastruktur enkripsi aman Firebase Authentication dan Cloud Firestore. Kami tidak pernah menjual, menyewakan, atau membagikan data pribadi pengguna kepada pihak ketiga yang tidak berwenang."}
+                    {isEn ? "Passwords are stored as one-way hashes. Game records are stored on the application server and may be synchronized to configured Google Cloud Firestore infrastructure. Google Firebase supports Google sign-in. We do not sell or rent personal information." : "Kata sandi disimpan sebagai hash satu arah. Data game disimpan pada server aplikasi dan dapat disinkronkan ke infrastruktur Google Cloud Firestore yang dikonfigurasi. Google Firebase mendukung login Google. Kami tidak menjual atau menyewakan data pribadi."}
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider">
-                    {isEn ? "4. User Rights (GDPR & CCPA Compliance)" : "4. Hak-Hak Pengguna (GDPR & CCPA Compliance)"}
+                    {isEn ? "4. Data Retention & Service Providers" : "4. Retensi Data & Penyedia Layanan"}
+                  </h4>
+                  <p>
+                    {isEn ? "Account and gameplay data are retained while an account is active and as reasonably needed for security, dispute handling, and legal obligations. Verification and reset tokens expire automatically. We use service providers for hosting, email delivery, authentication, cloud storage, AI processing, and—when enabled—advertising." : "Data akun dan gameplay disimpan selama akun aktif dan sepanjang diperlukan secara wajar untuk keamanan, penanganan sengketa, serta kewajiban hukum. Token verifikasi dan reset kedaluwarsa otomatis. Kami menggunakan penyedia layanan untuk hosting, pengiriman email, autentikasi, penyimpanan cloud, pemrosesan AI, dan—jika diaktifkan—periklanan."}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider">
+                    {isEn ? "5. Children & Minimum Age" : "5. Anak dan Usia Minimum"}
+                  </h4>
+                  <p>
+                    {isEn ? "Nekomon Online is intended for users aged 13 and older and is not directed to children under 13. New registrations require an age confirmation. If we learn that a child under 13 submitted personal data, a parent or guardian may contact support to request deletion." : "Nekomon Online ditujukan bagi pengguna berusia 13 tahun ke atas dan tidak ditujukan untuk anak di bawah 13 tahun. Pendaftaran baru mewajibkan konfirmasi usia. Jika kami mengetahui anak di bawah 13 tahun telah menyerahkan data pribadi, orang tua atau wali dapat menghubungi dukungan untuk meminta penghapusan."}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider">
+                    {isEn ? "6. User Rights & Contact" : "6. Hak Pengguna & Kontak"}
                   </h4>
                   <p>
                     {isEn ? (
@@ -257,6 +282,15 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                     <>Dengan mengakses dan menggunakan platform <strong className="text-slate-100">Nekomon Online</strong>, Anda setuju untuk terikat oleh Syarat dan Ketentuan berikut. Jika Anda tidak menyetujui salah satu ketentuan ini, Anda dilarang menggunakan platform ini.</>
                   )}
                 </p>
+
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider">
+                    {isEn ? "Minimum Age" : "Usia Minimum"}
+                  </h4>
+                  <p>
+                    {isEn ? "You must be at least 13 years old to create an account. Nekomon Online is not directed to children under 13. A parent or guardian who believes a child has registered may contact support to request account and data deletion." : "Anda harus berusia minimal 13 tahun untuk membuat akun. Nekomon Online tidak ditujukan bagi anak di bawah 13 tahun. Orang tua atau wali yang meyakini seorang anak telah mendaftar dapat menghubungi dukungan untuk meminta penghapusan akun dan data."}
+                  </p>
+                </div>
 
                 <div className="space-y-3">
                   <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider">
@@ -325,13 +359,13 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
 
                 <div className="space-y-3">
                   <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-emerald-400" />
-                    {isEn ? "1. Eligible Refund Circumstances" : "1. Syarat dan Kondisi Pengembalian Dana yang Berhak (Eligible)"}
+                    <RotateCcw className="w-4 h-4 text-emerald-400" />
+                    {isEn ? "1. Eligible In-game Balance Corrections" : "1. Koreksi Saldo Dalam Game"}
                   </h4>
                   <p>
                     {isEn 
-                      ? "You may request a full refund or system balance correction under the following specific circumstances:" 
-                      : "Pengguna berhak mengajukan permohonan refund penuh atau penyesuaian saldo sistem dalam situasi berikut:"}
+                      ? "Because no real-money payment is accepted, support requests are limited to in-game balance corrections in these circumstances:"
+                      : "Karena tidak ada pembayaran uang nyata, permintaan dukungan terbatas pada koreksi saldo dalam game untuk situasi berikut:"}
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-slate-300 text-xs pl-2">
                     {isEn ? (
@@ -353,22 +387,22 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                 <div className="space-y-3">
                   <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 text-rose-400" />
-                    {isEn ? "2. Non-Refundable Situations" : "2. Kondisi yang Tidak Memenuhi Syarat Refund"}
+                    {isEn ? "2. Corrections Not Available" : "2. Kondisi yang Tidak Dapat Dikoreksi"}
                   </h4>
                   <ul className="list-disc list-inside space-y-1 text-slate-300 text-xs pl-2">
                     {isEn ? (
                       <>
-                        <li>Purchased digital points or cores that have already been partially or fully spent on card forging, gacha booster packs, or marketplace trading.</li>
-                        <li>Dissatisfaction with randomized gacha card draw results (rarity drop rates are publicly specified in the Game Guide).</li>
+                        <li>Points, cores, or energy legitimately spent on forging, energy refills, or card trading actions.</li>
+                        <li>Dissatisfaction with a valid randomized gameplay result.</li>
                         <li>Account suspension or banning resulting from violations of Terms of Service, cheating, botting, or game exploit abuse.</li>
-                        <li>Accidental purchases made due to user error without unauthorized access proof.</li>
+                        <li>Player actions performed intentionally or accidentally when no server error occurred.</li>
                       </>
                     ) : (
                       <>
-                        <li>Poin atau Nekomon Cores yang telah digunakan/dibelanjakan untuk penempaan kartu anime, membuka booster gacha, atau jual beli pasar P2P.</li>
-                        <li>Ketidakpuasan terhadap hasil gacha kartu acak (probabilitas rarity telah dicantumkan secara transparan di Buku Panduan).</li>
+                        <li>Poin, core, atau energi yang digunakan secara sah untuk forging, isi ulang energi, atau pertukaran kartu.</li>
+                        <li>Ketidakpuasan terhadap hasil gameplay acak yang tercatat valid.</li>
                         <li>Akun yang dibekukan atau diblokir akibat pelanggaran Syarat & Ketentuan (penggunaan bot, kecurangan battle, atau eksploitasi bug).</li>
-                        <li>Kekeliruan pembelian yang disebabkan oleh kelalaian pengguna sendiri tanpa bukti adanya akses tidak sah.</li>
+                        <li>Tindakan pemain yang dilakukan sengaja maupun tidak sengaja ketika tidak terjadi kesalahan server.</li>
                       </>
                     )}
                   </ul>
@@ -376,26 +410,26 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
 
                 <div className="space-y-3">
                   <h4 className="font-bold text-slate-100 text-xs uppercase font-mono tracking-wider">
-                    {isEn ? "3. How to Submit a Refund Claim" : "3. Prosedur & Tata Cara Pengajuan Refund"}
+                    {isEn ? "3. How to Request a Balance Review" : "3. Cara Meminta Pemeriksaan Saldo"}
                   </h4>
                   <p>
                     {isEn ? (
-                      <>To request a refund review, please contact our official developer support team within <strong className="text-yellow-400 font-mono">7 days</strong> of the transaction date with the following details:</>
+                      <>To request an in-game balance review, contact support within <strong className="text-yellow-400 font-mono">7 days</strong> of the affected gameplay action with these details:</>
                     ) : (
-                      <>Untuk mengajukan klaim pengembalian dana, hubungi tim pengembang resmi kami selambat-lambatnya dalam waktu <strong className="text-yellow-400 font-mono">7 hari kalender</strong> sejak transaksi dilakukan dengan menyertakan:</>
+                      <>Untuk meminta pemeriksaan saldo dalam game, hubungi tim dukungan selambat-lambatnya <strong className="text-yellow-400 font-mono">7 hari kalender</strong> sejak aktivitas terkait dengan menyertakan:</>
                     )}
                   </p>
                   <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 font-mono text-xs space-y-1 text-slate-300">
                     <p>• {isEn ? "Player Username & Registered Email" : "Username Pemain & Email Terdaftar"}</p>
-                    <p>• {isEn ? "Transaction / Order ID (e.g. NEKO-ORDER-...)" : "ID Transaksi / Order ID (contoh: NEKO-ORDER-...)"}</p>
-                    <p>• {isEn ? "Proof of Payment / Bank Transfer Slip" : "Bukti Pembayaran / Mutasi Bank / Struk E-Wallet"}</p>
+                    <p>• {isEn ? "Approximate action date and relevant card or feature" : "Perkiraan waktu aktivitas serta kartu atau fitur terkait"}</p>
+                    <p>• {isEn ? "Screenshot or battle/transaction history, if available" : "Tangkapan layar atau riwayat battle/transaksi jika tersedia"}</p>
                     <p>• {isEn ? "Clear description of the issue" : "Deskripsi kendala yang dialami"}</p>
                   </div>
                   <p className="text-xs text-slate-400">
                     {isEn ? (
-                      <>Send your claim to: <span className="text-yellow-400 font-mono">support@nekomon.online</span> or <span className="text-yellow-400 font-mono">verydiaz@gmail.com</span>. Valid refund requests will be processed within 3-5 business days back to the original payment source or via bank transfer.</>
+                      <>Send the request to <span className="text-yellow-400 font-mono">support@nekomon.online</span>. Confirmed server errors will be corrected in the in-game balance; no bank or payment-source refund applies.</>
                     ) : (
-                      <>Kirimkan klaim Anda ke: <span className="text-yellow-400 font-mono">support@nekomon.online</span> atau <span className="text-yellow-400 font-mono">verydiaz@gmail.com</span>. Permintaan refund yang valid akan diproses dalam waktu 3-5 hari kerja melalui pengembalian metode bayar asal atau transfer bank resmi.</>
+                      <>Kirimkan permintaan ke <span className="text-yellow-400 font-mono">support@nekomon.online</span>. Kesalahan server yang terkonfirmasi akan dikoreksi pada saldo dalam game; tidak ada pengembalian ke bank atau metode pembayaran.</>
                     )}
                   </p>
                 </div>
@@ -597,16 +631,16 @@ export const LegalPagesModal: React.FC<LegalPagesModalProps> = ({
                   </h4>
                   <p className="text-slate-300 text-xs leading-relaxed">
                     {isEn ? (
-                      <>This website displays advertisements served by Google AdSense to help fund server operations, AI vision processing systems, and continuous feature development freely for all players.</>
+                      <>This website may display Google AdSense banners on suitable publisher-content pages. Ad serving remains disabled until production approval and consent-management requirements are configured.</>
                     ) : (
-                      <>Situs web ini menampilkan iklan yang disajikan oleh Google AdSense untuk membantu membiayai operasional server, pemeliharaan sistem AI, dan pengembangan fitur game secara gratis kepada pengguna.</>
+                      <>Situs web ini dapat menampilkan banner Google AdSense pada halaman konten yang sesuai. Penayangan iklan tetap dinonaktifkan sampai persetujuan produksi dan persyaratan pengelolaan consent dikonfigurasi.</>
                     )}
                   </p>
                   <p className="text-slate-300 text-xs leading-relaxed">
                     {isEn ? (
-                      <>All ads adhere to Google AdSense Program Policies and Community Guidelines, placed in distinct areas without disrupting gameplay or primary interactive controls.</>
+                      <>Ads are not placed on active gameplay, navigation, alert, login, or error screens. Players must never click an ad to continue or receive an in-game benefit.</>
                     ) : (
-                      <>Iklan yang ditayangkan mematuhi Pedoman Komunitas dan Kebijakan Program Google AdSense. Kami memastikan bahwa iklan diletakkan di tempat yang jelas dan tidak mengganggu gameplay atau tombol interaktif utama permainan.</>
+                      <>Iklan tidak ditempatkan pada layar gameplay aktif, navigasi, peringatan, login, atau error. Pemain tidak pernah diwajibkan mengeklik iklan untuk melanjutkan atau memperoleh keuntungan dalam game.</>
                     )}
                   </p>
                 </div>

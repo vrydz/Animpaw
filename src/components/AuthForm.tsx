@@ -21,7 +21,6 @@ import {
 import { motion } from "motion/react";
 import { signInWithGoogleFirebase } from "../lib/firebase";
 import { LegalPagesModal, LegalTabType } from "./LegalPagesModal";
-import { AdSenseBanner } from "./AdSenseBanner";
 import { useLanguage } from "../context/LanguageContext";
 
 const nekomonLogoImg = new URL("../assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
@@ -41,6 +40,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   const [token, setToken] = useState<string>("");
   const [otpCode, setOtpCode] = useState<string>("");
   const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -178,6 +178,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
   const handleGoogleSignIn = async () => {
     setError(null);
     setSuccess(null);
+    if (!ageConfirmed) {
+      setError(isEn
+        ? "Confirm that you are at least 13 years old and accept the Terms and Privacy Policy before continuing with Google."
+        : "Konfirmasikan bahwa Anda berusia minimal 13 tahun dan menyetujui Syarat serta Kebijakan Privasi sebelum melanjutkan dengan Google.");
+      return;
+    }
     setLoading(true);
     try {
       const googleUser = await signInWithGoogleFirebase();
@@ -188,7 +194,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
       const response = await fetch("/api/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: await googleUser.getIdToken() }),
+        body: JSON.stringify({ idToken: await googleUser.getIdToken(), ageConfirmed: true }),
       });
 
       const data = await response.json();
@@ -216,6 +222,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    if (mode === "register_email" && !ageConfirmed) {
+      setError(isEn
+        ? "You must be at least 13 years old and accept the Terms and Privacy Policy to register."
+        : "Anda harus berusia minimal 13 tahun dan menyetujui Syarat serta Kebijakan Privasi untuk mendaftar.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -240,7 +252,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         const response = await fetch("/api/auth/send-verification", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, isEn }),
+          body: JSON.stringify({ email, password, isEn, ageConfirmed: true }),
         });
         const data = await response.json();
 
@@ -447,6 +459,27 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
               </div>
             )}
 
+            {mode === "register_email" && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(event) => setAgeConfirmed(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-yellow-500"
+                />
+                <span>
+                  {isEn ? "I confirm that I am at least 13 years old and agree to the " : "Saya menyatakan berusia minimal 13 tahun dan menyetujui "}
+                  <button type="button" onClick={() => openLegalModal("terms")} className="text-yellow-400 underline">
+                    {isEn ? "Terms of Service" : "Syarat Layanan"}
+                  </button>
+                  {isEn ? " and " : " serta "}
+                  <button type="button" onClick={() => openLegalModal("privacy")} className="text-yellow-400 underline">
+                    {isEn ? "Privacy Policy" : "Kebijakan Privasi"}
+                  </button>.
+                </span>
+              </div>
+            )}
+
             {/* Form Action Button */}
             <button
               type="submit"
@@ -476,6 +509,25 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                     {isEn ? "or sign in with" : "atau masuk dengan"}
                   </span>
                   <div className="flex-grow border-t border-slate-800"></div>
+                </div>
+
+                <div className="flex items-start gap-2.5 rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-300 text-left">
+                  <input
+                    type="checkbox"
+                    checked={ageConfirmed}
+                    onChange={(event) => setAgeConfirmed(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-yellow-500"
+                  />
+                  <span>
+                    {isEn ? "For a new Google account, I confirm I am at least 13 and agree to the " : "Untuk akun Google baru, saya menyatakan berusia minimal 13 tahun dan menyetujui "}
+                    <button type="button" onClick={() => openLegalModal("terms")} className="text-yellow-400 underline">
+                      {isEn ? "Terms" : "Syarat"}
+                    </button>
+                    {isEn ? " and " : " serta "}
+                    <button type="button" onClick={() => openLegalModal("privacy")} className="text-yellow-400 underline">
+                      {isEn ? "Privacy Policy" : "Kebijakan Privasi"}
+                    </button>.
+                  </span>
                 </div>
 
                 <button

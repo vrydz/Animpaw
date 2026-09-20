@@ -12,12 +12,12 @@ export interface RouteMeta {
 export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
   "/privacy-policy": {
     title: "Kebijakan Privasi (Privacy Policy) - Nekomon Online",
-    description: "Kebijakan privasi resmi Nekomon Online: perlindungan data pengguna, otentikasi Firebase, enkripsi Cloud Firestore, dan transparansi iklan Google AdSense.",
+    description: "Kebijakan privasi Nekomon Online: data akun dan gameplay, foto kucing, lokasi opsional, retensi, hak pengguna, usia minimum, cookie, consent, dan Google AdSense.",
     canonical: "https://nekomon.online/privacy-policy",
     heading: "Kebijakan Privasi (Privacy Policy) Nekomon Online",
     contentHtml: `
       <h1 style="color: #38bdf8; font-size: 26px; margin-bottom: 12px;">Kebijakan Privasi (Privacy Policy) - Nekomon Online</h1>
-      <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px;">Terakhir diperbarui: 2 September 2026 | Berlaku untuk semua pengguna aplikasi web Nekomon Online</p>
+      <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px;">Terakhir diperbarui: 18 September 2026 | Berlaku untuk semua pengguna aplikasi web Nekomon Online</p>
       
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">1. Pengumpulan & Penggunaan Data</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
@@ -26,21 +26,27 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
       <ul style="color: #cbd5e1; line-height: 1.8; margin-left: 20px;">
         <li><strong>Informasi Akun:</strong> Alamat email, nama pengguna (username), dan faksi yang dipilih (Sentinel atau Vanguard).</li>
         <li><strong>Data Gameplay:</strong> Koleksi kartu, riwayat penempaan (forging), poin trainer, Nekomon Cores, dan histori pertarungan arena.</li>
-        <li><strong>Izin Perangkat:</strong> Sensor kamera digunakan secara lokal untuk fitur pemindaian foto kucing asli dalam penempaan kartu. Foto diproses untuk ekstraksi metadata visual game dan tidak disalahgunakan.</li>
+        <li><strong>Foto Kucing & Kamera:</strong> Kamera digunakan setelah izin perangkat diberikan. Foto yang dipilih atau diambil pengguna dikirim untuk analisis AI dan penyimpanan fitur galeri serta penempaan kartu.</li>
         <li><strong>Data Lokasi (GPS):</strong> Digunakan secara opsional untuk menampilkan titik interaktif (Community Cat Spots) dan Raid Boss terdekat.</li>
+        <li><strong>Konfirmasi Usia:</strong> Kami mencatat waktu konfirmasi bahwa pendaftar memenuhi usia minimum; tanggal lahir tidak dikumpulkan.</li>
       </ul>
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">2. Keamanan & Penyimpanan Cloud</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Semua kredensial dan data game disimpan menggunakan infrastruktur terenkripsi Google Cloud Firestore dan Firebase Authentication. Kami tidak pernah menjual, menyewakan, atau memperjualbelikan data pribadi pengguna kepada pihak ketiga yang tidak berwenang.
+        Kata sandi disimpan sebagai hash satu arah. Data game disimpan pada server aplikasi dan dapat disinkronkan ke Google Cloud Firestore yang dikonfigurasi. Firebase mendukung login Google. Kami tidak menjual atau menyewakan data pribadi pengguna.
       </p>
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">3. Layanan Iklan Pihak Ketiga (Google AdSense)</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Situs web ini bekerja sama dengan Google AdSense untuk menampilkan iklan digital. Google menggunakan cookie (seperti cookie DoubleClick / Google Advertising Cookie) untuk menayangkan iklan yang relevan berdasarkan kunjungan pengguna ke situs ini atau situs web lain di internet. Pengguna dapat memilih untuk tidak menggunakan cookie yang dipersonalisasi melalui <a href="https://adssettings.google.com" style="color: #38bdf8;" target="_blank">Google Ads Settings</a>.
+        Situs ini dapat menggunakan Google AdSense. Vendor pihak ketiga, termasuk Google, dapat menggunakan cookie untuk menayangkan dan mengukur iklan berdasarkan kunjungan ke situs ini dan situs lain. Permintaan iklan dinonaktifkan sampai konfigurasi produksi dan persyaratan consent siap. Untuk wilayah yang mewajibkan consent, CMP tersertifikasi Google harus merekam pilihan pengguna sebelum permintaan iklan dilakukan. Pelajari <a href="https://policies.google.com/technologies/partner-sites" style="color: #38bdf8;" target="_blank" rel="noopener noreferrer">cara Google menggunakan data</a> dan kelola personalisasi melalui <a href="https://adssettings.google.com" style="color: #38bdf8;" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>.
       </p>
 
-      <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">4. Kontak Pengembang & Hak Pengguna</h2>
+      <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">4. Retensi, Penyedia Layanan & Usia Minimum</h2>
+      <p style="color: #cbd5e1; line-height: 1.7;">
+        Data akun dan gameplay disimpan selama akun aktif dan sepanjang diperlukan secara wajar untuk keamanan, penanganan sengketa, dan kewajiban hukum. Token verifikasi dan reset kedaluwarsa otomatis. Penyedia layanan dapat membantu hosting, email, autentikasi, cloud, AI, dan—jika diaktifkan—periklanan. Layanan ditujukan bagi pengguna usia 13 tahun ke atas dan tidak ditujukan untuk anak di bawah 13 tahun.
+      </p>
+
+      <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">5. Kontak Pengembang & Hak Pengguna</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
         Pengguna berhak meminta penghapusan akun atau pembaruan data kapan saja dengan menghubungi tim dukungan resmi di:
         <br/><strong>Email:</strong> <a href="mailto:support@nekomon.online" style="color: #38bdf8;">support@nekomon.online</a> atau <a href="mailto:verydiaz@gmail.com" style="color: #38bdf8;">verydiaz@gmail.com</a>
@@ -64,7 +70,7 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">2. Peraturan Akun & Fairplay</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Setiap pengguna bertanggung jawab penuh atas keamanan akun mereka. Penggunaan bot ilegal, eksploitasi celah keamanan (bug abuse), atau manipulasi transaksi dilarang keras dan dapat mengakibatkan pemblokiran akun permanen.
+        Pengguna harus berusia minimal 13 tahun untuk membuat akun dan bertanggung jawab penuh atas keamanan akun mereka. Penggunaan bot ilegal, eksploitasi celah keamanan (bug abuse), atau manipulasi transaksi dilarang keras dan dapat mengakibatkan pemblokiran akun permanen.
       </p>
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">3. Item Virtual & Faksi</h2>
@@ -99,7 +105,7 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">3. Cara Mengajukan Klaim</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Kirimkan bukti transaksi, ID pesanan, dan username akun ke <a href="mailto:support@nekomon.online" style="color: #38bdf8;">support@nekomon.online</a> atau WhatsApp +6285624089327. Tim kami akan menindaklanjuti dalam waktu 1x24 jam kerja.
+        Kirimkan username, perkiraan waktu kejadian, fitur atau kartu terkait, dan tangkapan layar/riwayat jika tersedia ke <a href="mailto:support@nekomon.online" style="color: #38bdf8;">support@nekomon.online</a>. Kesalahan server yang terkonfirmasi dikoreksi pada saldo dalam game; tidak ada refund bank karena pembayaran uang nyata tidak tersedia.
       </p>
     `
   },
@@ -133,7 +139,7 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
     contentHtml: `
       <h1 style="color: #38bdf8; font-size: 26px; margin-bottom: 12px;">Hubungi Kami (Contact Us)</h1>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Kami siap membantu Anda terkait pertanyaan akun, kendala pembayaran, kerja sama, maupun masukan gameplay:
+        Kami siap membantu Anda terkait pertanyaan akun, koreksi saldo dalam game, privasi, kerja sama, maupun masukan gameplay:
       </p>
 
       <div style="background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-top: 16px;">
@@ -154,7 +160,7 @@ export const VIRTUAL_SEO_ROUTES: Record<string, RouteMeta> = {
       
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">1. Transparansi Iklan Google AdSense</h2>
       <p style="color: #cbd5e1; line-height: 1.7;">
-        Situs web ini menampilkan iklan Google AdSense untuk mendukung biaya server awan, pemrosesan kecerdasan buatan, dan pemeliharaan platform gratis bagi seluruh pemain. Semua penayangan iklan mematuhi Kebijakan Program Google AdSense dan diletakkan tanpa menipu interaksi pengguna.
+        Situs web ini dapat menampilkan banner Google AdSense pada halaman konten yang sesuai. Penayangan tetap dinonaktifkan sampai persetujuan produksi dan persyaratan consent dikonfigurasi. Iklan tidak ditempatkan pada gameplay aktif, navigasi, login, peringatan, atau halaman error, dan tidak memberi hadiah dalam game.
       </p>
 
       <h2 style="color: #facc15; font-size: 18px; margin-top: 20px;">2. Penafian Merek Dagang & Karya Seni</h2>

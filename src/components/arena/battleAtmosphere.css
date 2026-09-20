@@ -9,6 +9,9 @@
 .arena-card { min-width: 0; animation: arena-card-enter .55s cubic-bezier(.2,.7,.3,1) backwards; background: linear-gradient(160deg, #182335ed, #101725f5); border-color: #7c98b52e; transition: opacity .65s; }
 .arena-card[data-side=right] { animation-delay: .09s; }
 .arena-card[data-defeated=true] { opacity: .5; }
+.arena-action-feedback { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 7px; margin-top: 6px; font: 700 11px/1.4 ui-monospace,monospace; color: #e2e8f0; background: #080f1ef0; border: 1px solid #64748b; border-radius: 6px; }
+.arena-action-feedback[data-action=defend] { border-color: #7dd3fc; color: #bae6fd; }
+.arena-action-feedback strong { color: #fcd34d; }
 .arena-cue { pointer-events: none; position: absolute; inset: 0; z-index: 25; border-radius: inherit; animation: arena-cue-fade .8s ease-out both; border: 1px solid #f6b2a9; background: linear-gradient(135deg, #f880701b, transparent 60%); }
 .arena-cue span { position: absolute; top: 18%; right: 8%; color: #fff1e9; background: #28171deb; padding: 5px 9px; border-radius: 6px; font: 800 14px ui-monospace, monospace; animation: arena-number .8s ease-out both; }
 .arena-cue--heal,.arena-cue--buff { border-color: #8edab5; background: linear-gradient(0deg, #74d2a224, transparent 70%); }

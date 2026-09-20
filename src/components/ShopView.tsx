@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Clock, History, Sparkles, Zap } from "lucide-react";
+import { History, Sparkles, Zap } from "lucide-react";
 import { Card, User } from "../types";
 import { useLanguage } from "../context/LanguageContext";
 import { audio } from "../lib/audio";
@@ -9,8 +9,6 @@ interface ShopViewProps {
   cards?: Card[];
   onPurchaseSuccess: (updatedPoints: number, updatedCores: number, addedCards?: Card[]) => void;
   onRefreshCards?: () => void;
-  onRequestRewardedAd?: (rewardType: "points_50" | "cores_5" | "standard") => void;
-  rewardedAdCooldown?: number;
 }
 
 interface Transaction {
@@ -21,9 +19,9 @@ interface Transaction {
   createdAt: string;
 }
 
-export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, onRequestRewardedAd, rewardedAdCooldown = 0 }: ShopViewProps) {
+export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards }: ShopViewProps) {
   const { language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<"energy" | "ads" | "history">("energy");
+  const [activeTab, setActiveTab] = useState<"energy" | "history">("energy");
   const [selectedCardId, setSelectedCardId] = useState("");
   const [isBuying, setIsBuying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -81,13 +79,6 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
     }
   };
 
-  const cooldownText = () => {
-    const hours = Math.floor(rewardedAdCooldown / 3600);
-    const minutes = Math.floor((rewardedAdCooldown % 3600) / 60);
-    const seconds = rewardedAdCooldown % 60;
-    return `${hours > 0 ? `${hours}h ` : ""}${minutes}m ${seconds}s`;
-  };
-
   return (
     <div className="flex-1 overflow-y-auto bg-slate-950 p-4 md:p-6 text-slate-200">
       <div className="max-w-5xl mx-auto">
@@ -95,7 +86,7 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
         <p className="text-sm text-slate-400 mt-2 mb-6">{language === "id" ? "Payment gateway dan pembelian uang nyata telah dihapus. Fitur berikut hanya memakai hadiah atau poin yang diperoleh di dalam game." : "Payment gateways and real-money purchases have been removed. These features only use rewards or points earned in game."}</p>
 
         <div className="flex gap-2 mb-6">
-          {(["energy", "ads", "history"] as const).map(tab => <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase border ${activeTab === tab ? "bg-purple-600 border-purple-400 text-white" : "bg-slate-900 border-slate-800 text-slate-400"}`}>{tab === "energy" ? (language === "id" ? "Energi" : "Energy") : tab === "ads" ? (language === "id" ? "Hadiah" : "Rewards") : (language === "id" ? "Riwayat" : "History")}</button>)}
+          {(["energy", "history"] as const).map(tab => <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase border ${activeTab === tab ? "bg-purple-600 border-purple-400 text-white" : "bg-slate-900 border-slate-800 text-slate-400"}`}>{tab === "energy" ? (language === "id" ? "Energi" : "Energy") : (language === "id" ? "Riwayat" : "History")}</button>)}
         </div>
 
         {message && <div className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-3 text-sm text-emerald-300">{message}</div>}
@@ -105,8 +96,6 @@ export function ShopView({ user, cards = [], onPurchaseSuccess, onRefreshCards, 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><Zap className="text-yellow-400 mb-3" /><h2 className="font-black text-white">{language === "id" ? "Ramuan Energi Kartu" : "Card Energy Potion"}</h2><p className="text-xs text-slate-400 my-2">{language === "id" ? "Isi satu kartu ke energi penuh dengan 30 poin game." : "Refill one card with 30 in-game points."}</p><select value={selectedCardId} onChange={e => setSelectedCardId(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm mb-3">{cards.map(card => <option key={card.id} value={card.id}>{card.name} — {card.energy ?? 5}/{card.maxEnergy ?? 5}</option>)}</select><button disabled={isBuying || !selectedCardId} onClick={() => void buyPotion("single")} className="w-full rounded-xl bg-yellow-500 p-3 font-black text-slate-950 disabled:opacity-50">{language === "id" ? "Isi Energi — 30 Poin" : "Refill Energy — 30 Points"}</button></section>
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><Zap className="text-purple-400 mb-3" /><h2 className="font-black text-white">{language === "id" ? "Ramuan Energi Tim" : "Team Energy Potion"}</h2><p className="text-xs text-slate-400 my-2">{language === "id" ? "Isi seluruh kartu ke energi penuh dengan 100 poin game." : "Refill every card with 100 in-game points."}</p><button disabled={isBuying || cards.length === 0} onClick={() => void buyPotion("team")} className="w-full rounded-xl bg-purple-600 p-3 font-black text-white disabled:opacity-50 md:mt-[52px]">{language === "id" ? "Isi Seluruh Tim — 100 Poin" : "Refill Team — 100 Points"}</button></section>
         </div>}
-
-        {activeTab === "ads" && <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center"><Clock className="mx-auto text-cyan-400 mb-3" /><h2 className="font-black text-white">{language === "id" ? "Hadiah Aktivitas" : "Activity Reward"}</h2><p className="text-sm text-slate-400 my-3">{rewardedAdCooldown > 0 ? cooldownText() : (language === "id" ? "Hadiah tersedia." : "Reward available.")}</p><button disabled={rewardedAdCooldown > 0 || !onRequestRewardedAd} onClick={() => onRequestRewardedAd?.("standard")} className="rounded-xl bg-cyan-500 px-6 py-3 font-black text-slate-950 disabled:opacity-50">{language === "id" ? "Klaim Hadiah" : "Claim Reward"}</button></section>}
 
         {activeTab === "history" && <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h2 className="font-black text-white flex items-center gap-2 mb-4"><History size={18} />{language === "id" ? "Riwayat Penggunaan Poin" : "Point Usage History"}</h2>{loadingHistory ? <p className="text-slate-400">Loading...</p> : transactions.length === 0 ? <p className="text-slate-500">{language === "id" ? "Belum ada transaksi energi." : "No energy transactions yet."}</p> : transactions.map(tx => <div key={tx.id} className="flex justify-between border-t border-slate-800 py-3 text-sm"><span>{tx.packageName}</span><span className="text-yellow-400">-{tx.pointsDeducted || 0} pts</span></div>)}</section>}
 

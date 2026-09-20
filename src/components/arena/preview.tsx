@@ -26,6 +26,15 @@ const cards: Card[] = ['Air', 'Api'].map((element, i) => ({
 }));
 let socket: PreviewSocket;
 let hp = [900, 900], round = 1;
+let logs: string[] = [];
+function resolved(defend = false) {
+  logs.push(`--- ROUND ${round} RESOLUTION ---`,
+    `[AKSI] Luna's ${cards[0].name} ${defend ? 'mengambil sikap Bertahan dan mengumpulkan energi 🛡️.' : 'melancarkan serangan Cakar Cepat 🐾.'}`,
+    `[AKSI] Akira's ${cards[1].name} melancarkan serangan Cakar Cepat 🐾.`);
+  if (!defend) logs.push(`🔥 UNGGUL ELEMEN! Elemen Air milik ${cards[0].name} sangat efektif melawan Api (+30% PWR)!`);
+  hp = [Math.max(1, hp[0] - (defend ? 30 : 90)), Math.max(1, hp[1] - (defend ? 0 : 120))];
+  round++; emit();
+}
 class PreviewSocket {
   static OPEN = 1;
   readyState = 1;
@@ -39,9 +48,10 @@ function emit() {
   socket?.onmessage?.({ data: JSON.stringify({
     type: 'battle_state', battleId: 'visual', role: 'playerA', round,
     status: hp.some(n => n <= 0) ? 'ended' : 'active',
+    winnerId: hp[1] <= 0 ? 'preview' : hp[0] <= 0 ? 'opponent' : null,
     me: { username: 'Luna', hp: hp[0], maxHp: 900, energy: 60, hasSubmitted: false, card: cards[0] },
     opponent: { username: 'Akira', hp: hp[1], maxHp: 900, energy: 45, hasSubmitted: false, card: cards[1] },
-    logs: ['[VISUAL PREVIEW] Synthetic state — no account or server connection.'],
+    logs,
   }) });
 }
 // Only this standalone preview substitutes transport. Production Arena is unchanged.
@@ -73,7 +83,9 @@ function Preview() {
     <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: 16, fontSize: 12 }}>
       <strong>ARENA • VISUAL QA</strong>
       <a href="/arena-preview.html?reduced=1">Reduced motion preview</a>
-      <button onClick={() => { hp = [760, 680]; round++; emit(); }}>Attack / impact</button>
+      <button onClick={() => resolved()}>Attack / impact</button>
+      <button onClick={() => resolved(true)}>Defend confirmed</button>
+      <button onClick={() => emit()}>Repeat snapshot</button>
       <button onClick={() => { hp = [850, 680]; round++; emit(); }}>Heal</button>
       <button onClick={() => { hp = [850, 0]; round++; emit(); socket.onmessage?.({ data: JSON.stringify({ type: 'battle_rewards', pointsGained: 25, xpGained: 120, leveledUp: false }) }); }}>Victory</button>
       <button onClick={() => { hp = [0, 680]; round++; emit(); }}>Defeat</button>
