@@ -25,6 +25,23 @@ import { useLanguage } from "../context/LanguageContext";
 
 const nekomonLogoImg = new URL("../assets/images/nekomon_logo_official_1786260255520.jpg", import.meta.url).href;
 
+async function parseJsonSafely(res: Response, fallbackError: string): Promise<any> {
+  try {
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return await res.json();
+    }
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { error: `Server error (${res.status}): ${res.statusText || fallbackError}` };
+    }
+  } catch {
+    return { error: fallbackError };
+  }
+}
+
 interface AuthFormProps {
   onSuccess: (token: string, userData: any) => void;
 }
@@ -64,8 +81,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
       try {
         const res = await fetch(`/api/auth/check-verification?token=${token}`);
         if (res.ok) {
-          const data = await res.json();
-          if (data.verified) {
+          const data = await parseJsonSafely(res, "");
+          if (data?.verified) {
             setSuccess(isEn ? "Email verified successfully! 🎉" : "Email Anda berhasil diverifikasi! 🎉");
             setTimeout(() => {
               setMode("register_username");
@@ -120,7 +137,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, code: otpCode.trim(), email: email.trim() }),
       });
-      const data = await response.json();
+      const data = await parseJsonSafely(response, isEn ? "Invalid server response." : "Respon server tidak valid.");
 
       if (!response.ok) {
         throw new Error(data.error || (isEn ? "Verification code is invalid or expired." : "Kode verifikasi salah atau telah kadaluarsa."));
@@ -150,7 +167,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), isEn }),
       });
-      const data = await response.json();
+      const data = await parseJsonSafely(response, isEn ? "Invalid server response." : "Respon server tidak valid.");
 
       if (!response.ok) {
         throw new Error(data.error || (isEn ? "Failed to resend email." : "Gagal mengirim ulang email."));
@@ -237,7 +254,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password }),
         });
-        const data = await response.json();
+        const data = await parseJsonSafely(response, isEn ? "Invalid server response." : "Respon server tidak valid.");
 
         if (!response.ok) {
           throw new Error(data.error || (isEn ? "Invalid username, email, or password." : "Username, Email, atau password salah."));
@@ -254,7 +271,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, isEn, ageConfirmed: true }),
         });
-        const data = await response.json();
+        const data = await parseJsonSafely(response, isEn ? "Invalid server response." : "Respon server tidak valid.");
 
         if (!response.ok) {
           throw new Error(data.error || (isEn ? "Failed to process email registration." : "Gagal memproses pendaftaran email."));
@@ -273,7 +290,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, username }),
         });
-        const data = await response.json();
+        const data = await parseJsonSafely(response, isEn ? "Invalid server response." : "Respon server tidak valid.");
 
         if (!response.ok) {
           throw new Error(data.error || (isEn ? "Failed to register trainer username." : "Gagal mendaftarkan nama alias."));
@@ -290,7 +307,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, isEn }),
         });
-        const data = await response.json();
+        const data = await parseJsonSafely(response, isEn ? "Invalid server response." : "Respon server tidak valid.");
 
         if (!response.ok) {
           throw new Error(data.error || (isEn ? "Failed to send reset link." : "Gagal mengirim link reset."));
@@ -624,8 +641,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
                   setSuccess(null);
                   try {
                     const res = await fetch(`/api/auth/check-verification?token=${token}`);
-                    const data = await res.json();
-                    if (data.verified) {
+                    const data = await parseJsonSafely(res, "");
+                    if (data?.verified) {
                       setSuccess(isEn ? "Email verification confirmed! 🎉" : "Verifikasi email terkonfirmasi! 🎉");
                       setTimeout(() => {
                         setMode("register_username");

@@ -45,6 +45,11 @@ export async function sendVerificationEmail({
   isEn?: boolean;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    if (!process.env.SMTP_PASS) {
+      console.warn(`[AUTH] Notice: SMTP_PASS is not configured in this environment.`);
+      console.log(`[AUTH] Verification URL for ${to}: ${verificationUrl}${otpCode ? ` (OTP: ${otpCode})` : ""}`);
+      return { success: true, messageId: `dev-simulated-${Date.now()}` };
+    }
     const mailer = getMailTransporter();
     const sender = `"Nekomon Online Support" <${process.env.SMTP_USER || "support@nekomon.online"}>`;
 
@@ -185,6 +190,11 @@ export async function sendPasswordResetEmail({
   isEn?: boolean;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    if (!process.env.SMTP_PASS) {
+      console.warn(`[AUTH] Notice: SMTP_PASS is not configured in this environment.`);
+      console.log(`[AUTH] Password reset link for ${to}: ${resetUrl}`);
+      return { success: true, messageId: `dev-simulated-${Date.now()}` };
+    }
     const mailer = getMailTransporter();
     const sender = `"Nekomon Online Support" <${process.env.SMTP_USER || "support@nekomon.online"}>`;
 

@@ -3139,13 +3139,15 @@ export default function App() {
         onClose={() => setShowDatabaseBackupModal(false)}
         user={user}
         onDataRestored={() => {
-          if (user?.id) {
+          if (token) {
+            fetchProfile(token);
+          } else if (user?.id) {
             fetch(`/api/user/${user.id}`)
-              .then(res => res.json())
+              .then(res => (res.ok ? res.json() : null))
               .then(data => {
-                if (data.user) setUser(data.user);
-                if (data.cards) setCards(data.cards);
-                if (data.captures) setCaptures(data.captures);
+                if (data?.user) setUser(data.user);
+                if (data?.cards) setCards(data.cards);
+                if (data?.captures) setCaptures(data.captures);
               })
               .catch(() => {});
           }

@@ -1565,6 +1565,30 @@ app.get("/api/user/profile", (req, res) => {
   });
 });
 
+// User Data Fetch by ID (supports backup restore & sync callbacks)
+app.get("/api/user/:id", (req, res) => {
+  const db = readDB();
+  const targetUser = db.users.find((u: any) => u.id === req.params.id);
+  if (!targetUser) {
+    return res.status(404).json({ error: "User tidak ditemukan / User not found" });
+  }
+  const userCards = (db.cards || []).filter((c: any) => c.userId === targetUser.id);
+  const userCaptures = (db.captures || []).filter((c: any) => c.userId === targetUser.id);
+  res.json({
+    user: {
+      id: targetUser.id,
+      username: targetUser.username,
+      email: targetUser.email,
+      points: targetUser.points,
+      cores: targetUser.cores || 0,
+      avatarUrl: targetUser.avatarUrl || "",
+      faction: targetUser.faction
+    },
+    cards: userCards,
+    captures: userCaptures
+  });
+});
+
 // Claim Daily Level > 8 Mission
 app.post("/api/user/claim-level8-mission", (req, res) => {
   const db = readDB();
@@ -7473,6 +7497,15 @@ async function startServer() {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
     res.sendFile(path.join(process.cwd(), "public", "sw.js"));
   });
+  // Fallback for unmatched API routes - ALWAYS return JSON and never HTML
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({
+      error: "Endpoint API tidak ditemukan / API endpoint not found",
+      path: req.originalUrl,
+      method: req.method
+    });
+  });
+
   app.use(rejectUnknownHtmlRoute);
 
   if (process.env.NODE_ENV !== "production") {

@@ -77,7 +77,7 @@
       "id": "user_demo1_tcg",
       "username": "demo1",
       "email": "demo1@nekomon.online",
-      "password": "scrypt$u6o2zzsZxB_TmnWmKwsp_w$CJ5viM1VyaeN5TNotK9drhiT2vSC13K954UzuLplD_eg58B4kWyY4KlNnY1pb-51MMn4dVyEMHErsEcnIWnbNw",
+      "password": "scrypt$LrrTIzULiYEiEc4MekibZA$mtOJapPeP6vq9Q-5mChlDGmhvlEhzWd4WI01lA8Dj6YaGrm18VaprJMWTON3MbRpoNxBXURfpvUbppz0EjKoig",
       "points": 1000,
       "cores": 50,
       "faction": "Sentinel",
@@ -94,7 +94,8 @@
       "points": 99999,
       "cores": 9999,
       "faction": "Sentinel",
-      "lastSeen": "2026-09-05T10:23:12.108Z"
+      "lastSeen": "2026-09-05T10:23:12.108Z",
+      "password": "scrypt$VXvDtmtmtBCTGLPtUIMHBg$rp1-uSAg5vX3iKjPCxQmVaOqyyTZ855gfjfzcmhCgJUciMQcRfKWefdvy-Ht3x7U7dJiC58ep4SKcHXHOCAWng"
     },
     {
       "id": "dev_nekomaster_nekomon_online",
@@ -7521,5 +7522,6 @@
       "descriptionId": "Markas Komando Utama faksi Vanguard. Berstatus netral di awal permainan dan harus segera di-capture oleh kartu Mythic Lv.3+ berenergi penuh (5/5).",
       "descriptionEn": "Supreme Stronghold of the Vanguard Faction. Neutral at start; must be captured first by a Mythic card Lv.3+ with full energy (5/5)."
     }
-  ]
+  ],
+  "passwordResets": []
 }
