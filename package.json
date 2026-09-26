@@ -12,7 +12,8 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx --test server/**/*.test.ts"
+    "test": "tsx --test server/**/*.test.ts",
+    "test:db": "node scripts/test-mysql-connection.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -28,6 +29,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "mysql2": "^3.24.4",
     "nodemailer": "^9.0.5",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

@@ -8,6 +8,16 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initWebSocket } from "./server/websocket";
 import { syncToFirestore, loadFromFirestore } from "./server/firestoreDb";
+import {
+  initMySQLTables,
+  loadFromMySQL,
+  syncToMySQL,
+  persistSingleCardToMySQL,
+  deleteSingleCardFromMySQL,
+  getMySQLStatus,
+  testMySQLConnection,
+  isMySQLEnabled
+} from "./server/mysqlDb";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./server/mailer";
 import { createSessionToken, hashPassword, verifyPassword, verifySessionToken } from "./server/security";
 import { RAID_BOSS_TEMPLATES, createRaidBossInstance, generateBossArtwork, INDONESIAN_CITIES, CITY_BOSS_CONFIGS } from "./src/data/raidBossData";
@@ -203,10 +213,127 @@ async function ensureFirestoreLoaded() {
 // Trigger initial boot sync
 ensureFirestoreLoaded();
 
+let isMySQLLoaded = false;
+let mysqlBootPromise: Promise<void> | null = null;
+
+async function bootSyncMySQL() {
+  if (isMySQLLoaded) return;
+  try {
+    if (isMySQLEnabled()) {
+      const initialized = await initMySQLTables();
+      if (initialized) {
+        const mysqlData = await loadFromMySQL();
+        const current = readDBRaw();
+        if (mysqlData) {
+          if (Array.isArray(mysqlData.users)) {
+            mysqlData.users.forEach((u: any) => {
+              const idx = current.users.findIndex((x: any) => x.id === u.id);
+              if (idx === -1) current.users.push(u);
+              else current.users[idx] = { ...current.users[idx], ...u };
+            });
+          }
+          if (Array.isArray(mysqlData.cards)) {
+            if (!current.cards) current.cards = [];
+            mysqlData.cards.forEach((card: any) => {
+              const cIdx = current.cards.findIndex((x: any) => x.id === card.id);
+              if (cIdx === -1) current.cards.push(card);
+              else current.cards[cIdx] = { ...current.cards[cIdx], ...card };
+            });
+          }
+          if (Array.isArray(mysqlData.captures)) {
+            if (!current.captures) current.captures = [];
+            mysqlData.captures.forEach((c: any) => {
+              if (!current.captures.some((x: any) => x.id === c.id)) current.captures.push(c);
+            });
+          }
+          if (Array.isArray(mysqlData.trades)) {
+            if (!current.trades) current.trades = [];
+            mysqlData.trades.forEach((t: any) => {
+              if (!current.trades.some((x: any) => x.id === t.id)) current.trades.push(t);
+            });
+          }
+          if (Array.isArray(mysqlData.communitySpots)) {
+            if (!current.communitySpots) current.communitySpots = [];
+            mysqlData.communitySpots.forEach((s: any) => {
+              const sIdx = current.communitySpots.findIndex((x: any) => x.id === s.id);
+              if (sIdx === -1) current.communitySpots.push(s);
+              else current.communitySpots[sIdx] = { ...current.communitySpots[sIdx], ...s };
+            });
+          }
+          if (Array.isArray(mysqlData.battleHistory)) {
+            if (!current.battleHistory) current.battleHistory = [];
+            mysqlData.battleHistory.forEach((b: any) => {
+              if (!current.battleHistory.some((x: any) => x.id === b.id)) current.battleHistory.push(b);
+            });
+          }
+          if (Array.isArray(mysqlData.transactions)) {
+            if (!current.transactions) current.transactions = [];
+            mysqlData.transactions.forEach((tx: any) => {
+              if (!current.transactions.some((x: any) => x.id === tx.id)) current.transactions.push(tx);
+            });
+          }
+          if (Array.isArray(mysqlData.officialMails)) {
+            if (!current.officialMails) current.officialMails = [];
+            mysqlData.officialMails.forEach((m: any) => {
+              const mIdx = current.officialMails.findIndex((x: any) => x.id === m.id);
+              if (mIdx === -1) current.officialMails.push(m);
+              else current.officialMails[mIdx] = { ...current.officialMails[mIdx], ...m };
+            });
+          }
+          if (Array.isArray(mysqlData.directMessages)) {
+            if (!current.directMessages) current.directMessages = [];
+            mysqlData.directMessages.forEach((dm: any) => {
+              if (!current.directMessages.some((x: any) => x.id === dm.id)) current.directMessages.push(dm);
+            });
+          }
+          if (Array.isArray(mysqlData.territoryNodes)) {
+            if (!current.territoryNodes) current.territoryNodes = [];
+            mysqlData.territoryNodes.forEach((node: any) => {
+              const nIdx = current.territoryNodes.findIndex((x: any) => x.id === node.id);
+              if (nIdx === -1) current.territoryNodes.push(node);
+              else current.territoryNodes[nIdx] = { ...current.territoryNodes[nIdx], ...node };
+            });
+          }
+          if (typeof mysqlData.maxUnlockedRaidLevel === "number") {
+            current.maxUnlockedRaidLevel = mysqlData.maxUnlockedRaidLevel;
+          }
+          if (typeof mysqlData.highestDefeatedRaidBossLevel === "number") {
+            current.highestDefeatedRaidBossLevel = mysqlData.highestDefeatedRaidBossLevel;
+          }
+          if (Array.isArray(mysqlData.defeatedRaidBossLevels)) {
+            current.defeatedRaidBossLevels = mysqlData.defeatedRaidBossLevels;
+          }
+          fs.writeFileSync(DB_PATH, JSON.stringify(current, null, 2));
+          console.log("[MySQL] Database synchronized from Hostinger MySQL successfully.");
+        } else {
+          console.log("[MySQL] Auto-importing local database into Hostinger MySQL tables...");
+          await syncToMySQL(current);
+          console.log("[MySQL] Auto-import completed! Initial data seeded to Hostinger MySQL.");
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn("[MySQL] Boot MySQL sync warning:", err?.message || err);
+  } finally {
+    isMySQLLoaded = true;
+  }
+}
+
+async function ensureMySQLLoaded() {
+  if (isMySQLLoaded) return;
+  if (!mysqlBootPromise) {
+    mysqlBootPromise = bootSyncMySQL();
+  }
+  await mysqlBootPromise;
+}
+
+ensureMySQLLoaded();
+
 // Firestore restoration is best-effort and must never block authentication or
 // health endpoints. The local JSON database remains available during startup.
 app.use("/api", (_req, _res, next) => {
   if (!isFirestoreLoaded) void ensureFirestoreLoaded();
+  if (!isMySQLLoaded) void ensureMySQLLoaded();
   next();
 });
 
@@ -361,6 +488,10 @@ function readDB() {
 function writeDB(data: any) {
   try {
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    // Asynchronously persist to Hostinger MySQL database if enabled
+    if (isMySQLEnabled()) {
+      syncToMySQL(data).catch((e) => console.error("MySQL async write notice:", e));
+    }
     // Asynchronously sync to Firestore database
     syncToFirestore(data).catch((e) => console.error("Firestore async write notice:", e));
   } catch (err) {
@@ -2208,6 +2339,7 @@ Berikan output berupa objek JSON dengan spesifikasi tepat berikut:
   capture.isForged = true;
 
   db.cards.push(newCard);
+  void persistSingleCardToMySQL(newCard);
   
   // Save updated captures list
   const capIdx = db.captures.findIndex((c: any) => c.id === capture.id);
@@ -7427,6 +7559,140 @@ app.post("/api/developer/database/sync-firestore", async (req, res) => {
   } catch (err: any) {
     return res.status(500).json({
       error: "Gagal menyinkronkan ke Firestore: " + (err?.message || err)
+    });
+  }
+});
+
+// 15. Developer Only: Get Hostinger MySQL Status & Diagnostics (Dual Language ID/EN)
+app.get("/api/developer/database/mysql-status", (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer resmi (verydiaz@gmail.com / support@nekomon.online)." });
+  }
+  const status = getMySQLStatus();
+  return res.json({ success: true, status });
+});
+
+// 16. Developer Only: Test Hostinger MySQL Connection (Dual Language ID/EN)
+app.post("/api/developer/database/mysql-test", async (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer resmi (verydiaz@gmail.com / support@nekomon.online)." });
+  }
+  const testResult = await testMySQLConnection();
+  const status = getMySQLStatus();
+  return res.json({
+    success: testResult.success,
+    result: testResult,
+    status
+  });
+});
+
+// 17. Developer Only: Force Immediate Push / Migration to Hostinger MySQL (Dual Language ID/EN)
+app.post("/api/developer/database/mysql-migrate", async (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer resmi (verydiaz@gmail.com / support@nekomon.online)." });
+  }
+
+  try {
+    const initialized = await initMySQLTables();
+    if (!initialized) {
+      const status = getMySQLStatus();
+      return res.status(500).json({
+        success: false,
+        error: "Gagal menghubungkan atau menginisialisasi tabel MySQL.",
+        errorEn: "Failed to connect or initialize Hostinger MySQL tables.",
+        status
+      });
+    }
+
+    await syncToMySQL(db);
+    const status = getMySQLStatus();
+    return res.json({
+      success: true,
+      message: `Seluruh data (${db.cards?.length || 0} kartu, ${db.users?.length || 0} pengguna) berhasil disinkronkan ke Hostinger MySQL!`,
+      messageEn: `All data (${db.cards?.length || 0} cards, ${db.users?.length || 0} users) successfully synchronized to Hostinger MySQL!`,
+      stats: {
+        users: db.users?.length || 0,
+        cards: db.cards?.length || 0,
+        captures: db.captures?.length || 0,
+        spots: db.communitySpots?.length || 0
+      },
+      status
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: "Gagal migrasi ke Hostinger MySQL: " + (err?.message || err),
+      errorEn: "Failed to migrate to Hostinger MySQL: " + (err?.message || err)
+    });
+  }
+});
+
+// 18. Developer Only: Pull Data from Hostinger MySQL (Dual Language ID/EN)
+app.post("/api/developer/database/mysql-pull", async (req, res) => {
+  const db = readDB();
+  const user = getAuthUser(req, db);
+  if (!isDeveloperUser(user)) {
+    return res.status(403).json({ error: "Akses khusus Developer resmi (verydiaz@gmail.com / support@nekomon.online)." });
+  }
+
+  try {
+    const initialized = await initMySQLTables();
+    if (!initialized) {
+      const status = getMySQLStatus();
+      return res.status(500).json({
+        success: false,
+        error: "Gagal menghubungkan ke MySQL.",
+        errorEn: "Failed to connect to MySQL.",
+        status
+      });
+    }
+
+    const remoteData = await loadFromMySQL();
+    if (!remoteData) {
+      return res.status(404).json({
+        success: false,
+        error: "Tabel MySQL masih kosong. Belum ada data di database Hostinger.",
+        errorEn: "MySQL tables are currently empty on Hostinger server."
+      });
+    }
+
+    if (Array.isArray(remoteData.users)) {
+      remoteData.users.forEach((u: any) => {
+        const idx = db.users.findIndex((x: any) => x.id === u.id);
+        if (idx === -1) db.users.push(u);
+        else db.users[idx] = { ...db.users[idx], ...u };
+      });
+    }
+    if (Array.isArray(remoteData.cards)) {
+      if (!db.cards) db.cards = [];
+      remoteData.cards.forEach((c: any) => {
+        const idx = db.cards.findIndex((x: any) => x.id === c.id);
+        if (idx === -1) db.cards.push(c);
+        else db.cards[idx] = { ...db.cards[idx], ...c };
+      });
+    }
+
+    writeDB(db);
+    return res.json({
+      success: true,
+      message: `Berhasil memulihkan data dari Hostinger MySQL! (${remoteData.cards?.length || 0} kartu, ${remoteData.users?.length || 0} pemain).`,
+      messageEn: `Successfully restored data from Hostinger MySQL! (${remoteData.cards?.length || 0} cards, ${remoteData.users?.length || 0} players).`,
+      stats: {
+        users: remoteData.users?.length || 0,
+        cards: remoteData.cards?.length || 0
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: "Gagal menarik data dari MySQL: " + (err?.message || err),
+      errorEn: "Failed to pull data from MySQL: " + (err?.message || err)
     });
   }
 });
